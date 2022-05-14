@@ -23,6 +23,8 @@ The board was built with simplicity in mind using components that are easy to fi
 
 The programme code is a development of that which was provided with the original version of the v.st, with modifications made by "Swapfile" (Github user) to interface with AdvanceMAME, and then further modifications made by myself in order to add the new functionality specific to the vstcm. Ideally it should be rewritten or optimised by someone more familiar with the inner workings of the Teensy 4.1, and it is hoped that the publication on github will encourage contributions to develop this as a relatively cheap and easy solution for the vector arcade / vector graphics community.
 
+IF YOU DECIDE TO BUILD THE BOARD, BE AWARE THAT AS IT STANDS, THE REFRESH RATE IS NOT SUFFICIENT FOR COMPLEX GAMES SUCH AS STAR WARS. WHEN THE CODE WAS PORTED FROM TEENSY 3.2, THE DMA FUNCTIONALITY WAS DISABLED AS IT REQUIRES A REWRITE FOR THE NEW ARCHITECTURE WHICH REDUCES THE FPS. CURRENTLY THE CODE EXECUTES DATA TRANSFER VIA SPI. ANY TEENSY 4.1 GURUS WHO CAN HELP TO RESTORE DMA, PLEASE FEEL FREE TO CONTRIBUTE!
+
 For those interested in seeing how things got to this point, the development of the PCB is documented (in French, but use Google Translate if required) here : https://www.gamoover.net/Forums/index.php?topic=43469.0 (from page 5) and also shows previous work on building vector arcade HV boards, an Amplifone deflection reproduction, an Asteroids game PCB reproduction, a bit of yoke rewinding, etc.
 
 If you want to get in touch to ask questions, or contribute, I can be contacted at: robin@robinchampion.com or on Github (user english1234), Gamoover (english2), UKVAC (english2), KLOV (english2), as well as hanging around on the various vector graphics/Vectrex forums on Facebook.
