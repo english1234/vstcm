@@ -32,3 +32,10 @@ If you want to get in touch to ask questions, or contribute, I can be contacted 
 A dedicated vstcm web page can be found here: https://robinchampion.com/vst_colour_mod.htm
 
 ![gravitar](http://robinchampion.com/vstcm/gravitar.jpg)![tempest](http://robinchampion.com/vstcm/tempest.jpg)
+
+Power options for the PCB
+
+The PCB can be powered in several ways:
+- the whole thing is powered via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. U5, C19 & C20 are not needed.
+- the Teensy is powered via USB from a Raspberry Pi, and a separate external supply is used for the DACs and Op Amps. I tested this using a 1A 5V "wall wart" type supply connected to J6. U5, C19 & C20 are not needed.
+- the whole thing is powered via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. I have not yet tested this.
