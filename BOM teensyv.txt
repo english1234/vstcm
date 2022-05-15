@@ -8,7 +8,9 @@
 | C15, C16, C18 	                 |  3	| 10uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                     | ESH106M050AC3AA         | 
 | C20 (optional)	                 |  1	| 22uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor			                     | ESH226M050AC3AA         | 
 | IC1, IC6 	                         |  2	| TL3474	  | QUAD_OPAMPP	             | DIP-14_W7.62mm_Socket		                             | TL3474IN                | 
-| IC2 	                                 |  1	| RB-0512D	  | RB-0512D	             | RECOM_0512D		                                     | RB-0512D                | 
+| IC2 	                                 |  1	| 5VDC	          | DC/DC CONVERTER +/-5V 1W | RECOM		                                             | RB-0512D                | 
+| IC2 (optional)                         |  1	| 9VDC	          | DC/DC CONVERTER +/-12V 1W| RECOM		                                             | RB-0912D                | 
+| IC2 (optional)                         |  1	| 12VDC	          | DC/DC CONVERTER +/-12V 1W| RECOM		                                             | RB-1212D                | 
 | IC3, IC4, IC5 	                 |  3	| MCP4922-E/P	  | MCP4922-E/P	             | DIP-14_W7.62mm_Socket		                             | MCP4922-E/P	       | 
 | J1 	                                 |  1	| Conn_01x24_Male | Conn_01x24_Male	     | Generic connector, single row, 01x24	                     | 	                       | 
 | J2, J4 	                         |  2	| Conn_01x05_Male | Conn_01x05_Male	     | Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical    | 	                       | 
@@ -34,5 +36,5 @@
 | U2 	                                 |  1	| TLE2425xLP	  | TLE2425xLP	             | Precision virtual ground, 2.5V output, TO-92	             | TLE2425ILP              | 
 | U3 	                                 |  1	| LP2950-5.0_TO92 | LP2950-5.0_TO92	     | Micropower Voltage Reg with Shutdown 100mA Fixed Output 5.0V  | LP2950CZ-5.0            | 
 | U4 	                                 |  1	| TXS0108E	  | SW_DIP_x10	             | 3.3V to 5V level converter (TSOP-20 module)                   | TXS0108E                | 
-| U5	                                 |  1	| optional	  |			     |                                                               |                         | 
+| U5 (optional)                          |  1	| LM2940T-5.0	  |			     |  REG LINEAR 5V 1A TO220-3                                     |                         | 
 
