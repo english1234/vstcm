@@ -30,7 +30,7 @@
 | R25 	                                 |  1	| 1K 1/3W 5% CARB | R-US_0204/2V	     | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR25J1K0	       | 
 | RV1, RV2, RV3, RV4 	                 |  4	| 20K	          | R_Potentiometer	     | Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical	     | 3386P-1-203LF           | 
 | SW1, SW2, SW3, SW4, SW5 	         |  5	| SW_Push	  | SW_Push	             | SW_PUSH_6mm_H4.3mm Push button switch, generic, two pins	     | TS02-66-80-BK-100-SCR-D | 
-| U1 	                                 |  1	| Teensy4.1	  |                          |                                                               | DEV-16771 | 
+| U1 	                                 |  1	| Teensy4.1	  |                          |                                                               | DEV-16771               | 
 | U2 	                                 |  1	| TLE2425xLP	  | TLE2425xLP	             | Precision virtual ground, 2.5V output, TO-92	             | TLE2425ILP              | 
 | U3 	                                 |  1	| LP2950-5.0_TO92 | LP2950-5.0_TO92	     | Micropower Voltage Reg with Shutdown 100mA Fixed Output 5.0V  | LP2950CZ-5.0            | 
 | U4 	                                 |  1	| TXS0108E	  | SW_DIP_x10	             | 3.3V to 5V level converter (TSOP-20 module)                   | TXS0108E                | 
