@@ -33,9 +33,54 @@ A dedicated vstcm web page can be found here: https://robinchampion.com/vst_colo
 
 ![gravitar](http://robinchampion.com/vstcm/gravitar.jpg)![tempest](http://robinchampion.com/vstcm/tempest.jpg)
 
-Power options for the PCB
+# Getting the PCB built
+
+A ZIP file is in the Gerbers directory. This can be uploaded to your PCB manufacturer of choice. It's a 2 sided 10cm x 10cm board so should be extremely cheap (JLPCB charged less than 5€ / $5 + shipping for 10 pieces in May 2022).
+
+# Components
+
+The BOM is in BOM teensyv.txt and has Mouser references for many parts at the right hand side. 
+
+- IC2: You need to choose if you are going to use an external supply or not and if so what voltage to use (5V, 9V or 12V). Recom makes these parts, but so do Traco and there may be other brands. Make sure there is a D (for double) at the end of the model number which generates +/- voltages, rather than the S (single) version. As a guide, I started out with a 5V external supply and a RB-0512D.
+- R12, R15 & R16: these are marked as 68 ohm in the BOM, however the circuit was designed with 10K in those places. 10K is probably a better choice, but 68R is what I'm currently experimenting with. 
+- The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
+- U4 : The TXS0108E	which converts voltage from 3.3V to 5V is described as having a DIP20 footprint. It's actually a bit wider than that, so I removed the DIP socket and used pin headers instead which I had to bend a little to get it to fit. This part was used as the previous Teensy 3.2 had 5V outputs whereas the Teensy 4.1 uses 3.3V. Installing one of these avoided having to recalculate the values of the resistors in the Op Amp circuit, but if someone works out suitable values for all the resistors in the RGB and XY amplifier sections of the schematic, then U4 can be omitted and jumpered instead. 
+
+ - optional parts: see power options below
+
+I would recommend socketing everything on the board (Teensy, DACs, Op Amps) so that they can be swapped out if better choices are found in the future.
+
+# Power options for the PCB
 
 The PCB can be powered in several ways:
-- the whole thing is powered via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. U5, C19 & C20 are not needed.
-- the Teensy is powered via USB from a Raspberry Pi, and a separate external supply is used for the DACs and Op Amps. I tested this using a 1A 5V "wall wart" type supply connected to J6. U5, C19 & C20 are not needed.
-- the whole thing is powered via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. I have not yet tested this.
+- power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. U5, C19 & C20 are not needed.
+- power the Teensy via USB from a Raspberry Pi, and use a separate external supply for the DACs and Op Amps. I tested this using a 1A 5V "wall wart" type supply connected to J6. U5, C19 & C20 are not needed. Another option would be to leave out the RB-0512D and connect a +/-12V supply to J7. This has not yet been tested.
+- power the whole thing via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. This has not yet been tested either. A 5V supply won't work as the LM2940 requires over 6V to function according to its datasheet.
+
+# Schematic
+
+This may seem obvious, but it's worth downloading Kicad in order to view the schematic and the PCB as there are some build notes on the schematic, and it will help you to understand the main sections of the PCB and how it all connects together. 
+
+# Programming the Teensy
+
+Follow the instructions on this page to download and install the Arduino environment and Teensyduino extension: https://www.pjrc.com/teensy/td_download.html
+Use the Arduino software to load the .ino file in the Teensy code directory
+Connect the Teensy via USB to your computer
+Press the compile button
+Press the upload button (or the button on the Teensy if it doesn't upload automatically)
+You can also use PlatformIO if you prefer.
+
+# Testing the vstcm
+
+Once the board is built and the Teensy programmed and fitted, it can be connected to your deflection board of choice (it has only been tested on an Amplifone so far) and when powered on should show a test screen. It may be necessary to change the size and positions pots on the PCB as well as other controls on the deflection board (such as Z or colour gain).
+
+# Testing games with AdvanceMAME
+
+A Raspberry Pi 4 is recommended (I only have a RP3 Model B 2017 which seems to struggle at times). I have an Orange Pi on order and will report back on whether it is any better (it's certainly cheaper right now). If you are running the vstcm from the Raspberry Pi then a 3A supply would be preferable.
+Other options (which I have not yet tested) are PC (either Windows or a Linux VM under Windows, or native Linux) or Mac. 
+I followed the instructions here to download and compile AdvanceMAME: https://www.arcade-projects.com/threads/almost-pixel-perfect-arcade-emulation-on-raspberry-pi-with-advancemame.7777/
+
+You need to find some ROMs from somewhere. I'm sure you'll manage...
+
+In order to get games to work, I started the Pi first while connected to a HDMI screen and then started a game. I plugged in the vstcm and turned on the vector monitor, and finally connected the USB cable to the vstcm. I think there is some sort of handshake that the vstcm code doesn't yet handle which stops MAME from working if it is plugged in straightaway. There is something of the sort in the AdvanceMAME protocol for the USB DVG here: https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c 
+
