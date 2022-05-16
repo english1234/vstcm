@@ -1,6 +1,7 @@
 /*
- *
- * Vector display using the MCP4922 DAC on the Teensy 3.2 and Teensy 4.1
+ * VSTCM
+ * 
+ * Vector display using MCP4922 DACs on the Teensy 4.1
  *
  * Based on: https://trmm.net/V.st
  * incorporating mods made by "Swapfile" (Github) for Advanced Mame compatibility
@@ -27,17 +28,18 @@ const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
 #define REST_X        2048            // wait in the middle of the screen
 #define REST_Y        2048
 
-// settings
-static int OFF_SHIFT    =    5;    // smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
-static int OFF_DWELL0   =    0;    // time to sit beam on before starting a transit (values from 0 to 20 seem to make no difference)
-static int OFF_DWELL1   =    2;    // time to sit before starting a transit
-static int OFF_DWELL2   =    2;    // time to sit after finishing a transit
-static int NORMAL_SHIFT =    2;    // The higher the number, the less flicker and faster draw but more wavy lines
-static int OFF_JUMP     = false;     // causes tails on vectors
-static int FLIP_X       = false;     // Sometimes the X and Y need to be flipped and/or swapped
+// Settings
+static int OFF_SHIFT    = 5;          // smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
+static int OFF_DWELL0   = 0;          // time to sit beam on before starting a transit (values from 0 to 20 seem to make no difference)
+static int OFF_DWELL1   = 2;          // time to sit before starting a transit
+static int OFF_DWELL2   = 2;          // time to sit after finishing a transit
+static int NORMAL_SHIFT = 2;          // The higher the number, the less flicker and faster draw but more wavy lines
+static int OFF_JUMP     = false;      // Causes tails on vectors
+static int FLIP_X       = false;      // Sometimes the X and Y need to be flipped and/or swapped
 static int FLIP_Y       = false;
 static int SWAP_XY      = true;
 
+// Current position of beam
 static uint16_t x_pos;
 static uint16_t y_pos;
 
@@ -51,9 +53,11 @@ static uint16_t y_pos;
 #define FLAG_CMD_GET_DVG_INFO 0x1
 #define FLAG_COMPLETE_MONOCHROME (1 << 28)
 
+// Defines channel A or B of each MCP4922 dual DAC
 #define DAC_CHAN_A 0
 #define DAC_CHAN_B 1
 
+// Used to flip X & Y axis if needed
 static int DAC_X_CHAN = 1;
 static int DAC_Y_CHAN = 0;
 
@@ -61,13 +65,13 @@ static int DAC_Y_CHAN = 0;
 static unsigned rx_points;
 static unsigned num_points;
 
-typedef struct ColourIntensity {                  // stores current levels of brightness for each colour
+typedef struct ColourIntensity {                  // Stores current levels of brightness for each colour
     uint8_t red;
     uint8_t green;
     uint8_t blue;
 } ColourIntensity_t;
 
-static ColourIntensity_t LastColInt;              // stores last colour intensity levels
+static ColourIntensity_t LastColInt;              // Stores last colour intensity levels
 
 // Chunk of data to process using DMA or SPI
 typedef struct DataChunk {
@@ -80,12 +84,14 @@ typedef struct DataChunk {
 
 static DataChunk_t Chunk[MAX_PTS];
 
+// Current intensity values
 static uint8_t gl_red, gl_green, gl_blue;
 
 // How often should a frame be drawn if we haven't received any serial
 // data from MAME (in ms).
 #define REFRESH_RATE 20000u
 
+// Settings stored in Teensy EPROM
 typedef struct
 {
   int config_ok;
@@ -102,17 +108,17 @@ typedef struct
 
 settingsType settings;
 
-// Frames per Second/Framerate Merker
+// Approximate Frames Per Second used to benchmark code performance improvements
 long fps;
 
 void setup()
 {  
   Serial.begin(9600);
 
-  // read saved settings
+  // Read saved settings
   eeprom_read_block((void*)&settings, (void*)0, sizeof(settingsType));
 
-  // if settings have been previously defined, then use them, otherwise use default values
+  // If settings have been previously defined, then use them, otherwise use default values
   if (settings.config_ok == 998)
     {
     OFF_SHIFT = settings.off_shift;
@@ -132,14 +138,14 @@ void setup()
     DAC_Y_CHAN = 1;
     }
     
-  // configure buttons on v.st for input
+  // Configure buttons on vstcm for input
   pinMode(0, INPUT_PULLUP);
   pinMode(1, INPUT_PULLUP);
   pinMode(2, INPUT_PULLUP);
   pinMode(3, INPUT_PULLUP);
   pinMode(4, INPUT_PULLUP); 
   
- 
+  // Set chip select pins to output
   pinMode(SS0_IC5_RED, OUTPUT);
   digitalWriteFast(SS0_IC5_RED, HIGH);
   delayNanoseconds(100);
@@ -151,11 +157,10 @@ void setup()
   delayNanoseconds(100);
 
   pinMode(DELAY_PIN, OUTPUT);
-  pinMode(IO_PIN, OUTPUT);
-
   digitalWriteFast(DELAY_PIN, 0);
   delayNanoseconds(100);
-
+  
+  pinMode(IO_PIN, OUTPUT);
   digitalWriteFast(IO_PIN, 0);
   delayNanoseconds(100);
 
@@ -176,7 +181,7 @@ void loop()
 {
   static uint32_t frame_micros;
   uint32_t now;
-  elapsedMicros waiting;    // Auto updating
+  elapsedMicros waiting;    // Auto updating, used for FPS calculation
  
   while(1)
     {
@@ -222,14 +227,17 @@ void loop()
       } 
     }
 
-  // go to the center of the screen, turn the beam off
+  // Go to the center of the screen, turn the beam off
   brightness(0, 0, 0);
   goto_x(REST_X);
   goto_y(REST_Y);
 
+  // Use the buttons on the PCB to adjust and save settings
+  // This needs to be rewritten in order to use the buttons to navigate and modify a list of settings
+  
   bool write_settings = false;
   
-  if (!digitalRead(3) == HIGH)           // If button connected to pin 3 is pressed, redraw test pattern, update colour
+  if (!digitalRead(3) == HIGH)           
     {
     settings.config_ok = 999;           // Indicate that settings have been defined
     write_settings = true;
@@ -237,7 +245,7 @@ void loop()
     
   if (!digitalRead(0) == HIGH)  
     {
-    settings.swap_xy = !settings.swap_xy;  
+    settings.swap_xy = !settings.swap_xy;  // Swap X & Y axes
     write_settings = true;    
 
     if (DAC_X_CHAN == 1)
@@ -252,19 +260,19 @@ void loop()
       }
     }
  
-  if (!digitalRead(1) == HIGH)  
+  if (!digitalRead(1) == HIGH)      // Flix X axis
     {
     settings.flip_x = !settings.flip_x;  
     write_settings = true;   
     }
  
-  if (!digitalRead(2) == HIGH)  
+  if (!digitalRead(2) == HIGH)      // Flix Y axis
     {
     settings.flip_y = !settings.flip_y;  
     write_settings = true;    
     }
     
-  if (!digitalRead(4) == HIGH)  
+  if (!digitalRead(4) == HIGH)    // Restore some default settings
     {
     settings.off_shift =5;
     settings.off_dwell0 = 0;
@@ -274,7 +282,7 @@ void loop()
     write_settings = true;    
     }
     
-  if (write_settings == true)
+  if (write_settings == true)     // If something has changed, then update the settings in EPROM
     {
     // write settings
     eeprom_write_block((const void*)&settings, (void*)0, sizeof(settingsType));
@@ -320,12 +328,6 @@ static void draw_test_pattern()
   lineto(512, 4095-512);
   lineto(0,4095);
 
-  moveto(2047,2047-512);
-  brightto(2047,2047+512);
-
-  moveto(2047-512,2047);
-  brightto(2047+512,2047);
-
   const uint16_t height = 3072; 
   
   // and a multi-coloured gradiant scale
@@ -345,7 +347,7 @@ static void draw_test_pattern()
     }
 
   // draw the sunburst pattern in the corner
-  moveto(0,0);
+/*  moveto(0,0);
   //for(j = 0, i=0 ; j <= 1024 ; j += 128, i++)
   for(j = 0, i=0 ; j <= 1024 ; j += 128, i+= 16)
   {
@@ -374,54 +376,55 @@ static void draw_test_pattern()
       rx_append(j,1024, 0, i, 0);
     }
   }
-
-  draw_string("v.st Colour Mod v2", 2100 - 450, 3500, 8);
+*/
+  draw_string("v.st Colour Mod v2", 1300, 3500, 8);
    
   char buf1[5] = "";
    
   //draw_string(__DATE__, 2100, 1830, 3);
   //draw_string(__TIME__, 2100, 1760, 3);
 
-  int y = 1500;
+  int x = 1500;
+  int y = 2400;
   const int line_size = 100;
 
-  draw_string("AMPLIFONE / WG6100", 2100, y, 6); 
+  draw_string("AMPLIFONE / WG6100", x, y, 6); 
   y -= line_size;
-  draw_string("CONFIG_OK", 2100, y, 6); 
+  draw_string("CONFIG OK", x, y, 6); 
   itoa(settings.config_ok, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("OFF_DWELL0", 2100, y, 6); 
+  draw_string("OFF DWELL0", x, y, 6); 
   itoa(settings.off_dwell0, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("OFF_DWELL1", 2100, y, 6); 
+  draw_string("OFF DWELL1", x, y, 6); 
   itoa(settings.off_dwell1, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("OFF_DWELL2", 2100, y, 6); 
+  draw_string("OFF DWELL2", x, y, 6); 
   itoa(settings.off_dwell2, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("NORMAL_SHIFT", 2100, y, 6); 
+  draw_string("NORMAL SHIFT", x, y, 6); 
   itoa(settings.normal_shift, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("FLIP_X", 2100, y, 6); 
+  draw_string("FLIP X", x, y, 6); 
   itoa(settings.flip_x, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("FLIP_Y", 2100, y, 6); 
+  draw_string("FLIP Y", x, y, 6); 
   itoa(settings.flip_y, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("SWAP_XY", 2100, y, 6); 
+  draw_string("SWAP XY", x, y, 6); 
   itoa(settings.swap_xy, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-  draw_string("OFF_JUMP", 2100, y, 6); 
+  draw_string("OFF JUMP", x, y, 6); 
   itoa(settings.off_jump, buf1, 10);
-  draw_string(buf1, 3000, y, 6); 
+  draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
 
   draw_string("FPS:", 3000, 150, 6);
@@ -708,7 +711,6 @@ static int read_data()
 {
   static uint32_t cmd = 0;
   static int frame_offset = 0;
- // static uint8_t brightness = 0;
   
   uint8_t c = Serial.read();
 
