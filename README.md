@@ -50,6 +50,8 @@ The BOM is in BOM teensyv.txt and has Mouser references for many parts at the ri
 
 I would recommend socketing everything on the board (Teensy, DACs, Op Amps) so that they can be swapped out if better choices are found in the future.
 
+Make sure you order short resistors, space for them on the board is tight.
+
 # Power options for the PCB
 
 The PCB can be powered in several ways:
