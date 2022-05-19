@@ -55,13 +55,15 @@ Make sure you order short resistors, space for them on the board is tight.
 # Power options for the PCB
 
 The PCB can be powered in several ways:
-- power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. U5, C19 & C20 are not needed.
-- power the Teensy via USB from a Raspberry Pi, and use a separate external supply for the DACs and Op Amps. I tested this using a 1A 5V "wall wart" type supply connected to J6. U5, C19 & C20 are not needed. Another option would be to leave out the RB-0512D and connect a +/-12V supply to J7. This has not yet been tested.
-- power the whole thing via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. This has not yet been tested either. A 5V supply won't work as the LM2940 requires over 6V to function according to its datasheet.
+1/ power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. U5, C19 & C20 are not needed in this case.
+2/ power the Teensy via USB from a Raspberry Pi, and use a separate external supply for the DACs and Op Amps. 
+- 2a/ I tested this using a 1A 5V "wall wart" type supply connected to J6. U5, C19 & C20 are not needed in this case. 
+- 2b/ Another option would be to leave out the RB-0512D and connect a +/-12V supply to J7. THIS HAS NOT YET BEEN TESTED
+3/ power the whole thing via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. A 5V supply won't work as the LM2940 requires over 6V to function according to its datasheet. THIS HAS NOT YET BEEN TESTED AND IS NOT CURRENTLY RECOMMENDED DUE TO RISK OF OVERVOLTAGE. IF YOU TRY IT THEN MAKE SURE THE LM2940 IS OUTPUTTING 5V ON THE CORRECT PIN BEFORE PLUGGING IN THE TEENSY. 
 
 The choice is really just a matter of what you have on hand. It makes no difference what vector CRT you have, as the output voltages of the PCB are the same whatever you use to power it. If you're connecting to an existing arcade machine, then chances are you have a +/-12V supply coming out of the power brick. Otherwise, many people have a box of old "wall wart" 5V (or 9V or 12V) adapters which will work fine: either fit a barrel connector to the PCB input or chop the connector off the end of the power supply and solder the 2 wires directly to the board (check with a multimeter first which is positive and which is ground). 
 
-The easiest option is to use a 5V as the LM2940 is not required, and you don't need to cut the link on the Teensy to separate USB and external power.
+The easiest option is to use a 5V (option 2a) as the LM2940 is not required, and you don't need to cut the link on the Teensy to separate USB and external power.
 
 # Schematic
 
