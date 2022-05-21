@@ -10,34 +10,32 @@
  * 
 */
 
-// nb. Old code from Teensy 3.2 which managed DMA with SPI has been left commented out: requires rewrite for Teensy 4.1
-
 #include <SPI.h>
 #include "asteroids_font.h"
 #include <avr/eeprom.h>
 
 // Teensy SS pins connected to DACs
-const int SS0_IC5_RED     = 8;        // RED output
-const int SS1_IC4_X_Y     = 6;        // X and Y outputs
+const int SS0_IC5_RED     =  8;       // RED output
+const int SS1_IC4_X_Y     =  6;       // X and Y outputs
 const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
-#define SDI             11
-#define SCK             13
-#define DELAY_PIN        7
-#define IO_PIN           5
+#define SDI                 11
+#define SCK                 13
+#define DELAY_PIN            7
 
-#define REST_X        2048            // wait in the middle of the screen
-#define REST_Y        2048
+#define REST_X            2048        // wait in the middle of the screen
+#define REST_Y            2048
 
 // Settings
-static int OFF_SHIFT    = 5;          // smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
-static int OFF_DWELL0   = 0;          // time to sit beam on before starting a transit (values from 0 to 20 seem to make no difference)
-static int OFF_DWELL1   = 2;          // time to sit before starting a transit
-static int OFF_DWELL2   = 2;          // time to sit after finishing a transit
-static int NORMAL_SHIFT = 2;          // The higher the number, the less flicker and faster draw but more wavy lines
+static int OFF_SHIFT    =    5;       // smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
+static int OFF_DWELL0   =    0;       // time to sit beam on before starting a transit (values from 0 to 20 seem to make no difference)
+static int OFF_DWELL1   =    2;       // time to sit before starting a transit
+static int OFF_DWELL2   =    2;       // time to sit after finishing a transit
+static int NORMAL_SHIFT =    2;       // The higher the number, the less flicker and faster draw but more wavy lines
 static int OFF_JUMP     = false;      // Causes tails on vectors
 static int FLIP_X       = false;      // Sometimes the X and Y need to be flipped and/or swapped
 static int FLIP_Y       = false;
 static int SWAP_XY      = true;
+static int CLOCKSPEED   = 30000000;  
 
 // Current position of beam
 static uint16_t x_pos;
@@ -104,6 +102,7 @@ typedef struct
   int flip_y;
   int swap_xy;
   int off_jump;
+  int clockspeed;
 } settingsType;
 
 settingsType settings;
@@ -113,8 +112,6 @@ long fps;
 
 void setup()
 {  
-  Serial.begin(9600);
-
   // Read saved settings
   eeprom_read_block((void*)&settings, (void*)0, sizeof(settingsType));
 
@@ -130,6 +127,7 @@ void setup()
     FLIP_Y = settings.flip_y;
     SWAP_XY = settings.swap_xy;
     OFF_JUMP = settings.off_jump;  
+    CLOCKSPEED = settings.clockspeed;
     }
 
   if (settings.swap_xy == true)
@@ -144,6 +142,11 @@ void setup()
   pinMode(2, INPUT_PULLUP);
   pinMode(3, INPUT_PULLUP);
   pinMode(4, INPUT_PULLUP); 
+
+  // Apparently, pin 10 has to be defined as an OUTPUT pin to designate the Arduino as the SPI master.
+  // Even if pin 10 is not being used... Is this true for Teensy 4.1?
+  // The default mode is INPUT. You must explicitly set pin 10 to OUTPUT (and leave it as OUTPUT).
+  pinMode(10, OUTPUT);
   
   // Set chip select pins to output
   pinMode(SS0_IC5_RED, OUTPUT);
@@ -160,10 +163,6 @@ void setup()
   digitalWriteFast(DELAY_PIN, 0);
   delayNanoseconds(100);
   
-  pinMode(IO_PIN, OUTPUT);
-  digitalWriteFast(IO_PIN, 0);
-  delayNanoseconds(100);
-
   pinMode(SDI, OUTPUT);
   pinMode(SCK, OUTPUT);
   
@@ -172,9 +171,7 @@ void setup()
   draw_test_pattern();
 
   SPI.begin();
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE3));
-  
-//  spi_dma_setup();
+  SPI.beginTransaction(SPISettings(CLOCKSPEED, MSBFIRST, SPI_MODE0));
 }
 
 void loop()
@@ -182,38 +179,28 @@ void loop()
   static uint32_t frame_micros;
   uint32_t now;
   elapsedMicros waiting;    // Auto updating, used for FPS calculation
- 
+
+  // while loop waits until any DMA operation is complete, 
+  // and serial port is available and read from serial is finished
   while(1)
     {
     now = micros();
 
-  /*  if (spi_dma_tx_complete())        // make sure we flush the partial buffer once the last one has completed
-      {
-      if (rx_points == 0 && now - frame_micros > REFRESH_RATE)
+    if (Serial.available())     // there is something to read from MAME
+      if (read_data() == 1)     // read it, then draw it
         break;
-      spi_dma_tx();
-      }
- */  
-      
-    if (Serial.available() && read_data() == 1)     // start redraw when read_data is done
-      break;
-    else if (rx_points == 0 && now - frame_micros > REFRESH_RATE)
-      break;     
-    
+
+    // rx_points = 0 when MAME has just sent a complete frame, 
+    // and at the end of the test pattern redraw; 
+    // num_points then contains the number of points to draw 
+    // if rx_points = 0 then we can start to fill the buffer again 
+       
+    if (rx_points == 0 && now - frame_micros > REFRESH_RATE)
+      break;    
     }
  
   frame_micros = now;
-/*
-  while (!spi_dma_tx_complete())      // if there are any DMAs currently in transit, wait for them to complete
-    ;
-  
-  spi_dma_tx();   // now start any last buffered ones and wait for those to complete
-  
-  while (!spi_dma_tx_complete())
-    ;
-   
-  digitalWriteFast(DEBUG_PIN, 1);     // flag that we have started an output frame
-*/
+
   for(unsigned n = 0 ; n < num_points ; n++)
     {
     const DataChunk_t pt = Chunk[n];
@@ -226,7 +213,7 @@ void loop()
       _draw_lineto(pt.x, pt.y, NORMAL_SHIFT);
       } 
     }
-
+    
   // Go to the center of the screen, turn the beam off
   brightness(0, 0, 0);
   goto_x(REST_X);
@@ -234,6 +221,7 @@ void loop()
 
   // Use the buttons on the PCB to adjust and save settings
   // This needs to be rewritten in order to use the buttons to navigate and modify a list of settings
+  // Also it doesn't need to test all this stuff on every cycle, so add a test to do it 1/100 times
   
   bool write_settings = false;
   
@@ -302,14 +290,12 @@ static void draw_test_pattern()
   
   // fill in some points for test and calibration
   rx_append(0, 0, 0, 0, 0);
-  //moveto(0,0);
-  lineto(1024,0);
-  lineto(1024,1024);
-  lineto(0,1024);
+  lineto(512,0);
+  lineto(512,512);
+  lineto(0,512);
   lineto(0,0);
 
   // triangle
-  //moveto(4095, 0);
   rx_append(4095, 0, 0, 0, 0);
   lineto(4095-512, 0);
   lineto(4095-0, 512);
@@ -346,44 +332,10 @@ static void draw_test_pattern()
     rx_append(3100, height + i * mult, j, j, j);     // all 3 colours combined
     }
 
-  // draw the sunburst pattern in the corner
-/*  moveto(0,0);
-  //for(j = 0, i=0 ; j <= 1024 ; j += 128, i++)
-  for(j = 0, i=0 ; j <= 1024 ; j += 128, i+= 16)
-  {
-    if (i & 1)
-    {
-      moveto(1024,j);
-      //rx_append(0,0, i * 7);
-      rx_append(0,0, 0, i, 0);
-    } else {
-     // rx_append(1024,j, i * 7);
-      rx_append(1024,j, 0, i, 0);
-    }
-  }
+  draw_string("v.st Colour Mod v2.1", 1300, 3500, 8);
 
-  moveto(0,0);
-  //for(j = 0, i=0 ; j <= 1024 ; j += 128, i++)
-  for(j = 0, i=0 ; j <= 1024 ; j += 128, i+= 16)
-  {
-    if (i & 1)
-    {
-      moveto(1024,j);
-      //rx_append(0,0, i * 7);
-      rx_append(0,0, 0, i, 0);
-    } else {
-     // rx_append(j,1024, i * 7);
-      rx_append(j,1024, 0, i, 0);
-    }
-  }
-*/
-  draw_string("v.st Colour Mod v2", 1300, 3500, 8);
+  char buf1[15] = "";
    
-  char buf1[5] = "";
-   
-  //draw_string(__DATE__, 2100, 1830, 3);
-  //draw_string(__TIME__, 2100, 1760, 3);
-
   int x = 1500;
   int y = 2400;
   const int line_size = 100;
@@ -426,7 +378,16 @@ static void draw_test_pattern()
   itoa(settings.off_jump, buf1, 10);
   draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-
+/*  draw_string("SPI CLOCK", x, y, 6); 
+  ltoa(settings.clockspeed, buf1, 15);
+  draw_string(buf1, x + 900, y, 6); 
+  y -= line_size;
+  draw_string("SERIAL PORT", x, y, 6); 
+  if (Serial.available())  
+    draw_string("AVAILABLE", x + 900, y, 6); 
+  else
+    draw_string("BUSY", x + 900, y, 6); 
+*/
   draw_string("FPS:", 3000, 150, 6);
   draw_string(itoa(fps, buf1, 10), 3400, 150, 6);
   
@@ -439,7 +400,7 @@ void moveto(int x, int y)
   rx_append(x, y, 0, 0, 0);
 }
 
-// bright can be any value from 0 to 255
+// Colour intensity can be any value from 0 to 255
 void rx_append(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
 {
   rx_points ++;
@@ -455,18 +416,13 @@ void lineto(int x, int y)
   rx_append(x, y, 128, 128, 128); // Green normal brightness
 }
 
-void brightto(int x, int y)
-{
-  rx_append(x, y, 255, 255, 255); // Green max brightness
-}
-
 void draw_string(const char * s, int x,int y, int size)
 {
   while(*s)
-  {
+    {
     char c = *s++;
     x += draw_character(c, x, y, size);
-  }
+    }
 }
 
 int draw_character(char c, int x, int y, int size)
@@ -507,19 +463,19 @@ void draw_moveto(int x1, int y1)
 {
   brightness(0, 0, 0);
 
-if (settings.off_jump == true)
-  {
-  goto_x(x1);
-  goto_y(y1);
-  }
-else
-  {
-  // hold the current position for a few clocks
-  // with the beam off
-  dwell(OFF_DWELL1);
-   _draw_lineto(x1, y1, OFF_SHIFT);
-   dwell(OFF_DWELL2);
-  }
+  if (settings.off_jump == true)
+    {
+    goto_x(x1);
+    goto_y(y1);
+    }
+  else
+    {
+    // hold the current position for a few clocks
+    // with the beam off
+    dwell(OFF_DWELL1);
+     _draw_lineto(x1, y1, OFF_SHIFT);
+     dwell(OFF_DWELL2);
+    }
 }
 
 static inline void brightness(uint8_t red, uint8_t green, uint8_t blue)
@@ -527,25 +483,22 @@ static inline void brightness(uint8_t red, uint8_t green, uint8_t blue)
   dwell(OFF_DWELL0);
 
   if (LastColInt.red != red)
-  {
+    {
     LastColInt.red = red;
-//    MCP4922_write(SPI_DMA_CS_IC5_RED, DAC_CHAN_B, red << 4);
     MCP4922_write(SS0_IC5_RED, DAC_CHAN_B, red << 4);
-  }
+    }
  
   if (LastColInt.green != green)
-  {
+    {
     LastColInt.green = green;
- //   MCP4922_write(SS0_IC5_RED, DAC_CHAN_A, green << 4);  
     MCP4922_write(SS2_IC3_GRE_BLU, DAC_CHAN_A, green << 4);  
-  }
+    }
   
   if (LastColInt.blue != blue)
-  {
+    {
     LastColInt.blue = blue;
- //   MCP4922_write(SS0_IC5_RED, DAC_CHAN_B, blue << 4); 
     MCP4922_write(SS2_IC3_GRE_BLU, DAC_CHAN_B, blue << 4); 
-   }
+    }
 }
 
 // x and y position are in 12-bit range
@@ -652,18 +605,17 @@ static inline void _draw_lineto(int x1, int y1, const int bright_shift)
 
 void MCP4922_write(int cs_pin, byte dac, uint16_t value) 
 {
-//  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE3));
-  dac = (dac & 1) << 7;
-
+  dac = dac << 7; // dac value is either 0 or 128
+  
   value &= 0x0FFF; // mask out just the 12 bits of data
 
   // add the output channel A or B on the selected DAC, and buffer flag
 #if 1
   // select the output channel on the selected DAC, buffered, no gain
-  value |= 0x7000 | (dac == 1 ? 0x8000 : 0x0000);
+  value |= 0x7000 | (dac == 128 ? 0x8000 : 0x0000);
 #else
   // select the output channel on the selected DAC, unbuffered, no gain
-  value |= 0x3000 | (dac == 1 ? 0x8000 : 0x0000);
+  value |= 0x3000 | (dac == 128 ? 0x8000 : 0x0000);
 #endif
 
   byte low = value & 0xff;
@@ -671,39 +623,13 @@ void MCP4922_write(int cs_pin, byte dac, uint16_t value)
   
   digitalWriteFast(cs_pin, LOW);
   delayNanoseconds(100);
+
   // better to use SPI.transfer16? spi.transfer with eventresponder works in non blocking mode with DMA apparently
   SPI.transfer(high);
   SPI.transfer(low);
-  
- // SPI.transfer16((data & 0x0FFF) | 0x7000);
- // SPI.transfer16(data & 0xFFF);
- // SPI.transfer16( ((high & low) & 0x0FFF) | 0x7000 ); 
+
   digitalWriteFast(cs_pin, HIGH);
   delayNanoseconds(100);
-//  SPI.endTransaction();  
-  
-/*  value &= 0x0FFF; // mask out just the 12 bits of data
-
-  // add the output channel A or B on the selected DAC, and buffer flag
-#if 1
-  // select the output channel on the selected DAC, buffered, no gain
-  value |= 0x7000 | (dac == 1 ? 0x8000 : 0x0000);
-#else
-  // select the output channel on the selected DAC, unbuffered, no gain
-  value |= 0x3000 | (dac == 1 ? 0x8000 : 0x0000);
-#endif
-  
-  if (spi_dma_tx_append(value, cs_pin) == 0)
-    return;
-
-  // wait for the previous line to finish
-  while(!spi_dma_tx_complete())
-    ;
-
-  // now send this line, which swaps buffers
-  spi_dma_tx();
-
-  */
 }
 
 //return 1 when frame is complete, otherwise return 0
@@ -711,8 +637,9 @@ static int read_data()
 {
   static uint32_t cmd = 0;
   static int frame_offset = 0;
-  
-  uint8_t c = Serial.read();
+  char buf1[5] = "";
+    
+  uint8_t c = Serial.read();    // read one byte at a time
 
   cmd = cmd << 8 | c;
   frame_offset++;
@@ -759,117 +686,25 @@ static int read_data()
     }
   else if (header == FLAG_COMPLETE)
     {
+    // Add FPS on games as a guide for optimisation
+    draw_string("FPS:", 3000, 150, 6);
+    draw_string(itoa(fps, buf1, 10), 3400, 150, 6);
+    
     num_points = rx_points;
     rx_points = 0;
     return 1; //start rendering!
     }
   else if (header == FLAG_EXIT)
     {
+    Serial.flush(); // not sure if this useful, may help in case of manual quit on MAME
     // quit gracefully back to test pattern
     draw_test_pattern();
     }
   else if (header == FLAG_CMD_GET_DVG_INFO)
     {
-    // provide a reply
+    // provide a reply of some sort
     Serial.write(0xFFFFFFFF);
     }
   
   return 0;
 }
-
-/*
-static DMAChannel spi_dma;
-#define SPI_DMA_MAX 4096
-static uint32_t spi_dma_q[2][SPI_DMA_MAX];        // Double buffer
-static unsigned spi_dma_which;                    // Which buffer is being processed
-static unsigned spi_dma_count;                    // How full the buffer is
-static unsigned spi_dma_in_progress;              // DMA in progress flag
-
-#define SPI_DMA_CS_GREEN_BLUE 0                   // IC3 GREEN BLUE
-#define SPI_DMA_CS_IC5_RED    1                   // IC5 RED
-#define SPI_DMA_CS_IC4_XY     2                   // IC4 XY
-
-static int spi_dma_tx_append(uint16_t value, int spi_dma_cs)
-{
-  spi_dma_q[spi_dma_which][spi_dma_count++] = 0 | ((uint32_t)value) | (spi_dma_cs << 16); // enable the chip select line
-  
-  if (spi_dma_count == SPI_DMA_MAX)
-    return 1;
-  return 0;
-}
-
-static void spi_dma_tx()
-{
-  if (spi_dma_count == 0)
-    return;
-
-  digitalWriteFast(DELAY_PIN, 1);
-
-  // add a EOQ to the last entry
-  spi_dma_q[spi_dma_which][spi_dma_count-1] |= (1<<27);
-
-  spi_dma.clearComplete();
-  spi_dma.clearError();
-  spi_dma.sourceBuffer(spi_dma_q[spi_dma_which], 4 * spi_dma_count);  // in bytes, not thingies
-
-  spi_dma_which = !spi_dma_which;
-  spi_dma_count = 0;
-
-  SPI0_SR = 0xFF0F0000;
-  SPI0_RSER = 0 | SPI_RSER_RFDF_RE | SPI_RSER_RFDF_DIRS | SPI_RSER_TFFF_RE | SPI_RSER_TFFF_DIRS;
-
-  spi_dma.enable();
-  spi_dma_in_progress = 1;
-}
-
-static int spi_dma_tx_complete()
-{
-  if (!spi_dma_in_progress)           // if nothing is in progress, we're "complete"
-    return 1;
- 
-  if (!spi_dma.complete())
-     return 0;
-  
-  digitalWriteFast(DELAY_PIN, 0);
-
-  spi_dma.clearComplete();
-  spi_dma.clearError();
-
-  delayMicroseconds(5);               // the DMA hardware lies; it is not actually complete
-  
-  SPI0_RSER = 0;                      // we are done!
-  SPI0_SR = 0xFF0F0000;
-  spi_dma_in_progress = 0;
-  return 1;
-}
-
-static void spi_dma_setup()
-{
-  spi_dma.disable();
-  spi_dma.destination((volatile uint32_t&) SPI0_PUSHR);
-  spi_dma.disableOnCompletion();
-  spi_dma.triggerAtHardwareEvent(DMAMUX_SOURCE_SPI0_TX);
-  spi_dma.transferSize(4); // write all 32-bits of PUSHR
-
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));
-
-  // configure the output on pin 10 for !SS0 from the SPI hardware
-  // and pin 6 for !SS1, and pin 22 for !SS2
-  CORE_PIN22_CONFIG = PORT_PCR_DSE | PORT_PCR_MUX(2);
-  CORE_PIN10_CONFIG = PORT_PCR_DSE | PORT_PCR_MUX(2);
-  CORE_PIN6_CONFIG = PORT_PCR_DSE | PORT_PCR_MUX(2);
-
-  // configure the frame size for 16-bit transfers
-  SPI0_CTAR0 |= 0xF << 27;
-
-  // send something to get it started
-
-  spi_dma_which = 0;
-  spi_dma_count = 0;
-
-  spi_dma_tx_append(0, 1);    
-  spi_dma_tx_append(0, 2);   
-
-  spi_dma_tx();
-}
-*/
