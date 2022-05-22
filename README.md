@@ -45,7 +45,7 @@ The BOM is in BOM teensyv.txt and has Mouser references for many parts at the ri
 - R12, R15 & R16: these are marked as 68 ohm in the BOM, however the circuit was designed with 10K in those places. 10K is probably a better choice, but 68R is what I'm currently experimenting with. 
 - The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
 - U4: The TXS0108E	which converts voltage from 3.3V to 5V is described as having a DIP20 footprint. It's actually a bit wider than that, so I removed the DIP socket and used pin headers instead which I had to bend a little to get it to fit. This part was used as the previous Teensy 3.2 had 5V outputs whereas the Teensy 4.1 uses 3.3V. Installing one of these avoided having to recalculate the values of the resistors in the Op Amp circuit, but if someone works out suitable values for all the resistors in the RGB and XY amplifier sections of the schematic, then U4 can be omitted and jumpered instead. 
-- U5: See power options below. I have also used a 7805 as a direct replacement, but haven't tested to see if it heats up in the long term.
+- U5: See power options below. I have also used a 7805 as a direct replacement with a small heatsink on it, which gets quite hot but hasn't burnt out as yet.
 
  - optional parts: see power options below
 
@@ -77,15 +77,15 @@ This may seem obvious, but it's worth downloading Kicad in order to view the sch
 # Programming the Teensy
 
 Follow the instructions on this page to download and install the Arduino environment and Teensyduino extension: https://www.pjrc.com/teensy/td_download.html
-Use the Arduino software to load the .ino file in the Teensy code directory
-Connect the Teensy via USB to your computer
-Press the compile button
-Press the upload button (or the button on the Teensy if it doesn't upload automatically)
-You can also use PlatformIO if you prefer.
+Use the Arduino software to load the .ino file in the Teensy code directory.
+Connect the Teensy via USB to your computer.
+Press the compile button.
+Press the upload button (or the button on the Teensy if it doesn't upload automatically).
+(You can also use PlatformIO if you prefer).
 
 # Testing the vstcm
 
-Once the board is built and the Teensy programmed and fitted, it can be connected to your deflection board of choice (it has only been tested on an Amplifone so far) and when powered on should show a test screen. It may be necessary to change the size and positions pots on the PCB as well as other controls on the deflection board (such as Z or colour gain).
+Once the board is built and the Teensy programmed and fitted, it can be connected to your deflection board of choice (it has only been tested on an Amplifone so far, but should work on WG6100 and others, including B&W vectors) and when powered on should show a test screen. It may be necessary to change the size and positions pots on the PCB as well as other controls on the deflection board (such as Z or colour gain).
 
 Before connecting to the deflection board, it would probably be a good idea to make sure the vstcm is generating appropriate voltages at its outputs (preferably with an oscilloscope, or failing that with a decent multimeter). 
 
