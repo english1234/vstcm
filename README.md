@@ -3,7 +3,7 @@ The vstcm is a PCB which can generate colour vector graphics which can then be d
 
 ![vstcm pcb](http://robinchampion.com/vstcm/vstcmpcb.jpg)
 
-When used with a Raspberry Pi running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games.
+When used with a Raspberry Pi (or Orange Pi) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games.
 
 ![starwars](http://robinchampion.com/vstcm/starwars.jpg)
 
@@ -91,11 +91,36 @@ Before connecting to the deflection board, it would probably be a good idea to m
 
 # Testing games with AdvanceMAME
 
-A Raspberry Pi 4 is recommended (I only have a RP3 Model B 2017 which seems to struggle at times). I have an Orange Pi on order and will report back on whether it is any better (it's certainly cheaper right now). If you are running the vstcm from the Raspberry Pi then a 3A supply would be preferable.
+A Raspberry Pi 4 or 400 is recommended (I have also tested with a Pi 3 Model B+ 2017 and an Orange Pi 3 LTS which seem to work ok too). If you are running the vstcm from the Raspberry/Orange Pi then a 3A supply would be preferable.
 Other options (which I have not yet tested) are PC (either Windows or a Linux VM under Windows, or native Linux) or Mac. 
 I followed the instructions here to download and compile AdvanceMAME: https://www.arcade-projects.com/threads/almost-pixel-perfect-arcade-emulation-on-raspberry-pi-with-advancemame.7777/
 
-You need to find some ROMs from somewhere. I'm sure you'll manage...
+Basically, there are just 7 commands on the Pi which are as follows:
 
-In order to get games to work, I started the Pi first while connected to a HDMI screen and then started a game. I plugged in the vstcm and turned on the vector monitor, and finally connected the USB cable to the vstcm. I think there is some sort of handshake that the vstcm code doesn't yet handle which stops MAME from working if it is plugged in straightaway. There is something of the sort in the AdvanceMAME protocol for the USB DVG here: https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c 
+sudo apt-get install git autoconf automake libsdl2-dev libasound2-dev libfreetype6-dev zlib1g-dev libexpat1-dev libslang2-dev libncurses5-dev
+
+git clone https://github.com/amadvance/advancemame.git
+
+cd advancemame
+
+sh autogen.sh
+
+./configure
+
+make -j3
+
+sudo make install
+
+
+You need to find some ROMs from somewhere and copy them into the ROM folder. I'm sure you'll manage to find them... The easiest way to get them on to the Pi is to set up a Samba share and copy them over from a PC.
+
+Then to launch, type advmame followed by the name of the game.
+
+If you're not getting output over the USB cable to the vstcm, then check the advmame.rc file and at the bottom make sure you have vector_aux_renderer set to dvg (instead of none) and vector_aux_renderer_port set to /dev/ttyACM0
+
+
+
+# Interface between vstcm and AdvanceMAME
+
+The AdvanceMAME protocol for the USB DVG is here: https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c 
 
