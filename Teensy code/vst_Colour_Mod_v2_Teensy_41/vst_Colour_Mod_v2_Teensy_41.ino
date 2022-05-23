@@ -27,15 +27,15 @@ const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
 
 // Settings
 static int OFF_SHIFT    =    5;       // smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
-static int OFF_DWELL0   =    0;       // time to sit beam on before starting a transit (values from 0 to 20 seem to make no difference)
+static int OFF_DWELL0   =    0;       // time to sit beam on before starting a transit 
 static int OFF_DWELL1   =    2;       // time to sit before starting a transit
 static int OFF_DWELL2   =    2;       // time to sit after finishing a transit
-static int NORMAL_SHIFT =    2;       // The higher the number, the less flicker and faster draw but more wavy lines
+static int NORMAL_SHIFT =    3;       // The higher the number, the less flicker and faster draw but more wavy lines
 static int OFF_JUMP     = false;      // Causes tails on vectors
 static int FLIP_X       = false;      // Sometimes the X and Y need to be flipped and/or swapped
 static int FLIP_Y       = false;
 static int SWAP_XY      = true;
-static int CLOCKSPEED   = 30000000;  
+static int CLOCKSPEED   = 110000000;  // Can't seem to drive it any faster than this
 
 // Current position of beam
 static uint16_t x_pos;
@@ -110,6 +110,9 @@ settingsType settings;
 // Approximate Frames Per Second used to benchmark code performance improvements
 long fps;
 
+EventResponder callbackHandler;
+volatile int activepin = 0;
+
 void setup()
 {  
   // Read saved settings
@@ -147,6 +150,8 @@ void setup()
   // Even if pin 10 is not being used... Is this true for Teensy 4.1?
   // The default mode is INPUT. You must explicitly set pin 10 to OUTPUT (and leave it as OUTPUT).
   pinMode(10, OUTPUT);
+  digitalWriteFast(10, HIGH);  
+  delayNanoseconds(100);
   
   // Set chip select pins to output
   pinMode(SS0_IC5_RED, OUTPUT);
@@ -171,7 +176,12 @@ void setup()
   draw_test_pattern();
 
   SPI.begin();
+  
+  // Setup the SPI DMA callback
+  callbackHandler.attachImmediate(&callback); 
+  callbackHandler.clearEvent();  
   SPI.beginTransaction(SPISettings(CLOCKSPEED, MSBFIRST, SPI_MODE0));
+  SPI.endTransaction();
 }
 
 void loop()
@@ -222,7 +232,7 @@ void loop()
   // Use the buttons on the PCB to adjust and save settings
   // This needs to be rewritten in order to use the buttons to navigate and modify a list of settings
   // Also it doesn't need to test all this stuff on every cycle, so add a test to do it 1/100 times
-  
+ 
   bool write_settings = false;
   
   if (!digitalRead(3) == HIGH)           
@@ -248,13 +258,13 @@ void loop()
       }
     }
  
-  if (!digitalRead(1) == HIGH)      // Flix X axis
+  if (!digitalRead(1) == HIGH)      // Flip X axis
     {
     settings.flip_x = !settings.flip_x;  
     write_settings = true;   
     }
  
-  if (!digitalRead(2) == HIGH)      // Flix Y axis
+  if (!digitalRead(2) == HIGH)      // Flip Y axis
     {
     settings.flip_y = !settings.flip_y;  
     write_settings = true;    
@@ -273,7 +283,7 @@ void loop()
   if (write_settings == true)     // If something has changed, then update the settings in EPROM
     {
     // write settings
-    eeprom_write_block((const void*)&settings, (void*)0, sizeof(settingsType));
+ //   eeprom_write_block((const void*)&settings, (void*)0, sizeof(settingsType));   // disabled for now while testing
     draw_test_pattern();   
     delay(200);
     }
@@ -525,13 +535,14 @@ static inline void goto_y(uint16_t y)
 
 static void dwell(const int count)
 {
-  for (int i = 0 ; i < count ; i++)
+  // works better without this on an Amplifone
+/* for (int i = 0 ; i < count ; i++)
   {
     if (i & 1)
       goto_x(x_pos);
     else
       goto_y(y_pos);
-  }
+  } */
 }
 
 static inline void _draw_lineto(int x1, int y1, const int bright_shift)
@@ -618,18 +629,26 @@ void MCP4922_write(int cs_pin, byte dac, uint16_t value)
   value |= 0x3000 | (dac == 128 ? 0x8000 : 0x0000);
 #endif
 
-  byte low = value & 0xff;
-  byte high = dac | 0x30 | ((value >> 8) & 0x0f);
+//  byte low = value & 0xff;
+//  byte high = dac | 0x30 | ((value >> 8) & 0x0f);
+
+  while(activepin != 0)   // wait until previous transfer is complete
+    ;
+      
+  activepin = cs_pin;   // store to deactivate at end of transfer
   
   digitalWriteFast(cs_pin, LOW);
-  delayNanoseconds(100);
 
-  // better to use SPI.transfer16? spi.transfer with eventresponder works in non blocking mode with DMA apparently
-  SPI.transfer(high);
-  SPI.transfer(low);
+  char buf[2];
+  buf[0] = dac | 0x30 | ((value >> 8) & 0x0f);
+  buf[1] = value & 0xff;
 
-  digitalWriteFast(cs_pin, HIGH);
-  delayNanoseconds(100);
+  // This uses non blocking SPI with DMA
+  SPI.transfer(buf, nullptr, 2, callbackHandler); 
+  
+ // SPI.transfer16(((high << 8) + low));    // Standard blocking SPI
+ // digitalWriteFast(cs_pin, HIGH);
+ // delayNanoseconds(100);
 }
 
 //return 1 when frame is complete, otherwise return 0
@@ -707,4 +726,11 @@ static int read_data()
     }
   
   return 0;
+}
+
+void callback(EventResponderRef eventResponder)
+{
+  // End screen update
+  digitalWriteFast(activepin, HIGH);
+  activepin = 0;
 }
