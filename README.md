@@ -17,7 +17,7 @@ Compared to the original version, the new vstcm adds:
 - several power source options, either USB, or external 5V/9V/12V
 - an upgrade to the Teensy 4.1 for more power
 
-![testscreen](http://robinchampion.com/vstcm/testscreen.jpg)
+![testscreen1](http://robinchampion.com/vstcm/testscreen2.jpg)
 
 The board was built with simplicity in mind using components that are easy to find, and easy to solder so that anyone can build one.
 
@@ -28,8 +28,6 @@ For those interested in seeing how things got to this point, the development of 
 If you want to get in touch to ask questions, or contribute, I can be contacted at: robin@robinchampion.com or on Github (user english1234), Gamoover (english2), UKVAC (english2), KLOV (english2), as well as hanging around on the various vector graphics/Vectrex forums on Facebook.
 
 A dedicated vstcm web page can be found here: https://robinchampion.com/vst_colour_mod.htm
-
-![gravitar](http://robinchampion.com/vstcm/gravitar.jpg)![tempest](http://robinchampion.com/vstcm/tempest.jpg)
 
 # Getting the PCB built
 
@@ -120,7 +118,7 @@ Then to launch, type advmame followed by the name of the game.
 
 If you're not getting output over the USB cable to the vstcm, then check the advmame.rc file and at the bottom make sure you have vector_aux_renderer set to dvg (instead of none) and vector_aux_renderer_port set to /dev/ttyACM0
 
-
+![gravitar](http://robinchampion.com/vstcm/gravitar.jpg)![tempest](http://robinchampion.com/vstcm/tempest.jpg)
 
 # Interface between vstcm and AdvanceMAME
 
