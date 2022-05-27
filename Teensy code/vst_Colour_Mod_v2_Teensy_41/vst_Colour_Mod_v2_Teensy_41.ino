@@ -18,24 +18,26 @@
 const int SS0_IC5_RED     =  8;       // RED output
 const int SS1_IC4_X_Y     =  6;       // X and Y outputs
 const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
-#define SDI                 11
-#define SCK                 13
-#define DELAY_PIN            7
 
-#define REST_X            2048        // wait in the middle of the screen
+// Split control of DACs between 2 SPI busses to hopefully increase speed
+#define SDI                 11        // MOSI on SPI0
+#define SCK                 13        // SCK on SPI0
+#define BUFFERED                      // If defined, uses buffer on DACs
+//#undef BUFFERED
+#define REST_X            2048        // Wait in the middle of the screen
 #define REST_Y            2048
 
 // Settings
-static int OFF_SHIFT    =    5;       // smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
-static int OFF_DWELL0   =    0;       // time to sit beam on before starting a transit 
-static int OFF_DWELL1   =    2;       // time to sit before starting a transit
-static int OFF_DWELL2   =    2;       // time to sit after finishing a transit
-static int NORMAL_SHIFT =    3;       // The higher the number, the less flicker and faster draw but more wavy lines
-static int OFF_JUMP     = false;      // Causes tails on vectors
+static int NORMAL_SHIFT =    2;       // The higher the number, the less flicker and faster draw but more wavy lines
+static int OFF_SHIFT    =    5;       // 35111 Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
+static int OFF_DWELL0   =    0;       // Time to sit beam on before starting a transit 
+static int OFF_DWELL1   =    2;       // Time to sit before starting a transit
+static int OFF_DWELL2   =    2;       // Time to sit after finishing a transit
+static int OFF_JUMP     = false;       
 static int FLIP_X       = false;      // Sometimes the X and Y need to be flipped and/or swapped
 static int FLIP_Y       = false;
 static int SWAP_XY      = true;
-static int CLOCKSPEED   = 110000000;  // Can't seem to drive it any faster than this
+static int CLOCKSPEED   = 115000000;  // Can't seem to drive it any faster than this!
 
 // Current position of beam
 static uint16_t x_pos;
@@ -59,10 +61,6 @@ static uint16_t y_pos;
 static int DAC_X_CHAN = 1;
 static int DAC_Y_CHAN = 0;
 
-#define MAX_PTS 3000
-static unsigned rx_points;
-static unsigned num_points;
-
 typedef struct ColourIntensity {                  // Stores current levels of brightness for each colour
     uint8_t red;
     uint8_t green;
@@ -70,20 +68,6 @@ typedef struct ColourIntensity {                  // Stores current levels of br
 } ColourIntensity_t;
 
 static ColourIntensity_t LastColInt;              // Stores last colour intensity levels
-
-// Chunk of data to process using DMA or SPI
-typedef struct DataChunk {
-    uint16_t x;                                   // We'll just use 12 bits of X & Y for a 4096 point resolution
-    uint16_t y;
-    uint8_t red;                                  // Max value of each colour is 255
-    uint8_t green;
-    uint8_t blue;
-} DataChunk_t;
-
-static DataChunk_t Chunk[MAX_PTS];
-
-// Current intensity values
-static uint8_t gl_red, gl_green, gl_blue;
 
 // How often should a frame be drawn if we haven't received any serial
 // data from MAME (in ms).
@@ -93,16 +77,16 @@ static uint8_t gl_red, gl_green, gl_blue;
 typedef struct
 {
   int config_ok;
-  int off_shift;
-  int off_dwell0;
-  int off_dwell1;
-  int off_dwell2;
-  int normal_shift;
-  int flip_x;
-  int flip_y;
-  int swap_xy;
-  int off_jump;
-  int clockspeed;
+  int off_shift = OFF_SHIFT;
+  int off_dwell0 = OFF_DWELL0;
+  int off_dwell1 = OFF_DWELL1;
+  int off_dwell2 = OFF_DWELL2;
+  int normal_shift = NORMAL_SHIFT;
+  int flip_x = FLIP_X;
+  int flip_y = FLIP_Y;
+  int swap_xy = SWAP_XY;
+  int off_jump = OFF_JUMP;
+  int clockspeed = CLOCKSPEED;
 } settingsType;
 
 settingsType settings;
@@ -111,7 +95,11 @@ settingsType settings;
 long fps;
 
 EventResponder callbackHandler;
-volatile int activepin = 0;
+volatile int activepin;
+volatile bool show_test_pattern;
+
+// Don't think using DMAMEM or aligned makes any difference to a local variable in this case
+DMAMEM char dmabuf[2] __attribute__((aligned(32)));
 
 void setup()
 {  
@@ -119,7 +107,7 @@ void setup()
   eeprom_read_block((void*)&settings, (void*)0, sizeof(settingsType));
 
   // If settings have been previously defined, then use them, otherwise use default values
-  if (settings.config_ok == 998)
+/*  if (settings.config_ok == 999)
     {
     OFF_SHIFT = settings.off_shift;
     OFF_DWELL0 = settings.off_dwell0;
@@ -132,7 +120,7 @@ void setup()
     OFF_JUMP = settings.off_jump;  
     CLOCKSPEED = settings.clockspeed;
     }
-
+*/
   if (settings.swap_xy == true)
     {
     DAC_X_CHAN = 0;
@@ -152,7 +140,7 @@ void setup()
   pinMode(10, OUTPUT);
   digitalWriteFast(10, HIGH);  
   delayNanoseconds(100);
-  
+ 
   // Set chip select pins to output
   pinMode(SS0_IC5_RED, OUTPUT);
   digitalWriteFast(SS0_IC5_RED, HIGH);
@@ -164,16 +152,10 @@ void setup()
   digitalWriteFast(SS2_IC3_GRE_BLU, HIGH);
   delayNanoseconds(100);
 
-  pinMode(DELAY_PIN, OUTPUT);
-  digitalWriteFast(DELAY_PIN, 0);
-  delayNanoseconds(100);
-  
-  pinMode(SDI, OUTPUT);
+  pinMode(SDI, OUTPUT);       // Set up clock and data output to DACs
   pinMode(SCK, OUTPUT);
-  
+    
   delay(1);         // https://www.pjrc.com/better-spi-bus-design-in-3-steps/
-
-  draw_test_pattern();
 
   SPI.begin();
   
@@ -182,46 +164,28 @@ void setup()
   callbackHandler.clearEvent();  
   SPI.beginTransaction(SPISettings(CLOCKSPEED, MSBFIRST, SPI_MODE0));
   SPI.endTransaction();
+
+  show_test_pattern = true;
 }
 
 void loop()
 {
-  static uint32_t frame_micros;
-  uint32_t now;
   elapsedMicros waiting;    // Auto updating, used for FPS calculation
 
-  // while loop waits until any DMA operation is complete, 
-  // and serial port is available and read from serial is finished
+  // This loop is not working correctly yet, sometimes the test pattern shows during pauses in serial transfer
+  
   while(1)
     {
-    now = micros();
-
     if (Serial.available())     // there is something to read from MAME
+      {
       if (read_data() == 1)     // read it, then draw it
         break;
-
-    // rx_points = 0 when MAME has just sent a complete frame, 
-    // and at the end of the test pattern redraw; 
-    // num_points then contains the number of points to draw 
-    // if rx_points = 0 then we can start to fill the buffer again 
-       
-    if (rx_points == 0 && now - frame_micros > REFRESH_RATE)
-      break;    
-    }
- 
-  frame_micros = now;
-
-  for(unsigned n = 0 ; n < num_points ; n++)
-    {
-    const DataChunk_t pt = Chunk[n];
-    
-    if (pt.red + pt.green + pt.blue == 0) 
-      draw_moveto(pt.x, pt.y);
+      }
     else
       {
-      brightness(pt.red, pt.green, pt.blue);   // Set RGB intensity levels
-      _draw_lineto(pt.x, pt.y, NORMAL_SHIFT);
-      } 
+      if (show_test_pattern == true)
+        draw_test_pattern();
+      }
     }
     
   // Go to the center of the screen, turn the beam off
@@ -229,19 +193,20 @@ void loop()
   goto_x(REST_X);
   goto_y(REST_Y);
 
+
   // Use the buttons on the PCB to adjust and save settings
   // This needs to be rewritten in order to use the buttons to navigate and modify a list of settings
-  // Also it doesn't need to test all this stuff on every cycle, so add a test to do it 1/100 times
- 
+  // Also it doesn't need to test all this stuff on every cycle, so add a test to do it 1/100 times or so
+  
   bool write_settings = false;
   
-  if (!digitalRead(3) == HIGH)           
+  if (!digitalReadFast(3) == HIGH)           
     {
     settings.config_ok = 999;           // Indicate that settings have been defined
     write_settings = true;
     }
-    
-  if (!digitalRead(0) == HIGH)  
+
+  if (!digitalReadFast(0) == HIGH)  
     {
     settings.swap_xy = !settings.swap_xy;  // Swap X & Y axes
     write_settings = true;    
@@ -258,19 +223,19 @@ void loop()
       }
     }
  
-  if (!digitalRead(1) == HIGH)      // Flip X axis
+  if (!digitalReadFast(1) == HIGH)      // Flip X axis
     {
     settings.flip_x = !settings.flip_x;  
-    write_settings = true;   
+    write_settings = true; 
     }
  
-  if (!digitalRead(2) == HIGH)      // Flip Y axis
+  if (!digitalReadFast(2) == HIGH)      // Flip Y axis
     {
     settings.flip_y = !settings.flip_y;  
     write_settings = true;    
     }
-    
-  if (!digitalRead(4) == HIGH)    // Restore some default settings
+   
+  if (!digitalReadFast(4) == HIGH)    // Restore some default settings
     {
     settings.off_shift =5;
     settings.off_dwell0 = 0;
@@ -284,8 +249,6 @@ void loop()
     {
     // write settings
  //   eeprom_write_block((const void*)&settings, (void*)0, sizeof(settingsType));   // disabled for now while testing
-    draw_test_pattern();   
-    delay(200);
     }
 
   fps = 1000000 / waiting;  
@@ -293,36 +256,33 @@ void loop()
 
 static void draw_test_pattern()
 {
-  int i;
-  unsigned j;
-  
-  rx_points = 0;
+  unsigned i, j;
   
   // fill in some points for test and calibration
-  rx_append(0, 0, 0, 0, 0);
-  lineto(512,0);
-  lineto(512,512);
-  lineto(0,512);
-  lineto(0,0);
+  draw_moveto(0, 0);
+  draw_to_xyrgb(512,0, 128, 128, 128);
+  draw_to_xyrgb(512,512, 128, 128, 128);
+  draw_to_xyrgb(0,512, 128, 128, 128);
+  draw_to_xyrgb(0,0, 128, 128, 128);
 
   // triangle
-  rx_append(4095, 0, 0, 0, 0);
-  lineto(4095-512, 0);
-  lineto(4095-0, 512);
-  lineto(4095,0);
+  draw_moveto(4095, 0);
+  draw_to_xyrgb(4095-512, 0, 128, 128, 128);
+  draw_to_xyrgb(4095-0, 512, 128, 128, 128);
+  draw_to_xyrgb(4095,0, 128, 128, 128);
 
   // cross
-  moveto(4095,4095);
-  lineto(4095-512,4095);
-  lineto(4095-512,4095-512);
-  lineto(4095,4095-512);
-  lineto(4095,4095);
+  draw_moveto(4095,4095);
+  draw_to_xyrgb(4095-512,4095, 128, 128, 128);
+  draw_to_xyrgb(4095-512,4095-512, 128, 128, 128);
+  draw_to_xyrgb(4095,4095-512, 128, 128, 128);
+  draw_to_xyrgb(4095,4095, 128, 128, 128);
 
-  moveto(0,4095);
-  lineto(512,4095);
-  lineto(0,4095-512);
-  lineto(512, 4095-512);
-  lineto(0,4095);
+  draw_moveto(0,4095);
+  draw_to_xyrgb(512,4095, 128, 128, 128);
+  draw_to_xyrgb(0,4095-512, 128, 128, 128);
+  draw_to_xyrgb(512, 4095-512, 128, 128, 128);
+  draw_to_xyrgb(0,4095, 128, 128, 128);
 
   const uint16_t height = 3072; 
   
@@ -332,14 +292,14 @@ static void draw_test_pattern()
  
   for(i = 0, j = 0 ; j <= 256 ; i += 8, j+= 32)
     {
-    moveto(1600, height + i * mult);
-    rx_append(1900, height + i * mult, j, 0, 0);     // Red
-    moveto(2000, height + i * mult);
-    rx_append(2300, height + i * mult, 0, j, 0);     // Green
-    moveto(2400, height + i * mult);
-    rx_append(2700, height + i * mult, 0, 0, j);     // Blue
-    moveto(2800, height + i * mult);
-    rx_append(3100, height + i * mult, j, j, j);     // all 3 colours combined
+    draw_moveto(1600, height + i * mult);
+    draw_to_xyrgb(1900, height + i * mult, j, 0, 0);     // Red
+    draw_moveto(2000, height + i * mult);
+    draw_to_xyrgb(2300, height + i * mult, 0, j, 0);     // Green
+    draw_moveto(2400, height + i * mult);
+    draw_to_xyrgb(2700, height + i * mult, 0, 0, j);     // Blue
+    draw_moveto(2800, height + i * mult);
+    draw_to_xyrgb(3100, height + i * mult, j, j, j);     // all 3 colours combined
     }
 
   draw_string("v.st Colour Mod v2.1", 1300, 3500, 8);
@@ -388,42 +348,15 @@ static void draw_test_pattern()
   itoa(settings.off_jump, buf1, 10);
   draw_string(buf1, x + 900, y, 6); 
   y -= line_size;
-/*  draw_string("SPI CLOCK", x, y, 6); 
-  ltoa(settings.clockspeed, buf1, 15);
-  draw_string(buf1, x + 900, y, 6); 
-  y -= line_size;
-  draw_string("SERIAL PORT", x, y, 6); 
-  if (Serial.available())  
-    draw_string("AVAILABLE", x + 900, y, 6); 
-  else
-    draw_string("BUSY", x + 900, y, 6); 
-*/
+
   draw_string("FPS:", 3000, 150, 6);
   draw_string(itoa(fps, buf1, 10), 3400, 150, 6);
-  
-  num_points = rx_points;
-  rx_points = 0;
 }
 
-void moveto(int x, int y)
+void draw_to_xyrgb(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
 {
-  rx_append(x, y, 0, 0, 0);
-}
-
-// Colour intensity can be any value from 0 to 255
-void rx_append(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
-{
-  rx_points ++;
-  Chunk[rx_points].x = x & 0xFFF;
-  Chunk[rx_points].y = y & 0xFFF;
-  Chunk[rx_points].red = red;
-  Chunk[rx_points].green = green;
-  Chunk[rx_points].blue = blue;
-}
-
-void lineto(int x, int y)
-{
-  rx_append(x, y, 128, 128, 128); // Green normal brightness
+  brightness(red, green, blue);   // Set RGB intensity levels from 0 to 255     
+  _draw_lineto(x, y, NORMAL_SHIFT);   
 }
 
 void draw_string(const char * s, int x,int y, int size)
@@ -445,26 +378,26 @@ int draw_character(char c, int x, int y, int size)
   int next_moveto = 1;
 
   for(int i = 0 ; i < 8 ; i++)
-  {
+    {
     uint8_t delta = pts[i];
     if (delta == FONT_LAST)
       break;
     if (delta == FONT_UP)
-    {
+      {
       next_moveto = 1;
       continue;
-    }
+      }
 
     unsigned dx = ((delta >> 4) & 0xF) * size;
     unsigned dy = ((delta >> 0) & 0xF) * size;
 
     if (next_moveto)
-      moveto(x + dx, y + dy);
+      draw_moveto(x + dx, y + dy);
     else
-      lineto(x + dx, y + dy);
+      draw_to_xyrgb(x + dx, y + dy, 128, 128, 128);
 
     next_moveto = 0;
-  }
+    }
 
   return 12 * size;
 }
@@ -483,8 +416,8 @@ void draw_moveto(int x1, int y1)
     // hold the current position for a few clocks
     // with the beam off
     dwell(OFF_DWELL1);
-     _draw_lineto(x1, y1, OFF_SHIFT);
-     dwell(OFF_DWELL2);
+    _draw_lineto(x1, y1, OFF_SHIFT);
+    dwell(OFF_DWELL2);
     }
 }
 
@@ -535,14 +468,14 @@ static inline void goto_y(uint16_t y)
 
 static void dwell(const int count)
 {
-  // works better without this on an Amplifone
-/* for (int i = 0 ; i < count ; i++)
+ // can work better or faster without this on some monitors
+ for (int i = 0 ; i < count ; i++)
   {
     if (i & 1)
       goto_x(x_pos);
     else
       goto_y(y_pos);
-  } */
+  } 
 }
 
 static inline void _draw_lineto(int x1, int y1, const int bright_shift)
@@ -566,48 +499,48 @@ static inline void _draw_lineto(int x1, int y1, const int bright_shift)
   goto_y(y_pos);
 
   if (x0 <= x1)
-  {
+    {
     dx = x1 - x0;
     sx = 1;
-  }
+    }
   else
-  {
+    {
     dx = x0 - x1;
     sx = -1;
-  }
+    }
 
   if (y0 <= y1)
-  {
+    {
     dy = y1 - y0;
     sy = 1;
-  }
+    }
   else
-  {
+    {
     dy = y0 - y1;
     sy = -1;
-  }
+    }
 
   int err = dx - dy;
 
   while (1)
-  {
+    {
     if (x0 == x1 && y0 == y1)
       break;
 
     int e2 = 2 * err;
     if (e2 > -dy)
-    {
+      {
       err = err - dy;
       x0 += sx;
       goto_x(x_off + (x0 << bright_shift));
-    }
+      }
     if (e2 < dx)
-    {
+      {
       err = err + dx;
       y0 += sy;
       goto_y(y_off + (y0 << bright_shift));
+      }
     }
-  }
 
   // ensure that we end up exactly where we want
   goto_x(x1_orig);
@@ -621,7 +554,7 @@ void MCP4922_write(int cs_pin, byte dac, uint16_t value)
   value &= 0x0FFF; // mask out just the 12 bits of data
 
   // add the output channel A or B on the selected DAC, and buffer flag
-#if 1
+#ifdef BUFFERED
   // select the output channel on the selected DAC, buffered, no gain
   value |= 0x7000 | (dac == 128 ? 0x8000 : 0x0000);
 #else
@@ -629,37 +562,32 @@ void MCP4922_write(int cs_pin, byte dac, uint16_t value)
   value |= 0x3000 | (dac == 128 ? 0x8000 : 0x0000);
 #endif
 
-//  byte low = value & 0xff;
-//  byte high = dac | 0x30 | ((value >> 8) & 0x0f);
-
   while(activepin != 0)   // wait until previous transfer is complete
     ;
-      
-  activepin = cs_pin;   // store to deactivate at end of transfer
-  
+        
+  activepin = cs_pin;     // store to deactivate at end of transfer
   digitalWriteFast(cs_pin, LOW);
-
-  char buf[2];
-  buf[0] = dac | 0x30 | ((value >> 8) & 0x0f);
-  buf[1] = value & 0xff;
-
-  // This uses non blocking SPI with DMA
-  SPI.transfer(buf, nullptr, 2, callbackHandler); 
+ 
+  dmabuf[0] = dac | 0x30 | ((value >> 8) & 0x0f);
+  dmabuf[1] = value & 0xff;
   
- // SPI.transfer16(((high << 8) + low));    // Standard blocking SPI
- // digitalWriteFast(cs_pin, HIGH);
- // delayNanoseconds(100);
+  // This uses non blocking SPI with DMA
+  SPI.transfer(dmabuf, nullptr, 2, callbackHandler);  
 }
 
-//return 1 when frame is complete, otherwise return 0
 static int read_data()
 {
   static uint32_t cmd = 0;
+  static uint8_t gl_red, gl_green, gl_blue;
   static int frame_offset = 0;
   char buf1[5] = "";
-    
-  uint8_t c = Serial.read();    // read one byte at a time
+  uint8_t c = -1;
+  
+  c = Serial.read();    // read one byte at a time
 
+  if (c == -1) // if serial port returns nothing then exit
+     return -1;
+    
   cmd = cmd << 8 | c;
   frame_offset++;
   if (frame_offset < 4)
@@ -677,11 +605,16 @@ static int read_data()
     
     // As an optimization there is a blank flag in the XY coord which
     // allows USB-DVG to blank the beam without updating the RGB color DACs.
-    //blanking flag
+
     if ((cmd >> 28) & 0x01)
-      rx_append(x, y, 0, 0, 0);
+      {
+      draw_moveto( x, y );
+      }
     else
-      rx_append(x, y, gl_red, gl_green, gl_blue);
+      {
+      brightness(gl_red, gl_green, gl_blue);   // Set RGB intensity levels      
+      _draw_lineto(x, y, NORMAL_SHIFT);   
+      }
     }
   else if (header == FLAG_RGB)
     {
@@ -700,7 +633,7 @@ static int read_data()
     }
   else if (header == FLAG_FRAME)
     {
-   // uint32_t frame_complexity = cmd & 0b0001111111111111111111111111111;
+  //  uint32_t frame_complexity = cmd & 0b0001111111111111111111111111111;
     // TODO: Use frame_complexity to adjust screen writing algorithms
     }
   else if (header == FLAG_COMPLETE)
@@ -709,15 +642,12 @@ static int read_data()
     draw_string("FPS:", 3000, 150, 6);
     draw_string(itoa(fps, buf1, 10), 3400, 150, 6);
     
-    num_points = rx_points;
-    rx_points = 0;
-    return 1; //start rendering!
+    return 1;
     }
   else if (header == FLAG_EXIT)
     {
-    Serial.flush(); // not sure if this useful, may help in case of manual quit on MAME
-    // quit gracefully back to test pattern
-    draw_test_pattern();
+    Serial.flush();          // not sure if this useful, may help in case of manual quit on MAME
+    return -1;
     }
   else if (header == FLAG_CMD_GET_DVG_INFO)
     {
@@ -730,7 +660,7 @@ static int read_data()
 
 void callback(EventResponderRef eventResponder)
 {
-  // End screen update
+  // End SPI DMA write to DAC
   digitalWriteFast(activepin, HIGH);
   activepin = 0;
 }
