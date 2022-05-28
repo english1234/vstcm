@@ -27,6 +27,9 @@ const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
 #define REST_X            2048        // Wait in the middle of the screen
 #define REST_Y            2048
 
+// how long in milliseconds to wait for data before displaying a test pattern
+#define SERIAL_WAIT_TIME 30
+
 // Settings
 static int NORMAL_SHIFT =    2;       // The higher the number, the less flicker and faster draw but more wavy lines
 static int OFF_SHIFT    =    5;       // 35111 Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
@@ -172,27 +175,31 @@ void loop()
 {
   elapsedMicros waiting;    // Auto updating, used for FPS calculation
 
-  // This loop is not working correctly yet, sometimes the test pattern shows during pauses in serial transfer
-  
-  while(1)
+  uint32_t draw_start_time = millis();
+
+  while (1) 
     {
-    if (Serial.available())     // there is something to read from MAME
+    if (Serial.available()) 
       {
-      if (read_data() == 1)     // read it, then draw it
+      show_test_pattern = false;
+      if (read_data() == 1)
         break;
       }
-    else
-      {
-      if (show_test_pattern == true)
-        draw_test_pattern();
-      }
+      
+    if (millis() - draw_start_time > SERIAL_WAIT_TIME)
+      show_test_pattern = true;
+   
+    if (show_test_pattern)
+      break;
     }
+
+  if (show_test_pattern)
+    draw_test_pattern();
     
   // Go to the center of the screen, turn the beam off
   brightness(0, 0, 0);
   goto_x(REST_X);
   goto_y(REST_Y);
-
 
   // Use the buttons on the PCB to adjust and save settings
   // This needs to be rewritten in order to use the buttons to navigate and modify a list of settings
@@ -288,7 +295,7 @@ static void draw_test_pattern()
   
   // and a multi-coloured gradiant scale
 
-  int mult = 4;
+  const int mult = 4;
  
   for(i = 0, j = 0 ; j <= 256 ; i += 8, j+= 32)
     {
@@ -306,7 +313,7 @@ static void draw_test_pattern()
 
   char buf1[15] = "";
    
-  int x = 1500;
+  const int x = 1500;
   int y = 2400;
   const int line_size = 100;
 
@@ -359,7 +366,7 @@ void draw_to_xyrgb(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
   _draw_lineto(x, y, NORMAL_SHIFT);   
 }
 
-void draw_string(const char * s, int x,int y, int size)
+void draw_string(const char *s, int x, int y, int size)
 {
   while(*s)
     {
@@ -480,10 +487,7 @@ static void dwell(const int count)
 
 static inline void _draw_lineto(int x1, int y1, const int bright_shift)
 {
-  int dx;
-  int dy;
-  int sx;
-  int sy;
+  int dx, dy, sx, sy;
 
   const int x1_orig = x1;
   const int y1_orig = y1;
@@ -607,10 +611,8 @@ static int read_data()
     // allows USB-DVG to blank the beam without updating the RGB color DACs.
 
     if ((cmd >> 28) & 0x01)
-      {
       draw_moveto( x, y );
-      }
-    else
+     else
       {
       brightness(gl_red, gl_green, gl_blue);   // Set RGB intensity levels      
       _draw_lineto(x, y, NORMAL_SHIFT);   
