@@ -35,6 +35,6 @@
 | U1 	                                 |  1	| Teensy4.1	  |                          |                                                               | DEV-16771               | 
 | U2 	                                 |  1	| TLE2425xLP	  | TLE2425xLP	             | Precision virtual ground, 2.5V output, TO-92	             | TLE2425ILP              | 
 | U3 	                                 |  1	| LP2950-5.0_TO92 | LP2950-5.0_TO92	     | Micropower Voltage Reg with Shutdown 100mA Fixed Output 5.0V  | LP2950CZ-5.0            | 
-| U4 	                                 |  1	| TXS0108E	  | SW_DIP_x10	             | 3.3V to 5V level converter (TSOP-20 module)                   | TXS0108E                | 
+| U4 (no longer needed)                  |  1	| TXS0108E	  | SW_DIP_x10	             | 3.3V to 5V level converter (TSOP-20 module)                   | TXS0108E                | 
 | U5 (optional)                          |  1	| LM2940T-5.0	  |			     |  REG LINEAR 5V 1A TO220-3                                     |                         | 
 
