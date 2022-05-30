@@ -12,7 +12,8 @@ The original v.st was designed by Trammell Hudson for black & white games. Docum
 Compared to the original version, the new vstcm adds:
 - RGB colour with different intensity levels
 - a menu to change parameters
-- programmable control buttons
+- programmable onboard control buttons
+- programmable IR remote control buttons
 - extra pots to control X & Y position
 - several power source options, either USB, or external 5V/9V/12V
 - an upgrade to the Teensy 4.1 for more power
@@ -43,7 +44,9 @@ The BOM is in BOM teensyv.txt and has Mouser references for many parts at the ri
 - U4: The TXS0108E	which converts voltage from 3.3V to 5V is described as having a DIP20 footprint. It's actually a bit wider than that, so I removed the DIP socket and used pin headers instead which I had to bend a little to get it to fit. This part was used as the previous Teensy 3.2 had 5V outputs whereas the Teensy 4.1 uses 3.3V. Theoretically, installing one of these avoided having to recalculate the values of the resistors in the Op Amp circuit, but since then I removed this part on my board and jumpered rows 2, 3, 4, 5 and 8 and everything works fine with no further changes, so it can be left out. 
 - U5: See power options below. I have also used a 7805 as a direct replacement with a small heatsink on it, which gets quite warm but hasn't burnt out as yet.
 
- - optional parts: see power options below
+ - optional parts: 
+ 1/ see power options below
+ 2/ see IR remote below
 
 I would recommend socketing everything on the board (Teensy, DACs, Op Amps) so that they can be swapped out if better choices are found in the future.
 
@@ -124,4 +127,14 @@ If you're not getting output over the USB cable to the vstcm, then check the adv
 # Interface between vstcm and AdvanceMAME
 
 The AdvanceMAME protocol for the USB DVG is here: https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c 
+
+# IR remote programmable control buttons
+
+For £1 / $1 / 1€ you can get a HX1838 infra red adapter board with remote control, wiring, everything you need in fact. There are only 3 wires to connect: 5V, GND and signal. I soldered pin headers in the holes provided on either side of the Teensy and at U4, and put 5V on the top right hand hole of U4, GND on the bottom right pin of the Teensy (to right of USB socket), and signal on pin 32 (top right hand pin of Teensy). 
+
+This might seem like a bit of a gadget, but when you are spending your time going behind the arcade cab to press a button, coming back round the front to see the effect on the screen, and doing this over and over again, the advantages become obvious! 
+
+The IR sensor is the size of an LED and so very easy to hide somewhere at the front of an arcade cab, and then you can just change the settings at will while you look at the screen.
+
+![IR1](http://robinchampion.com/vstcm/IR1.jpg)![ir2](http://robinchampion.com/vstcm/IR2.jpg)
 
