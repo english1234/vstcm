@@ -45,9 +45,6 @@ const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
 #define DAC_CHAN_A 0
 #define DAC_CHAN_B 1
 
-#define NORMAL 96                     // Brightness of text in parameter list
-#define BRIGHTER 160
-
 typedef struct ColourIntensity {      // Stores current levels of brightness for each colour
   uint8_t red;
   uint8_t green;
@@ -74,19 +71,20 @@ static uint16_t y_pos;
 static ColourIntensity_t LastColInt;   // Stores last colour intensity levels
 
 // Settings
-const int  NORMAL_SHIFT =     2;       // The higher the number, the less flicker and faster draw but more wavy lines
-const int  OFF_SHIFT    =     5;       // 35111 Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
+const int  OFF_SHIFT    =     5;       // Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
 const int  OFF_DWELL0   =     0;       // Time to sit beam on before starting a transit
-const int  OFF_DWELL1   =     2;       // Time to sit before starting a transit
-const int  OFF_DWELL2   =     2;       // Time to sit after finishing a transit
+const int  OFF_DWELL1   =     0;       // Time to sit before starting a transit
+const int  OFF_DWELL2   =     0;       // Time to sit after finishing a transit
+const int  NORMAL_SHIFT =     3;       // The higher the number, the less flicker and faster draw but more wavy lines
 const bool OFF_JUMP     = false;
 const bool FLIP_X       = false;       // Sometimes the X and Y need to be flipped and/or swapped
 const bool FLIP_Y       = false;
 const bool SWAP_XY      = false;
 const int  DAC_X_CHAN   =     0;       // Used to flip X & Y axis if needed
 const int  DAC_Y_CHAN   =     1;
-//const uint32_t CLOCKSPEED   = 115000000;   // If set too fast, buttons stop working
-const uint32_t CLOCKSPEED   = 50000000;
+const uint32_t CLOCKSPEED   = 115000000;   
+const int  NORMAL       =    100;      // Brightness of text in parameter list
+const int  BRIGHTER     =    128;
 
 // Settings stored in Teensy EPROM
 typedef struct params {
@@ -96,7 +94,8 @@ typedef struct params {
   uint32_t max;           // Max value of parameter
 } params_t;
 
-static params_t v_config[13];
+#define NB_PARAMS 15
+static params_t v_config[NB_PARAMS];
 
 static int opt_select;
 
@@ -104,11 +103,11 @@ void setup()
 {
   read_vstcm_config();      // Read saved settings
 
-//#ifdef IR_REMOTE
+#ifdef IR_REMOTE
   IR_remote_setup();
-//#endif
+#endif
 
-  // Configure buttons on vstcm for input
+  // Configure buttons on vstcm for input using built in pullup resistors
   pinMode(0, INPUT_PULLUP);
   pinMode(1, INPUT_PULLUP);
   pinMode(2, INPUT_PULLUP);
@@ -185,7 +184,7 @@ void loop()
 
 void brightness(uint8_t red, uint8_t green, uint8_t blue)
 {
-  dwell(OFF_DWELL0);
+  dwell(v_config[2].pval);
 
   if (LastColInt.red != red)
   {
@@ -241,7 +240,7 @@ void dwell(const int count)
 void draw_to_xyrgb(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
 {
   brightness(red, green, blue);   // Set RGB intensity levels from 0 to 255
-  _draw_lineto(x, y, NORMAL_SHIFT);
+  _draw_lineto(x, y, v_config[5].pval);
 }
 
 void draw_string(const char *s, int x, int y, int size, int brightness)
@@ -300,9 +299,9 @@ void draw_moveto(int x1, int y1)
   {
     // hold the current position for a few clocks
     // with the beam off
-    dwell(OFF_DWELL1);
-    _draw_lineto(x1, y1, OFF_SHIFT);
-    dwell(OFF_DWELL2);
+    dwell(v_config[3].pval);
+    _draw_lineto(x1, y1, v_config[1].pval);
+    dwell(v_config[4].pval);
   }
 }
 
@@ -397,7 +396,7 @@ void MCP4922_write(int cs_pin, byte dac, uint16_t value)
   dmabuf[1] = value & 0xff;
 
   // if we don't use a clean begin & end transaction then other code stops working properly, such as button presses
-  SPI.beginTransaction(SPISettings(CLOCKSPEED, MSBFIRST, SPI_MODE0));
+  SPI.beginTransaction(SPISettings(v_config[10].pval, MSBFIRST, SPI_MODE0));
 
   // This uses non blocking SPI with DMA
   SPI.transfer(dmabuf, nullptr, 2, callbackHandler);
@@ -440,7 +439,7 @@ int read_data()
     else
     {
       brightness(gl_red, gl_green, gl_blue);   // Set RGB intensity levels
-      _draw_lineto(x, y, NORMAL_SHIFT);
+      _draw_lineto(x, y, v_config[5].pval);
     }
   }
   else if (header == FLAG_RGB)
@@ -467,8 +466,8 @@ int read_data()
   else if (header == FLAG_COMPLETE)
   {
     // Add FPS on games as a guide for optimisation
-    draw_string("FPS:", 3000, 150, 6, NORMAL);
-    draw_string(itoa(fps, buf1, 10), 3400, 150, 6, NORMAL);
+    draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
+    draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
 
     return 1;
   }
@@ -509,18 +508,20 @@ void read_vstcm_config()
   //    {
   //              param name      value            min     max
   vstcm_par[0]  = {"CONFIG OK",    0,                0,       999};
-  vstcm_par[1]  = {"OFF SHIFT",    OFF_SHIFT,        0,         1};
-  vstcm_par[2]  = {"OFF DWELL 0",  OFF_DWELL0,       0,        20};
-  vstcm_par[3]  = {"OFF DWELL 1",  OFF_DWELL1,       0,        20};
-  vstcm_par[4]  = {"OFF DWELL 2",  OFF_DWELL2,       0,        20};
-  vstcm_par[5]  = {"NORMAL SHIFT", NORMAL,           0,       255};
+  vstcm_par[1]  = {"OFF SHIFT",    OFF_SHIFT,        0,        50};
+  vstcm_par[2]  = {"OFF DWELL 0",  OFF_DWELL0,       0,        50};
+  vstcm_par[3]  = {"OFF DWELL 1",  OFF_DWELL1,       0,        50};
+  vstcm_par[4]  = {"OFF DWELL 2",  OFF_DWELL2,       0,        50};
+  vstcm_par[5]  = {"NORMAL SHIFT", NORMAL_SHIFT,     0,       255};
   vstcm_par[6]  = {"FLIP X",       FLIP_X,           0,         1};
   vstcm_par[7]  = {"FLIP Y",       FLIP_Y,           0,         1};
   vstcm_par[8]  = {"SWAP XY",      SWAP_XY,          0,         1};
   vstcm_par[9]  = {"OFF JUMP",     OFF_JUMP,         0,         1};
   vstcm_par[10] = {"CLOCKSPEED",   CLOCKSPEED, 2000000, 120000000};
-  vstcm_par[11] = {"DAC X",        DAC_X_CHAN,       0,         1};
-  vstcm_par[12] = {"DAC Y",        DAC_Y_CHAN,       0,         1};
+  vstcm_par[11] = {"DAC X (FYI)",  DAC_X_CHAN,       0,         1};
+  vstcm_par[12] = {"DAC Y (FYI)",  DAC_Y_CHAN,       0,         1};
+  vstcm_par[13] = {"NORMAL TEXT",  NORMAL,           0,       255};
+  vstcm_par[14] = {"BRIGHT TEXT",  BRIGHTER,         0,       255};  
   //   }
 
   opt_select = 0;     // Start at beginning of parameter list
@@ -537,7 +538,7 @@ void show_vstcm_config_screen()
   draw_to_xyrgb(4095, 4095 - 512, 128, 128, 128);
   draw_to_xyrgb(4095, 4095, 128, 128, 128);
 
-  draw_string("v.st Colour Mod v2.1", 950, 3800, 10, BRIGHTER);
+  draw_string("v.st Colour Mod v2.1", 950, 3800, 10, v_config[14].pval);
 
   draw_moveto(0, 4095);
   draw_to_xyrgb(512, 4095, 128, 128, 128);
@@ -567,18 +568,18 @@ void show_vstcm_config_screen()
   // Show parameters on screen
   
   const int x = 1300;
-  int y = 2400;
+  int y = 2800;
   int intensity;
   const int line_size = 140;
   const int char_size = 7;
   const int x_offset = 1100;
 
-  for (i = 0; i < 13; i++)    
+  for (i = 0; i < NB_PARAMS; i++)    
   {
     if (i == opt_select)      // Highlight currently selected parameter
-      intensity = BRIGHTER;
+      intensity = v_config[14].pval;
     else
-      intensity = NORMAL;
+      intensity = v_config[13].pval;
 
     draw_string(v_config[i].param, x, y, char_size, intensity);
     itoa(v_config[i].pval, buf1, 10);
@@ -593,8 +594,8 @@ void show_vstcm_config_screen()
   draw_to_xyrgb(0, 512, 128, 128, 128);
   draw_to_xyrgb(0, 0, 128, 128, 128);
 
-  draw_string("FPS:", 3000, 150, 6, NORMAL);
-  draw_string(itoa(fps, buf1, 10), 3400, 150, 6, NORMAL);
+  draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
+  draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
 
   // triangle
   draw_moveto(4095, 0);
@@ -612,33 +613,26 @@ void manage_buttons()
   params_t *vstcm_par;
   vstcm_par = &v_config[opt_select];
   int com;    // Command received from IR remote
-  
+
+#ifdef IR_REMOTE
   if (IrReceiver.decode())    // Check if a button has been pressed on the IR remote
   {
      IrReceiver.resume(); // Enable receiving of the next value
     /*
      * HX1838 Infrared Remote Control Module (£1/$1/1€ on Aliexpress)
      * 
-     * 1     0x45
-     * 2     0x46
-     * 3     0x47
-     * 4     0x44
-     * 5     0x40
-     * 6     0x43
-     * 7     0x07
-     * 8     0x15
-     * 9     0x09
-     * *     0x00
-     * #     0x0D
-     * OK    0x1C
-     * Left  0x08
-     * Right 0x5A
-     * Up    0x18
-     * Down  0x52
+     * 1     0x45 | 2     0x46 | 3     0x47
+     * 4     0x44 | 5     0x40 | 6     0x43
+     * 7     0x07 | 8     0x15 | 9     0x09
+     * *     0x00 | 0     ???? | #     0x0D -> need to test value for 0
+     * OK    0x1C | 
+     * Left  0x08 | Right 0x5A
+     * Up    0x18 | Down  0x52
      * 
      */
      com = IrReceiver.decodedIRData.command;
   }
+#endif
   
   bool write_vstcm_config = false;
 
@@ -653,7 +647,7 @@ void manage_buttons()
 
   if (digitalReadFast(0) == 0 || com == 0x52)          // SW2 Down button - go down list of options and loop around
   {
-    if (opt_select ++ > 12)
+    if (opt_select ++ > NB_PARAMS - 1)
       opt_select = 0;
   }
 
@@ -693,18 +687,10 @@ void manage_buttons()
 void IR_remote_setup()
 {
   Serial.begin(115200);
-  // Just to know which program is running on my Arduino
-  Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRREMOTE));
 
- // pinMode(32, INPUT_PULLUP);
-
-  // Start the receiver and if not 3. parameter specified, take LED_BUILTIN pin from the internal boards definition as default feedback LED
+  // Start the receiver and if not 3. parameter specified, 
+  // take LED_BUILTIN pin from the internal boards definition as default feedback LED
   IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
-
-  Serial.print("Ready to receive IR signals of protocols: ");
-  printActiveIRProtocols(&Serial);
-  Serial.print(" at pin ");
-  Serial.println(IR_RECEIVE_PIN);
-  
+   
  // attachInterrupt(digitalPinToInterrupt(IR_RECEIVE_PIN), IR_remote_loop, CHANGE);
 }
