@@ -17,6 +17,7 @@ Compared to the original version, the new vstcm adds:
 - extra pots to control X & Y position
 - several power source options, either USB, or external 5V/9V/12V
 - an upgrade to the Teensy 4.1 for more power (eg >800Mhz as opposed to 120Mhz for the Teensy 3.2)
+- Asteroids style test patterns in Red, Green & Blue to aid CRT convergence
 
 ![testscreen1](http://robinchampion.com/vstcm/testscreen2.jpg)
 
