@@ -130,7 +130,7 @@ The AdvanceMAME protocol for the USB DVG is here: https://github.com/amadvance/a
 
 # IR remote programmable control buttons
 
-For £1 / $1 / 1€ you can get a HX1838 infra red adapter board with remote control, wiring, everything you need in fact. There are only 3 wires to connect: 5V, GND and signal. I soldered pin headers in the holes provided on either side of the Teensy and at U4, and put 5V on the top right hand hole of U4, GND on the bottom right pin of the Teensy (to right of USB socket), and signal on pin 32 (top right hand pin of Teensy). 
+For £1 / $1 / 1€ you can get a HX1838 infra red adapter board with remote control, wiring, everything you need in fact. There are only 3 wires to connect: 5V, GND and signal. I soldered pin headers in the holes provided on either side of the Teensy, and put 5V on the bottom left hand hole of the Teensy (to left of USB socket), GND on the bottom right pin of the Teensy, and signal on pin 32 (top right hand pin of Teensy). 
 
 This might seem like a bit of a gadget, but when you are spending your time going behind the arcade cab to press a button, coming back round the front to see the effect on the screen, and doing this over and over again, the advantages become obvious! 
 
