@@ -1,5 +1,5 @@
 # VSTCM - the v.st Colour Mod - a colour vector graphics generator
-The vstcm is a vector signal transceiver PCB which can generate colour vector graphics which can then be displayed on an oscilloscope or vector monitor (such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc.).
+The vstcm is a vector signal transceiver PCB which can generate colour vector graphics which can then be displayed on an oscilloscope or vector monitor (such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc.). Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard (see below)!
 
 ![vstcm pcb](http://robinchampion.com/vstcm/vstcmpcb.jpg)
 
@@ -16,7 +16,7 @@ Compared to the original version, the new vstcm adds:
 - programmable IR remote control buttons
 - extra pots to control X & Y position
 - several power source options, either USB, or external 5V/9V/12V
-- an upgrade to the Teensy 4.1 for more power
+- an upgrade to the Teensy 4.1 for more power (eg >800Mhz as opposed to 120Mhz for the Teensy 3.2)
 
 ![testscreen1](http://robinchampion.com/vstcm/testscreen2.jpg)
 
@@ -39,7 +39,7 @@ A ZIP file is in the Gerbers directory. This can be uploaded to your PCB manufac
 The BOM is in BOM teensyv.txt and has Mouser references for many parts at the right hand side. 
 
 - IC2: You need to choose if you are going to use an external supply or not and if so what voltage to use (5V, 9V or 12V). Recom makes these parts, but so do Traco and there may be other brands. Make sure there is a D (for double) at the end of the model number which generates +/- voltages, rather than the S (single) version. As a guide, I started out with a 5V external supply and a RB-0512D.
-- R12, R15 & R16: these are marked as 68 ohm in the BOM, however the circuit was designed with 10K in those places. 10K is producing bent vectors on my setup, I'm currently experimenting with 68R and it's working pretty well. 
+- R12, R15 & R16: these resistors are in the op amp for the RGB signals and are marked as 68 ohm in the BOM, however the circuit was designed with 10K in those places. 10K is producing bent vectors on my setup, I'm currently experimenting with 68R and it's working pretty well. 
 - The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
 - U4: The TXS0108E	which converts voltage from 3.3V to 5V is described as having a DIP20 footprint. It's actually a bit wider than that, so I removed the DIP socket and used pin headers instead which I had to bend a little to get it to fit. This part was used as the previous Teensy 3.2 had 5V outputs whereas the Teensy 4.1 uses 3.3V. Theoretically, installing one of these avoided having to recalculate the values of the resistors in the Op Amp circuit, but since then I removed this part on my board and jumpered rows 2, 3, 4, 5 and 8 and everything seems to work fine with no further changes, so it can probably be left out as long as the Teensy is happy to produce the necessary voltage (a bit above 3.3V) to get the DACs to detect a high signal. 
 - U5: See power options below. I have also used a 7805 as a direct replacement with a small heatsink on it, which gets quite warm but hasn't burnt out as yet.
@@ -138,3 +138,16 @@ The IR sensor is the size of an LED and so very easy to hide somewhere at the fr
 
 ![IR1](http://robinchampion.com/vstcm/IR1.jpg)![ir2](http://robinchampion.com/vstcm/IR2.jpg)
 
+# Haven't got a vector monitor or an oscilloscope?
+
+Apart from this PCB, you need a CRT, a high voltage board, a deflection board and a power supply to make a complete vector monitor. There are solutions for all of these parts:
+
+CRT - I'm using a 19"/48cm Philips TV bought for pennies through the small ads. You need to rewind the yoke using magnet wire. There is an excellent video by Jason Kopp here which explains all: https://youtu.be/Ci9qiGVMF7s I experimented on a 5" b&w security monitor first, then went for the big screen. Avoid Trinitrons and PC monitors, you need a basic no frills TV tube. It took me several attempts to get it more or less right, but I still have some wires which are not completely straight and the result seems to be the slightly bent vectors visible in the top right hand corner of my screen in the photo of the test screen above. The whole thing really wasn't hard, it just requires patience.
+
+High voltage: Amplifone and Wells Gardner 6100 blank PCBs are available online, and there are also fully built solutions (see the various vector groups on Facebook) available new or second hand from the usual auction sites and specialist arcade sellers (mostly USA based).
+
+Deflection board: I bought a second hand non working Amplifone and then fixed it (which wasn't hard, plenty of info online), but new PCBs are available online, and a Wells Gardner WG6100 should work too.
+
+Power supply: the CRT and deflection board can be run either from an old Atari power brick, or else by wiring together two cheap 24V power supplies from Aliexpress in order to provide +/- 24V which satisfies the requirement for 50VAC on a Amplifone colour vector monitor. The CRT needs 6.3V for the heater filament, which I'm getting from an Atari power brick using the supply meant for the coin door, but there are other solutions if you look online (hint: 6.3V is frequently required for valve amp projects). If you find the right Atari power brick, it will power the whole thing: CRT, HV, deflection, Raspberry Pi and vstcm.
+
+There's plenty of discussion of solutions to these problems on KLOV, UKVAC, and the FB vector forums with plenty of knowledgeable people able to answer questions. Also there are a fair few videos on Youtube going from theory to practice. Again, it's not that hard, so give it a go!
