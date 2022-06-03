@@ -82,7 +82,7 @@ const bool FLIP_Y       = false;
 const bool SWAP_XY      = false;
 const int  DAC_X_CHAN   =     0;       // Used to flip X & Y axis if needed
 const int  DAC_Y_CHAN   =     1;
-const uint32_t CLOCKSPEED   = 115000000;   
+const uint32_t CLOCKSPEED   = 115000000;
 const int  NORMAL       =    100;      // Brightness of text in parameter list
 const int  BRIGHTER     =    128;
 
@@ -139,11 +139,20 @@ void setup()
 
   SPI.begin();
 
+  // Shutdown the unused DAC channel A (0) on IC5
+  // (not sure if this works as is or if it's even particularly useful)
+  digitalWriteFast(SS0_IC5_RED, LOW);
+  delayNanoseconds(100);
+  SPI.transfer16(0b0110000000000000);
+  digitalWriteFast(SS0_IC5_RED, HIGH);
+
   // Setup the SPI DMA callback
   callbackHandler.attachImmediate(&callback);
   callbackHandler.clearEvent();
 
   show_vstcm_config = true;
+
+  make_test_pattern();
 }
 
 void loop()
@@ -454,9 +463,12 @@ int read_data()
     // pick the max brightness from r g and b and mix colours
     uint8_t mix = max(max((cmd >> 0) & 0xFF, (cmd >> 8) & 0xFF), (cmd >> 16) & 0xFF);
 
-    gl_red = mix * 3 / 5;
-    gl_green = gl_green / 2;
-    gl_blue = gl_green / 3;
+    //  gl_red = mix * 3 / 5;
+    //  gl_green = gl_green / 2;
+    //  gl_blue = gl_green / 3;
+    gl_red = 0;
+    gl_green = mix;
+    gl_blue = 0;
   }
   else if (header == FLAG_FRAME)
   {
@@ -507,7 +519,7 @@ void read_vstcm_config()
   //  if (vstcm_config->config_ok != 999)
   //    {
   //              param name      value            min     max
-  vstcm_par[0]  = {"CONFIG OK",    0,                0,       999};
+  vstcm_par[0]  = {"TEST PATTERN", 0,                0,         4};
   vstcm_par[1]  = {"OFF SHIFT",    OFF_SHIFT,        0,        50};
   vstcm_par[2]  = {"OFF DWELL 0",  OFF_DWELL0,       0,        50};
   vstcm_par[3]  = {"OFF DWELL 1",  OFF_DWELL1,       0,        50};
@@ -521,7 +533,7 @@ void read_vstcm_config()
   vstcm_par[11] = {"DAC X (FYI)",  DAC_X_CHAN,       0,         1};
   vstcm_par[12] = {"DAC Y (FYI)",  DAC_Y_CHAN,       0,         1};
   vstcm_par[13] = {"NORMAL TEXT",  NORMAL,           0,       255};
-  vstcm_par[14] = {"BRIGHT TEXT",  BRIGHTER,         0,       255};  
+  vstcm_par[14] = {"BRIGHT TEXT",  BRIGHTER,         0,       255};
   //   }
 
   opt_select = 0;     // Start at beginning of parameter list
@@ -530,43 +542,63 @@ void read_vstcm_config()
 void show_vstcm_config_screen()
 {
   int i, j;
-
-  // cross
-  draw_moveto(4095, 4095);
-  draw_to_xyrgb(4095 - 512, 4095, 128, 128, 128);
-  draw_to_xyrgb(4095 - 512, 4095 - 512, 128, 128, 128);
-  draw_to_xyrgb(4095, 4095 - 512, 128, 128, 128);
-  draw_to_xyrgb(4095, 4095, 128, 128, 128);
-
-  draw_string("v.st Colour Mod v2.1", 950, 3800, 10, v_config[14].pval);
-
-  draw_moveto(0, 4095);
-  draw_to_xyrgb(512, 4095, 128, 128, 128);
-  draw_to_xyrgb(0, 4095 - 512, 128, 128, 128);
-  draw_to_xyrgb(512, 4095 - 512, 128, 128, 128);
-  draw_to_xyrgb(0, 4095, 128, 128, 128);
-
-  // RGB gradiant scale
-
-  const uint16_t height = 3072;
-  const int mult = 5;
-
-  for (i = 0, j = 0 ; j <= 255 ; i += 8, j += 32)
-  {
-    draw_moveto(1100, height + i * mult);
-    draw_to_xyrgb(1500, height + i * mult, j, 0, 0);     // Red
-    draw_moveto(1600, height + i * mult);
-    draw_to_xyrgb(2000, height + i * mult, 0, j, 0);     // Green
-    draw_moveto(2100, height + i * mult);
-    draw_to_xyrgb(2500, height + i * mult, 0, 0, j);     // Blue
-    draw_moveto(2600, height + i * mult);
-    draw_to_xyrgb(3000, height + i * mult, j, j, j);     // all 3 colours combined
-  }
-
   char buf1[15] = "";
 
+  if (v_config[0].pval != 0)      // show test pattern instead of settings
+    draw_test_pattern();
+  else
+  {
+    // cross
+    draw_moveto(4095, 4095);
+    draw_to_xyrgb(4095 - 512, 4095, 128, 128, 128);
+    draw_to_xyrgb(4095 - 512, 4095 - 512, 128, 128, 128);
+    draw_to_xyrgb(4095, 4095 - 512, 128, 128, 128);
+    draw_to_xyrgb(4095, 4095, 128, 128, 128);
+
+    draw_moveto(0, 4095);
+    draw_to_xyrgb(512, 4095, 128, 128, 128);
+    draw_to_xyrgb(0, 4095 - 512, 128, 128, 128);
+    draw_to_xyrgb(512, 4095 - 512, 128, 128, 128);
+    draw_to_xyrgb(0, 4095, 128, 128, 128);
+
+    // Square
+    draw_moveto(0, 0);
+    draw_to_xyrgb(512, 0, 128, 128, 128);
+    draw_to_xyrgb(512, 512, 128, 128, 128);
+    draw_to_xyrgb(0, 512, 128, 128, 128);
+    draw_to_xyrgb(0, 0, 128, 128, 128);
+
+    draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
+    draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
+
+    // triangle
+    draw_moveto(4095, 0);
+    draw_to_xyrgb(4095 - 512, 0, 128, 128, 128);
+    draw_to_xyrgb(4095 - 0, 512, 128, 128, 128);
+    draw_to_xyrgb(4095, 0, 128, 128, 128);
+
+    // RGB gradiant scale
+
+    const uint16_t height = 3072;
+    const int mult = 5;
+
+    for (i = 0, j = 0 ; j <= 255 ; i += 8, j += 32)
+    {
+      draw_moveto(1100, height + i * mult);
+      draw_to_xyrgb(1500, height + i * mult, j, 0, 0);     // Red
+      draw_moveto(1600, height + i * mult);
+      draw_to_xyrgb(2000, height + i * mult, 0, j, 0);     // Green
+      draw_moveto(2100, height + i * mult);
+      draw_to_xyrgb(2500, height + i * mult, 0, 0, j);     // Blue
+      draw_moveto(2600, height + i * mult);
+      draw_to_xyrgb(3000, height + i * mult, j, j, j);     // all 3 colours combined
+    }
+
+    draw_string("v.st Colour Mod v2.1", 950, 3800, 10, v_config[14].pval);
+  }
+
   // Show parameters on screen
-  
+
   const int x = 1300;
   int y = 2800;
   int intensity;
@@ -574,7 +606,7 @@ void show_vstcm_config_screen()
   const int char_size = 7;
   const int x_offset = 1100;
 
-  for (i = 0; i < NB_PARAMS; i++)    
+  for (i = 0; i < NB_PARAMS; i++)
   {
     if (i == opt_select)      // Highlight currently selected parameter
       intensity = v_config[14].pval;
@@ -586,22 +618,6 @@ void show_vstcm_config_screen()
     draw_string(buf1, x + x_offset, y, char_size, intensity);
     y -= line_size;
   }
-
-  // Square
-  draw_moveto(0, 0);
-  draw_to_xyrgb(512, 0, 128, 128, 128);
-  draw_to_xyrgb(512, 512, 128, 128, 128);
-  draw_to_xyrgb(0, 512, 128, 128, 128);
-  draw_to_xyrgb(0, 0, 128, 128, 128);
-
-  draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
-  draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
-
-  // triangle
-  draw_moveto(4095, 0);
-  draw_to_xyrgb(4095 - 512, 0, 128, 128, 128);
-  draw_to_xyrgb(4095 - 0, 512, 128, 128, 128);
-  draw_to_xyrgb(4095, 0, 128, 128, 128);
 }
 
 void manage_buttons()
@@ -617,23 +633,23 @@ void manage_buttons()
 #ifdef IR_REMOTE
   if (IrReceiver.decode())    // Check if a button has been pressed on the IR remote
   {
-     IrReceiver.resume(); // Enable receiving of the next value
+    IrReceiver.resume(); // Enable receiving of the next value
     /*
-     * HX1838 Infrared Remote Control Module (£1/$1/1€ on Aliexpress)
-     * 
-     * 1     0x45 | 2     0x46 | 3     0x47
-     * 4     0x44 | 5     0x40 | 6     0x43
-     * 7     0x07 | 8     0x15 | 9     0x09
+       HX1838 Infrared Remote Control Module (£1/$1/1€ on Aliexpress)
+
+       1     0x45 | 2     0x46 | 3     0x47
+       4     0x44 | 5     0x40 | 6     0x43
+       7     0x07 | 8     0x15 | 9     0x09
      * *     0x00 | 0     ???? | #     0x0D -> need to test value for 0
-     * OK    0x1C | 
-     * Left  0x08 | Right 0x5A
-     * Up    0x18 | Down  0x52
-     * 
-     */
-     com = IrReceiver.decodedIRData.command;
+       OK    0x1C |
+       Left  0x08 | Right 0x5A
+       Up    0x18 | Down  0x52
+
+    */
+    com = IrReceiver.decodedIRData.command;
   }
 #endif
-  
+
   bool write_vstcm_config = false;
 
   if (digitalReadFast(3) == 0 || com == 0x08)           // SW3 Left button - decrease value of current parameter
@@ -688,9 +704,102 @@ void IR_remote_setup()
 {
   Serial.begin(115200);
 
-  // Start the receiver and if not 3. parameter specified, 
+  // Start the receiver and if not 3. parameter specified,
   // take LED_BUILTIN pin from the internal boards definition as default feedback LED
   IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
-   
- // attachInterrupt(digitalPinToInterrupt(IR_RECEIVE_PIN), IR_remote_loop, CHANGE);
+
+  // attachInterrupt(digitalPinToInterrupt(IR_RECEIVE_PIN), IR_remote_loop, CHANGE);
+}
+
+const int MAX_PTS = 3000;
+
+// Chunk of data to process using DMA or SPI
+typedef struct DataChunk {
+  uint16_t x;                                   // We'll just use 12 bits of X & Y for a 4096 point resolution
+  uint16_t y;
+  uint8_t red;                                  // Max value of each colour is 255
+  uint8_t green;
+  uint8_t blue;
+} DataChunk_t;
+
+static DataChunk_t Chunk[MAX_PTS];
+static int nb_points;
+
+void make_test_pattern()
+{
+  nb_points = 0;
+  int intensity = 150;
+  
+  moveto(4095, 4095, 0, 0, 0);
+  moveto(4095, 0, intensity, intensity, intensity);
+  moveto(0, 0, intensity, intensity, intensity);
+  moveto(0, 4095, intensity, intensity, intensity);
+  moveto(4095, 4095, intensity, intensity, intensity);
+
+  moveto(0, 0, 0, 0, 0);
+  moveto(3071, 4095, intensity, intensity, intensity);
+  moveto(4095, 2731, intensity, intensity, intensity);
+  moveto(2048, 0, intensity, intensity, intensity);
+  moveto(0, 2731, intensity, intensity, intensity);
+  moveto(1024, 4095, intensity, intensity, intensity);
+  moveto(4095, 0, intensity, intensity, intensity);
+
+  moveto(0, 4095, 0, 0, 0);
+  moveto(3071, 0, intensity, intensity, intensity);
+  moveto(4095, 1365, intensity, intensity, intensity);
+  moveto(2048, 4095, intensity, intensity, intensity);
+  moveto(0, 1365, intensity, intensity, intensity);
+  moveto(1024, 0, intensity, intensity, intensity);
+  moveto(4095, 4095, intensity, intensity, intensity);
+  moveto(4095, 4095, 0, 0, 0);
+}
+
+void moveto( int x, int y, int red, int green, int blue)
+{
+  Chunk[nb_points].x = x;
+  Chunk[nb_points].y = y;
+  Chunk[nb_points].red = red;
+  Chunk[nb_points].green = green;
+  Chunk[nb_points].blue = blue;
+
+  nb_points ++;
+}
+
+void draw_test_pattern()
+{
+  int red, green, blue;
+  
+  if (v_config[0].pval == 1)
+  {
+    red = 140;
+    green = 0;
+    blue = 0;
+  }
+  else if (v_config[0].pval == 2)
+  {
+    red = 0;
+    green = 140;
+    blue = 0;
+  }
+  else if (v_config[0].pval == 3)
+  {
+    red = 0;
+    green = 0;
+    blue = 140;
+  }
+  else if (v_config[0].pval == 4)
+  {
+    red = 140;
+    green = 140;
+    blue = 140;
+  }
+  
+  for (int i = 0; i < nb_points; i++)
+  {
+    if (Chunk[i].red == 0)
+      draw_to_xyrgb(Chunk[i].x, Chunk[i].y, 0, 0, 0);
+    else
+      // draw_to_xyrgb(Chunk[i].x, Chunk[i].y, Chunk[i].red, Chunk[i].green, Chunk[i].blue);
+      draw_to_xyrgb(Chunk[i].x, Chunk[i].y, red, green, blue);
+  }
 }
