@@ -1,13 +1,13 @@
-| Ref	                                   | Qty	| Value	          | Component name	         | Footprint	                                                   | Mouser Ref              | 
+| Ref	                                 | Qty	| Value	          | Component name	         | Footprint	                                                   | Mouser Ref              | 
 | -------------------------------------- | ---- | --------------- | ------------------------ | ------------------------------------------------------------- | ----------------------- |    
-| C1, C19 (optional)	                   |  2	  | 1.0uF 50v CER   | C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | C420C105K5R5TA7200      | 
-| C2, C6 	                               |  2  	| 10uF 25V CER    | C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | FG26X7R1E106KRT06       | 
+| C1, C19 (optional)	                 |  2	  | 1.0uF 50v CER   | C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | C420C105K5R5TA7200      | 
+| C2, C6 	                         |  2  	| 10uF 25V CER    | C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | FG26X7R1E106KRT06       | 
 | C3, C7, C8, C11, C12, C13, C14, C17    |  8  	| 0.1uF 50V CER	  | C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | C410C104Z5U5TA7200      | 
 | C4, C9, C10 	                         |  3	  | 4.7uF	50V       | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                         | ESH475M050AC3AA         | 
-| C5 	                                   |  1	  | 2.2uF 50V	      | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                         | ESH225M050AC3AA         | 
-| C15, C16, C18 	                       |  3  	| 10uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                         | ESH106M050AC3AA         | 
-| C20 (optional)	                       |  1  	| 22uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor			                                     | ESH226M050AC3AA         | 
-| IC1, IC6 	                             |  2  	| TL3474	        | QUAD_OPAMPP	             | DIP-14_W7.62mm_Socket		                                     | TL3474IN                | 
+| C5 	                                 |  1	  | 2.2uF 50V	      | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                         | ESH225M050AC3AA         | 
+| C15, C16, C18 	                 |  3  	| 10uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                         | ESH106M050AC3AA         | 
+| C20 (optional)	                 |  1  	| 22uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor			                                     | ESH226M050AC3AA         | 
+| IC1, IC6 	                         |  2  	| TL3474	        | QUAD_OPAMPP	             | DIP-14_W7.62mm_Socket		                                     | TL3474IN                | 
 | IC2 	                                 |  1  	| 5VDC	          | DC/DC CONVERTER +/-5V 1W | RECOM		                                                     | RB-0512D                | 
 | IC2 (optional)                         |  1	  | 9VDC	          | DC/DC CONVERTER +/-12V 1W| RECOM		                                                     | RB-0912D                | 
 | IC2 (optional)                         |  1	  | 12VDC	          | DC/DC CONVERTER +/-12V 1W| RECOM		                                                     | RB-1212D                | 
