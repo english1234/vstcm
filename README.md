@@ -39,16 +39,14 @@ A ZIP file is in the Gerbers directory. This can be uploaded to your PCB manufac
 
 The BOM is in BOM teensyv.txt and has Mouser references for many parts at the right hand side. 
 
-- IC2: You need to choose if you are going to use an external supply or not and if so what voltage to use (5V, 9V or 12V). Recom makes these parts, but so do Traco and there may be other brands. Make sure there is a D (for double) at the end of the model number which generates +/- voltages, rather than the S (single) version. As a guide, I started out with a 5V external supply and a RB-0512D.
+- IC2: You need to choose if you are going to use an external supply or not and if so what voltage to use (5V, 9V or 12V). Recom makes these parts, but so do Traco and there may be other brands. Make sure there is a D (for double) at the end of the model number which generates +/- voltages, rather than the S (single) version. See power options below.
 - R12, R15 & R16: these resistors are in the op amp for the RGB signals and are marked as 68 ohm in the BOM, however the circuit was designed with 10K in those places. 10K is producing bent vectors on my setup, I'm currently experimenting with 68R and it's working pretty well. 
-- The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
+- J6/J7: The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
 - U4: The TXS0108E	which converts voltage from 3.3V to 5V is described as having a DIP20 footprint. It's actually a bit wider than that, so I removed the DIP socket and used pin headers instead which I had to bend a little to get it to fit. This part was used as the previous Teensy 3.2 had 5V outputs whereas the Teensy 4.1 uses 3.3V. Theoretically, installing one of these avoided having to recalculate the values of the resistors in the Op Amp circuit, but since then I removed this part on my board and jumpered rows 2, 3, 4, 5 and 8 and everything seems to work fine with no further changes, so it can probably be left out as long as the Teensy is happy to produce the necessary voltage (a bit above 3.3V) to get the DACs to detect a high signal. 
 - U5: See power options below. I have also used a 7805 as a direct replacement with a small heatsink on it, which gets quite warm but hasn't burnt out as yet.
 
- - optional parts: 
- 1/ see power options below
- 2/ see IR remote below
-
+ - optional IR remote: I really recommend this - see "IR remote programmable control buttons" below.
+ 
 I would recommend socketing everything on the board (Teensy, DACs, Op Amps) so that they can be swapped out if better choices are found in the future.
 
 Make sure you order short resistors, space for them on the board is tight.
@@ -57,18 +55,26 @@ Make sure you order short resistors, space for them on the board is tight.
 
 The PCB can be powered in several ways:
 
-1/ power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. U5, C19 & C20 are not needed in this case.
+|N° | Power supply option              | Supplies                                    | C3/C4    | IC2      | U5/C19/C20  | Split pad Teensy | Tested |
+|---|----------------------------------|---------------------------------------------|----------|----------|-------------|------------------|--------|
+| 1 | USB 5V                           | Complete circuit inc Teensy                 | Required | RB-0512D | Absent      | No               | No     |
+| 2 | USB 5V + external 5V unregulated | USB supplies Teensy, external supplies rest | Required | RB-0512D | Absent      | No               | Yes    |
+| 3 | External 9V unregulated          | Complete circuit inc Teensy                 | Required | RB-0912D | Present     | Yes              | No     |
+| 4 | External 12V unregulated         | Complete circuit inc Teensy                 | Required | RB-1212D | Present     | Yes              | Yes    |
+| 5 | USB 5V + external 12V regulated  | USB supplies Teensy, external supplies rest | Absent   | Absent   | Absent      | No               | No     |
 
-2/ power the Teensy via USB from a Raspberry Pi, and use a separate external supply for the DACs and Op Amps. 
-- 2a/ I tested this using a 1A 5V "wall wart" type supply connected to J6. U5, C19 & C20 are not needed in this case. 
-- 2b/ Another option would be to leave out the RB-0512D and connect a +/-12V supply to J7. THIS HAS NOT YET BEEN TESTED.
+1/ power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. Make sure the Pi has at least a 3A supply.
 
-3/ power the whole thing via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. A 5V supply won't work as the LM2940 requires over 6V to function according to its datasheet. 
+2/ power the Teensy via USB from a Raspberry Pi, and use a separate external supply (such as a wall wart) for the DACs and Op Amps. 
+
+3 & 4/ power the whole thing via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. A 5V supply won't work as the LM2940 requires over 6V to function according to its datasheet. 
 WARNING: THE V2 OF THE PCB (AS OPPOSED TO V2.1 OR LATER) HAS THE SYMBOL FOR U5 INVERTED. PIN 1 OF THE LM2940 (THE LEFT HAND ONE) NEEDS TO BE AT THE TOP OF THE BOARD, THE SILKSCREEN ON THE PCB AND SCHEMATIC HAVE BEEN CORRECTED FROM V2.1 ONWARDS.
+
+5/ If you already have a perfectly regulated and smooth 12V supply, then you can connect it to J7.
 
 The choice is really just a matter of what you have on hand. It makes no difference what vector CRT you have, as the output voltages of the PCB are the same whatever you use to power it. If you're connecting to an existing arcade machine, then chances are you have a +/-12V supply coming out of the power brick. Otherwise, many people have a box of old "wall wart" 5V (or 9V or 12V) adapters which will work fine: either fit a barrel connector to the PCB input or chop the connector off the end of the power supply and solder the 2 wires directly to the board (check with a multimeter first which is positive and which is ground). 
 
-The easiest option is to use a 5V (option 2a) as the LM2940 is not required, and you don't need to cut the link on the Teensy to separate USB and external power.
+The easiest option is to use a 5V (option 2) as the LM2940 is not required, and you don't need to cut the link on the Teensy to separate USB and external power.
 
 # Schematic
 
