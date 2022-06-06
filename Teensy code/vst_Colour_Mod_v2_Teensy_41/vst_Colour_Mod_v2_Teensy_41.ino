@@ -11,8 +11,8 @@
 */
 
 #include <SPI.h>
-#include <IRremote.hpp>
 #include <avr/eeprom.h>
+
 #include "asteroids_font.h"
 
 // Teensy SS pins connected to DACs
@@ -23,7 +23,6 @@ const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
 #define SDI                 11        // MOSI on SPI0
 #define SCK                 13        // SCK on SPI0
 #define BUFFERED                      // If defined, uses buffer on DACs
-//#undef BUFFERED
 #define REST_X            2048        // Wait in the middle of the screen
 #define REST_Y            2048
 
@@ -56,7 +55,13 @@ typedef struct ColourIntensity {      // Stores current levels of brightness for
 #define REFRESH_RATE 20000u
 
 static long fps;                       // Approximate FPS used to benchmark code performance improvements
-#define IR_REMOTE                      // Delete this if no IR remote is fitted
+
+//#define IR_REMOTE                      // define if IR remote is fitted
+#ifdef IR_REMOTE
+  #define SUPPRESS_ERROR_MESSAGE_FOR_BEGIN
+  #include <IRremote.hpp>
+  #define IR_RECEIVE_PIN      32
+#endif
 
 EventResponder callbackHandler;        // DMA SPI callback
 volatile int activepin;                // Active CS pin of DAC receiving data
@@ -88,7 +93,7 @@ const int  BRIGHTER     =    128;
 
 // Settings stored in Teensy EPROM
 typedef struct params {
-  char *param;            // Parameter label (not sure this should be a char *)
+  const char *param;      // Parameter label
   uint32_t pval;          // Parameter value
   uint32_t min;           // Min value of parameter
   uint32_t max;           // Max value of parameter
@@ -103,9 +108,7 @@ void setup()
 {
   read_vstcm_config();      // Read saved settings
 
-#ifdef IR_REMOTE
   IR_remote_setup();
-#endif
 
   // Configure buttons on vstcm for input using built in pullup resistors
   pinMode(0, INPUT_PULLUP);
@@ -628,7 +631,7 @@ void manage_buttons()
 
   params_t *vstcm_par;
   vstcm_par = &v_config[opt_select];
-  int com;    // Command received from IR remote
+  int com = 0;    // Command received from IR remote
 
 #ifdef IR_REMOTE
   if (IrReceiver.decode())    // Check if a button has been pressed on the IR remote
@@ -698,10 +701,9 @@ void manage_buttons()
 // may be mounted in an arcade cabinet, making it difficult to see changes on the screen
 // when using the physical buttons
 
-#define IR_RECEIVE_PIN 32
-
 void IR_remote_setup()
 {
+#ifdef IR_REMOTE
   Serial.begin(115200);
 
   // Start the receiver and if not 3. parameter specified,
@@ -709,6 +711,7 @@ void IR_remote_setup()
   IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
 
   // attachInterrupt(digitalPinToInterrupt(IR_RECEIVE_PIN), IR_remote_loop, CHANGE);
+#endif  
 }
 
 const int MAX_PTS = 3000;
@@ -767,7 +770,7 @@ void moveto( int x, int y, int red, int green, int blue)
 
 void draw_test_pattern()
 {
-  int red, green, blue;
+  int red = 0, green = 0, blue = 0;
   
   if (v_config[0].pval == 1)
   {
