@@ -1,40 +1,40 @@
-| Ref	                                   | Qty	| Value	      | Component name	         | Footprint	                                                 | Mouser Ref              | 
-| -------------------------------------- | ---- | --------------- | ------------------------ | ------------------------------------------------------------- | ----------------------- |    
-| C1, C19 (optional)	                 |  2	| 1.0uF 50v CER   | C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | C420C105K5R5TA7200      | 
-| C2, C6 	                             |  2  	| 10uF 25V CER    | C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | FG26X7R1E106KRT06       | 
-| C3, C7, C8, C11, C12, C13, C14, C17    |  8  	| 0.1uF 50V CER	| C-US025-024X044	         | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm	                   | C410C104Z5U5TA7200      | 
-| C4, C9, C10 	                       |  3	| 4.7uF	50V   | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                     | ESH475M050AC3AA         | 
-| C5 	                                   |  1	| 2.2uF 50V	      | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                     | ESH225M050AC3AA         | 
-| C15, C16, C18 	                       |  3  	| 10uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor	                                     | ESH106M050AC3AA         | 
-| C20 (optional)	                       |  1  	| 22uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor			                         | ESH226M050AC3AA         | 
-| IC1, IC6 	                             |  2  	| TL3474	      | QUAD_OPAMPP	         | DIP-14_W7.62mm_Socket		                               | TL3474IN                | 
-| IC2 	                             |  1  	| 5VDC	      | DC/DC CONVERTER +/-5V 1W | RECOM		                                                 | RB-0512D                | 
-| IC2 (optional)                         |  1	| 9VDC	      | DC/DC CONVERTER +/-12V 1W| RECOM		                                                 | RB-0912D                | 
-| IC2 (optional)                         |  1	| 12VDC	      | DC/DC CONVERTER +/-12V 1W| RECOM		                                                 | RB-1212D                | 
-| IC3, IC4, IC5 	                       |  3  	| MCP4922-E/P	| MCP4922-E/P	         | DIP-14_W7.62mm_Socket		                               | MCP4922-E/P	         | 
-| J1 	                                   |  1	| Conn_01x24_Male | Conn_01x24_Male	         | Generic connector, single row, 01x24	                         | 	                     | 
-| J2, J4 	                             |  2	| Conn_01x05_Male | Conn_01x05_Male	         | Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical    | 	                     | 
-| J3 	                                   |  1  	| Conn_01x25_Male | Conn_01x25_Male	         | Generic connector, single row, 01x25	Aliexpress	             |                         | 
-| J5 	                                   |  1	| Conn_01x06_Male | Conn_01x06_Male	         | Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical    |                         | 
-| J6 	                                   |  1  	| Conn_01x02_Male | Conn_01x02_Male	         | Molex 22-27-2021	Generic connector, single row, 01x02       | 22-27-2021	         | 
-| 				                 |      |                 |                          | Molex 10-11-2023	2 pin plug connector for 22-27-2021	       | 10-11-2023	         | 
-| J7 	                                   |  1  	| Conn_01x03_Male | Conn_01x03_Male	         | Molex 38-00-6293	Generic connector, single row, 01x03	 | 38-00-6293	         | 
-| 	                                   |  1	| 		      |                          | Molex 22-01-2037	3 pin plug connector for 38-00-6293	       | 22-01-2037              | 
-| 				                 |      |                 |                          | Pins for Molex connectors series 7879	                   |                         | 
-| J8 	                                   |  1	| Conn_01x01_Male | Conn_01x01_Male	         | Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical    | 	                     | 
-| J9 	                                   |  1	| Conn_01x02_Male | Conn_01x02_Male	         | Generic connector, single row, 01x02	Aliexpress	             |                         | 
-| R1, R2 	                             |  2  	| 5.1K 1% 1/4W    | R-US_0204/2V	         | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MFR-25FBF52-5K1         | 
-| R3, R4, R5, R6, R9, R10, R14           |  7  	| 10.2K 1% 1/4W   | R-US_0204/2V	         | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC1022F	         | 
-| R7, R8 	                             |  2  	| 20K 1% 1/4W     | R-US_0204/2V	         | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC2002F	         | 
-| R12, R15, R16	                       |  3	| 68R 5% 1/4W CARB| R-US_0204/2V	         | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR-25JB-52-68R         | 
-| R11, R13, R22, R23, R24, R28, R29, R30 |  8	| 10.2K 1% 1/4W   | R-US_0204/2V	         | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC1022F            | 
-| R17, R18, R19, R20, R21 	           |  5  	| 75R 5% 1/4W CARB| R-US_0204/7	         | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR-25JB-52-75R	   | 
-| R25 	                             |  1	| 1K 1/3W 5% CARB | R-US_0204/2V	         | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR25J1K0	         | 
-| RV1, RV2, RV3, RV4 	                 |  4  	| 20K	            | R_Potentiometer	         | Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical	       | 3386P-1-203LF           | 
-| SW1, SW2, SW3, SW4, SW5 	           |  5  	| SW_Push	      | SW_Push	               | SW_PUSH_6mm_H4.3mm Push button switch, generic, two pins	 | TS02-66-80-BK-100-SCR-D | 
-| U1 	                                   |  1	| Teensy4.1	      |                          |                                                               | DEV-16771               | 
-| U2 	                                   |  1  	| TLE2425xLP	| TLE2425xLP	         | Precision virtual ground, 2.5V output, TO-92	             | TLE2425ILP              | 
-| U3 	                                   |  1	| LP2950-5.0_TO92 | LP2950-5.0_TO92	         | Micropower Voltage Reg with Shutdown 100mA Fixed Output 5.0V  | LP2950CZ-5.0            | 
-| U4 (no longer needed)                  |  1	| TXS0108E	      | SW_DIP_x10	         | 3.3V to 5V level converter (TSOP-20 module)                   | TXS0108E                | 
-| U5 (optional)                          |  1	| LM2940T-5.0	|			         |  REG LINEAR 5V 1A TO220-3                                     |                         | 
-|                                        |  1   | HX1838          |                          | IR Remote control and sensor                                  |                         |
+| Ref                                    | Qty  | Value           | Component name           | Footprint                                                     | Mouser Ref              | 
+| -------------------------------------- | ---- | --------------- | ------------------------ | ------------------------------------------------------------- | ----------------------- | 
+| C1, C19 (optional)                     |  2   | 1.0uF 50v CER   | C-US025-024X044          | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm                    | C420C105K5R5TA7200      | 
+| C2, C6                                 |  2   | 10uF 25V CER    | C-US025-024X044          | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm                    | FG26X7R1E106KRT06       | 
+| C3, C7, C8, C11, C12, C13, C14, C17    |  8   | 0.1uF 50V CER   | C-US025-024X044          | Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm                    | C410C104Z5U5TA7200      | 
+| C4, C9, C10                            |  3   | 4.7uF50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor                                           | ESH475M050AC3AA         | 
+| C5                                     |  1   | 2.2uF 50V       | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor                                           | ESH225M050AC3AA         | 
+| C15, C16, C18                          |  3   | 10uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor                                           | ESH106M050AC3AA         | 
+| C20 (optional)                         |  1   | 22uF 50V        | CP_Radial_D5.0mm_P2.00mm | Polarized capacitor                                           | ESH226M050AC3AA         | 
+| IC1, IC6                               |  2   | TL3474          | QUAD_OPAMPP              | DIP-14_W7.62mm_Socket                                         | TL3474IN                | 
+| IC2                                    |  1   | 5VDC            | DC/DC CONVERTER +/-5V 1W | RECOM                                                         | RB-0512D                | 
+| IC2 (optional)                         |  1   | 9VDC            | DC/DC CONVERTER +/-12V 1W| RECOM                                                         | RB-0912D                | 
+| IC2 (optional)                         |  1   | 12VDC           | DC/DC CONVERTER +/-12V 1W| RECOM                                                         | RB-1212D                | 
+| IC3, IC4, IC5                          |  3   | MCP4922-E/P     | MCP4922-E/P              | DIP-14_W7.62mm_Socket                                         | MCP4922-E/P             | 
+| J1                                     |  1   | Conn_01x24_Male | Conn_01x24_Male          | Generic connector, single row, 01x24                          |                         | 
+| J2, J4                                 |  2   | Conn_01x05_Male | Conn_01x05_Male          | Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical    |                         | 
+| J3                                     |  1   | Conn_01x25_Male | Conn_01x25_Male          | Generic connector, single row, 01x25Aliexpress                |                         | 
+| J5                                     |  1   | Conn_01x06_Male | Conn_01x06_Male          | Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical    |                         | 
+| J6                                     |  1   | Conn_01x02_Male | Conn_01x02_Male          | Molex 22-27-2021Generic connector, single row, 01x02          | 22-27-2021              | 
+|                                        |      |                 |                          | Molex 10-11-20232 pin plug connector for 22-27-2021           | 10-11-2023              | 
+| J7                                     |  1   | Conn_01x03_Male | Conn_01x03_Male          | Molex 38-00-6293Generic connector, single row, 01x03          | 38-00-6293              | 
+|                                        |  1   |                 |                          | Molex 22-01-20373 pin plug connector for 38-00-6293           | 22-01-2037              | 
+|                                        |      |                 |                          | Pins for Molex connectors series 7879                         |                         | 
+| J8                                     |  1   | Conn_01x01_Male | Conn_01x01_Male          | Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical    |                         | 
+| J9                                     |  1   | Conn_01x02_Male | Conn_01x02_Male          | Generic connector, single row, 01x02Aliexpress                |                         | 
+| R1, R2                                 |  2   | 5.1K 1% 1/4W    | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MFR-25FBF52-5K1         | 
+| R3, R4, R5, R6, R9, R10, R14           |  7   | 10.2K 1% 1/4W   | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC1022F            | 
+| R7, R8                                 |  2   | 20K 1% 1/4W     | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC2002F            | 
+| R12, R15, R16                          |  3   | 68R 5% 1/4W CARB| R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR-25JB-52-68R         | 
+| R11, R13, R22, R23, R24, R28, R29, R30 |  8   | 10.2K 1% 1/4W   | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC1022F            | 
+| R17, R18, R19, R20, R21                |  5   | 75R 5% 1/4W CARB| R-US_0204/7              | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR-25JB-52-75R         | 
+| R25                                    |  1   | 1K 1/3W 5% CARB | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR25J1K0               | 
+| RV1, RV2, RV3, RV4                     |  4   | 20K             | R_Potentiometer          | Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical         | 3386P-1-203LF           | 
+| SW1, SW2, SW3, SW4, SW5                |  5   | SW_Push         | SW_Push                  | SW_PUSH_6mm_H4.3mm Push button switch, generic, two pins      | TS02-66-80-BK-100-SCR-D | 
+| U1                                     |  1   | Teensy4.1       |                          |                                                               | DEV-16771               | 
+| U2                                     |  1   | TLE2425xLP      | TLE2425xLP               | Precision virtual ground, 2.5V output, TO-92                  | TLE2425ILP              | 
+| U3                                     |  1   | LP2950-5.0_TO92 | LP2950-5.0_TO92          | Micropower Voltage Reg with Shutdown 100mA Fixed Output 5.0V  | LP2950CZ-5.0            | 
+| U4 (no longer needed)                  |  1   | TXS0108E        | SW_DIP_x10               | 3.3V to 5V level converter (TSOP-20 module)                   | TXS0108E                | 
+| U5 (optional)                          |  1   | LM2940T-5.0     |                          | REG LINEAR 5V 1A TO220-3                                      |                         | 
+| Optional                               |  1   | HX1838          |                          | IR Remote control and sensor                                  |                         | 
