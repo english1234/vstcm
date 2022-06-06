@@ -1,7 +1,7 @@
 /*
    VSTCM
 
-   Vector display using MCP4922 DACs on the Teensy 4.1
+   Vector Signal Transceiver Colour Mod using MCP4922 DACs on the Teensy 4.1
 
    Based on: https://trmm.net/V.st
    incorporating mods made by "Swapfile" (Github) for Advanced Mame compatibility
@@ -183,7 +183,8 @@ void loop()
   if (show_vstcm_config)
   {
     show_vstcm_config_screen();      // Show settings screen and manage associated control buttons
-    manage_buttons();
+    if (millis() - draw_start_time > SERIAL_WAIT_TIME/4)    // Don't process the buttons every single loop
+      manage_buttons();
   }
 
   // Go to the center of the screen, turn the beam off
