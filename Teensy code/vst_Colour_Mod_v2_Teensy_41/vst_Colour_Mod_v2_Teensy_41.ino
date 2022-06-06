@@ -180,6 +180,8 @@ void loop()
       break;
   }
 
+  draw_start_time = 0;
+  
   if (show_vstcm_config)
   {
     show_vstcm_config_screen();      // Show settings screen and manage associated control buttons
