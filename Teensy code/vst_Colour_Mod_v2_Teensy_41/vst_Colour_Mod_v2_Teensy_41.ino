@@ -56,7 +56,7 @@ typedef struct ColourIntensity {      // Stores current levels of brightness for
 
 static long fps;                       // Approximate FPS used to benchmark code performance improvements
 
-//#define IR_REMOTE                      // define if IR remote is fitted
+#define IR_REMOTE                      // define if IR remote is fitted
 #ifdef IR_REMOTE
   #define SUPPRESS_ERROR_MESSAGE_FOR_BEGIN
   #include <IRremote.hpp>
@@ -222,7 +222,7 @@ void goto_x(uint16_t x)
 {
   x_pos = x;
 
-  if (v_config[6].pval == false)      // If FLIP X the invert x axis
+  if (v_config[6].pval == false)      // If FLIP X then invert x axis
     MCP4922_write(SS1_IC4_X_Y, 0, 4095 - x);
   else
     MCP4922_write(SS1_IC4_X_Y, 0, x);
@@ -232,7 +232,7 @@ void goto_y(uint16_t y)
 {
   y_pos = y;
 
-  if (v_config[7].pval == false)     // If FLIP Y the invert y axis
+  if (v_config[7].pval == false)     // If FLIP Y then invert y axis
     MCP4922_write(SS1_IC4_X_Y, 1, 4095 - y);
   else
     MCP4922_write(SS1_IC4_X_Y, 1, y);
@@ -627,8 +627,6 @@ void show_vstcm_config_screen()
 void manage_buttons()
 {
   // Use the buttons on the PCB to adjust and save settings
-  // This needs improvement
-  // Also it doesn't need to test all this stuff on every cycle, so add a test to do it 1/100 times or so
 
   params_t *vstcm_par;
   vstcm_par = &v_config[opt_select];
@@ -774,23 +772,11 @@ void draw_test_pattern()
   int red = 0, green = 0, blue = 0;
   
   if (v_config[0].pval == 1)
-  {
     red = 140;
-    green = 0;
-    blue = 0;
-  }
   else if (v_config[0].pval == 2)
-  {
-    red = 0;
     green = 140;
-    blue = 0;
-  }
   else if (v_config[0].pval == 3)
-  {
-    red = 0;
-    green = 0;
     blue = 140;
-  }
   else if (v_config[0].pval == 4)
   {
     red = 140;
