@@ -31,11 +31,11 @@ If you want to get in touch to ask questions, or contribute, I can be contacted 
 
 A dedicated vstcm web page can be found here: https://robinchampion.com/vst_colour_mod.htm
 
-# Getting the PCB built
+## Getting the PCB built
 
 A ZIP file is in the Gerbers directory. This can be uploaded to your PCB manufacturer of choice. It's a 2 sided 10cm x 10cm board so should be extremely cheap (JLPCB charged less than 5€ / $5 + shipping for 10 pieces in May 2022).
 
-# Components
+## Components
 
 The BOM is in BOM teensyv.txt and has Mouser references for many parts at the right hand side. 
 
@@ -51,7 +51,7 @@ I would recommend socketing everything on the board (Teensy, DACs, Op Amps) so t
 
 Make sure you order short resistors, space for them on the board is tight.
 
-# Power options for the PCB
+## Power options for the PCB
 
 The PCB can be powered in several ways:
 
@@ -76,11 +76,11 @@ The choice is really just a matter of what you have on hand. It makes no differe
 
 The easiest option is to use a 5V (option 2) as the LM2940 is not required, and you don't need to cut the link on the Teensy to separate USB and external power.
 
-# Schematic
+## Schematic
 
-This may seem obvious, but it's worth downloading Kicad in order to view the schematic and the PCB as there are some build notes on the schematic, and it will help you to understand the main sections of the PCB and how it all connects together. 
+This may seem obvious, but it's worth downloading Kicad in order to view the schematic and the PCB as there are some build notes on the schematic, and it will help you to understand the main sections of the PCB and how it all connects together. For the lazier, a PDF is available.
 
-# Programming the Teensy
+## Programming the Teensy
 
 Follow the instructions on this page to download and install the Arduino environment and Teensyduino extension: https://www.pjrc.com/teensy/td_download.html
 Use the Arduino software to load the .ino file in the Teensy code directory.
@@ -90,7 +90,7 @@ Press the compile button.
 Press the upload button (or the button on the Teensy if it doesn't upload automatically).
 (You can also use PlatformIO if you prefer).
 
-# Testing the vstcm
+## Testing the vstcm
 
 Once the board is built and the Teensy programmed and fitted, it can be connected to your deflection board of choice (it has only been tested on an Amplifone so far, but should work on WG6100 and others, including B&W vectors) and when powered on should show a test screen. It may be necessary to change the size and positions pots on the PCB as well as other controls on the deflection board (such as Z or colour gain).
 
@@ -98,7 +98,7 @@ Before connecting to the deflection board, it would probably be a good idea to m
 
 ![typicalsetup](http://robinchampion.com/vstcm/typicalsetup.jpg)
 
-# Testing games with AdvanceMAME
+## Testing games with AdvanceMAME
 
 A Raspberry Pi 4 or 400 is recommended (I have also tested with a Pi 3 Model B+ 2017 and an Orange Pi 3 LTS which seem to work ok too). If you are running the vstcm from the Raspberry/Orange Pi then a 3A supply would be preferable.
 Other options (which I have not yet tested) are PC (either Windows or a Linux VM under Windows, or native Linux) or Mac. 
@@ -108,7 +108,7 @@ I followed the instructions here to download and compile AdvanceMAME: https://ww
 
 Basically, there are just 7 commands on the Pi which are as follows:
 
-sudo apt-get install git autoconf automake libsdl2-dev libasound2-dev libfreetype6-dev zlib1g-dev libexpat1-dev libslang2-dev libncurses5-dev
+```sudo apt-get install git autoconf automake libsdl2-dev libasound2-dev libfreetype6-dev zlib1g-dev libexpat1-dev libslang2-dev libncurses5-dev
 
 git clone https://github.com/amadvance/advancemame.git
 
@@ -121,6 +121,7 @@ sh autogen.sh
 make -j3
 
 sudo make install
+```
 
 
 You need to find some ROMs from somewhere and copy them into the ROM folder. I'm sure you'll manage to find them... The easiest way to get them on to the Pi is to set up a Samba share and copy them over from a PC.
@@ -131,11 +132,11 @@ If you're not getting output over the USB cable to the vstcm, then check the adv
 
 ![gravitar](http://robinchampion.com/vstcm/gravitar.jpg)![tempest](http://robinchampion.com/vstcm/tempest.jpg)
 
-# Interface between vstcm and AdvanceMAME
+## Interface between vstcm and AdvanceMAME
 
 The AdvanceMAME protocol for the USB DVG is here: https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c 
 
-# IR remote programmable control buttons
+## IR remote programmable control buttons
 
 For £1 / $1 / 1€ you can get a HX1838 infra red adapter board with remote control, wiring, everything you need in fact. There are only 3 wires to connect: 5V, GND and signal. I soldered pin headers in the holes provided on either side of the Teensy, and put 5V on the bottom left hand hole of the Teensy (to left of USB socket), GND on the bottom right pin of the Teensy, and signal on pin 32 (top right hand pin of Teensy). 
 
@@ -145,7 +146,7 @@ The IR sensor is the size of an LED and so very easy to hide somewhere at the fr
 
 ![IR1](http://robinchampion.com/vstcm/IR1.jpg)![ir2](http://robinchampion.com/vstcm/IR2.jpg)
 
-# Haven't got a vector monitor or an oscilloscope?
+## Haven't got a vector monitor or an oscilloscope?
 
 Apart from this PCB, you need a CRT, a high voltage board, a deflection board and a power supply to make a complete vector monitor. There are solutions for all of these parts:
 
