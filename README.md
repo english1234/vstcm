@@ -1,5 +1,5 @@
 # VSTCM - the v.st Colour Mod - a colour vector graphics generator
-The vstcm is a vector signal transceiver PCB which can generate colour vector graphics which can then be displayed on an oscilloscope or vector monitor (such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc.). Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard (see below)!
+The vstcm is a vector signal transceiver PCB which can generate colour vector graphics which can then be displayed on an oscilloscope or vector monitor such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc. (Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard! - see below).
 
 ![vstcm pcb](http://robinchampion.com/vstcm/vstcmpcb.jpg)
 
