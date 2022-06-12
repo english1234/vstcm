@@ -1,9 +1,11 @@
 # VSTCM - the v.st Colour Mod - a colour vector graphics generator
-The vstcm is a vector signal transceiver PCB which can generate colour vector graphics which can then be displayed on an oscilloscope or vector monitor such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc. (Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard! - see below).
+The vstcm is a vector signal transceiver PCB which generates colour vector graphics to be displayed on an oscilloscope or vector monitor such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc. 
+
+When used with a Raspberry Pi (or Orange Pi) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games, but it can also play certain games all by itself using an emulator.
+
+(Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard! - see below).
 
 ![vstcm pcb](http://robinchampion.com/vstcm/vstcmpcb.jpg)
-
-When used with a Raspberry Pi (or Orange Pi) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games.
 
 ![starwars](http://robinchampion.com/vstcm/starwars.jpg)
 
@@ -11,19 +13,26 @@ The original v.st was designed by Trammell Hudson for black & white games. Docum
 
 Compared to the original version, the new vstcm adds:
 - RGB colour with different intensity levels
-- a menu to change parameters
-- programmable onboard control buttons
-- programmable IR remote control buttons
-- extra pots to control X & Y position
-- several power source options, either USB, or external 5V/9V/12V
+- a 6502 emulator which allows it to play games on its own without a Raspberry Pi or MAME
 - an upgrade to the Teensy 4.1 for more power (eg >800Mhz as opposed to 120Mhz for the Teensy 3.2)
 - Asteroids style test patterns in Red, Green & Blue to aid CRT convergence
+- a configuration menu
+- programmable onboard control buttons
+- programmable IR remote control buttons
+- extra pots to control X & Y position (to complement the existing X & Y size pots)
+- several power source options: either USB, or external 5V/9V/12V
 
 ![testscreen1](http://robinchampion.com/vstcm/testscreen2.jpg)
 
 The board was built with simplicity in mind using components that are easy to find, and easy to solder so that anyone can build one.
 
-The programme code is a development of that which was provided with the original version of the v.st, with modifications made by "Swapfile" (Github user) to interface with AdvanceMAME, and then further modifications made by myself in order to add the new functionality specific to the vstcm. Ideally it should be rewritten or optimised by someone more familiar with the inner workings of the Teensy 4.1, and it is hoped that the publication on github will encourage contributions to develop this as a relatively cheap and easy solution for the vector arcade / vector graphics community.
+## Programme code
+
+Currently, the board can work in either of two ways:
+- on its own, running a 6502 emulator, and with the original game ROM files stored on the SD card of the Teensy. So far, Battlezone and Asteroids work with this, but it shouldn't be too much trouble to get others working. The code is a rough port of vecsim (https://github.com/morbos/bzone), and currently does not handle sound or game controls on the Teensy (please feel free to contribute the necessary mods to the code...). See instructions below for how to get this to work.
+- connected to a Raspberry Pi running MAME. The programme code for this option is a development of that which was provided with the original version of the v.st, with modifications made by "Swapfile" (Github user) to interface with AdvanceMAME, and then further modifications made by myself in order to add the new functionality specific to the vstcm. Ideally it should be rewritten or optimised by someone more familiar with the inner workings of the Teensy 4.1, and it is hoped that the publication on github will encourage contributions to develop this as a relatively cheap and easy solution for the vector arcade / vector graphics community.
+
+## History of development
 
 For those interested in seeing how things got to this point, the development of the PCB is being documented with plenty of pictures (in French, but use Google Translate if required) here : https://www.gamoover.net/Forums/index.php?topic=43469.0 (from page 5) and also shows previous work on building vector arcade HV boards, an Amplifone deflection reproduction, an Asteroids game PCB reproduction, a bit of yoke rewinding, etc.
 
@@ -98,6 +107,18 @@ Before connecting to the deflection board, it would probably be a good idea to m
 
 ![typicalsetup](http://robinchampion.com/vstcm/typicalsetup.jpg)
 
+## Testing Battlezone with the 6502 emulator
+
+Put the following ROM files on a SD card in a directory called roms/Battlezone: 036414a.01, 036413.01, 036412.01, 036411.01, 036410.01, 036409.01, 036422.01, 036421.01.
+
+Put the SD card in the slot on the Teensy.
+
+Upload the bzone.ino to the vstcm using the Arduino software.
+
+Plug it in.
+
+Switch on! 
+
 ## Testing games with AdvanceMAME
 
 A Raspberry Pi 4 or 400 is recommended (I have also tested with a Pi 3 Model B+ 2017 and an Orange Pi 3 LTS which seem to work ok too). If you are running the vstcm from the Raspberry/Orange Pi then a 3A supply would be preferable.
@@ -131,8 +152,6 @@ Then to launch, type advmame followed by the name of the game.
 If you're not getting output over the USB cable to the vstcm, then check the advmame.rc file and at the bottom make sure you have vector_aux_renderer set to dvg (instead of none) and vector_aux_renderer_port set to /dev/ttyACM0
 
 ![gravitar](http://robinchampion.com/vstcm/gravitar.jpg)![tempest](http://robinchampion.com/vstcm/tempest.jpg)
-
-## Interface between vstcm and AdvanceMAME
 
 The AdvanceMAME protocol for the USB DVG is here: https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c 
 
