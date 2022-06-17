@@ -70,7 +70,7 @@ The PCB can be powered in several ways:
 | 2 | USB 5V + external 5V unregulated | USB supplies Teensy, external supplies rest | Required | RB-0512D | Absent      | No               | Yes    |
 | 3 | External 9V unregulated          | Complete circuit inc Teensy                 | Required | RB-0912D | Present     | Yes              | No     |
 | 4 | External 12V unregulated         | Complete circuit inc Teensy                 | Required | RB-1212D | Present     | Yes              | Yes    |
-| 5 | USB 5V + external 12V regulated  | USB supplies Teensy, external supplies rest | Absent   | Absent   | Absent      | No               | No     |
+| 5 | USB 5V + external 12V regulated  | USB supplies Teensy, external supplies rest | Absent   | Absent   | Absent      | No               | Yes    |
 
 1/ power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. Make sure the Pi has at least a 3A supply.
 
