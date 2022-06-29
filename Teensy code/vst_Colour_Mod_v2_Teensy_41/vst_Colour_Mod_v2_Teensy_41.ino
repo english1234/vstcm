@@ -11,9 +11,8 @@
 */
 
 #include <SPI.h>
-#include <avr/eeprom.h>
+#include <SD.h>
 #include <Bounce2.h>
-
 #include "asteroids_font.h"
 
 // Teensy SS pins connected to DACs
@@ -58,9 +57,9 @@ const int MAX_PTS = 3000;
 typedef struct DataChunk {
   uint16_t x;                         // We'll just use 12 bits of X & Y for a 4096 point resolution
   uint16_t y;
-  uint8_t red;                        // Max value of each colour is 255
-  uint8_t green;
-  uint8_t blue;
+  uint8_t  red;                       // Max value of each colour is 255
+  uint8_t  green;
+  uint8_t  blue;
 } DataChunk_t;
 
 #define NUMBER_OF_TEST_PATTERNS 2
@@ -96,28 +95,47 @@ const bool FLIP_X       = false;       // Sometimes the X and Y need to be flipp
 const bool FLIP_Y       = false;
 const bool SWAP_XY      = false;
 const uint32_t CLOCKSPEED   = 115000000;
-const int  NORMAL       =    100;      // Brightness of text in parameter list
+const int  NORMAL1      =    100;      // Brightness of text in parameter list
 const int  BRIGHTER     =    128;
 // how long in milliseconds to wait for data before displaying a test pattern
 // this can be increased if the test pattern appears during gameplay
 const int  SERIAL_WAIT_TIME = 100;
+const int  AUDIO_PIN        = 10;      // Connect audio output to GND and pin 10
 
 // Settings stored in Teensy EPROM
-typedef struct params {
-  const char *param;      // Parameter label
+typedef struct {
+  char ini_label[20];     // Text string of parameter label in vstcm.ini
+  char param[40];         // Parameter label
   uint32_t pval;          // Parameter value
   uint32_t min;           // Min value of parameter
   uint32_t max;           // Max value of parameter
 } params_t;
 
 #define NB_PARAMS 16
-static params_t v_config[NB_PARAMS];
+static params_t v_config[NB_PARAMS] = {
+{"",                 "TEST PATTERN",                     0,                0,         4},
+{"OFF_SHIFT",        "BEAM TRANSIT SPEED",               OFF_SHIFT,        0,        50},
+{"OFF_DWELL0",       "WAIT WITH BEAM ON BEFORE TRANSIT", OFF_DWELL0,       0,        50},
+{"OFF_DWELL1",       "WAIT BEFORE BEAM TRANSIT",         OFF_DWELL1,       0,        50},
+{"OFF_DWELL2",       "WAIT AFTER BEAM TRANSIT",          OFF_DWELL2,       0,        50},
+{"NORMAL_SHIFT",     "NORMAL SHIFT",                     NORMAL_SHIFT,     0,       255},
+{"FLIP_X",           "FLIP X AXIS",                      FLIP_X,           0,         1},
+{"FLIP_Y",           "FLIP Y AXIS",                      FLIP_Y,           0,         1},
+{"SWAP_XY",          "SWAP XY",                          SWAP_XY,          0,         1},
+{"OFF_JUMP",         "OFF JUMP",                         OFF_JUMP,         0,         1},
+{"CLOCKSPEED",       "CLOCKSPEED",                       CLOCKSPEED, 2000000, 120000000},
+{"IR_RECEIVE_PIN",   "IR_RECEIVE_PIN",                   IR_RECEIVE_PIN,   0,        54},
+{"AUDIO_PIN",        "AUDIO_PIN",                        AUDIO_PIN,        0,        54},
+{"NORMAL1",          "NORMAL TEXT",                      NORMAL1,          0,       255},
+{"BRIGHTER",         "BRIGHT TEXT",                      BRIGHTER,         0,       255},
+{"SERIAL_WAIT_TIME", "TEST PATTERN DELAY",               SERIAL_WAIT_TIME, 0,       255}
+};
 
 static int opt_select;    // Currently selected setting
 
 // Bounce objects to read five pushbuttons (pins 0-4)
 Bounce button0 = Bounce();
-Bounce button1 = Bounce();  
+Bounce button1 = Bounce();
 Bounce button2 = Bounce();
 Bounce button3 = Bounce();
 Bounce button4 = Bounce();
@@ -136,16 +154,16 @@ void setup()
   // Configure buttons on vstcm for input using built in pullup resistors
 
   button0.attach(0, INPUT_PULLUP);        // Attach the debouncer to a pin and use internal pullup resistor
-  button0.interval(DEBOUNCE_INTERVAL);    // Use a debounce interval of 5 ms
-  button1.attach(1, INPUT_PULLUP);     
-  button1.interval(DEBOUNCE_INTERVAL); 
+  button0.interval(DEBOUNCE_INTERVAL);
+  button1.attach(1, INPUT_PULLUP);
+  button1.interval(DEBOUNCE_INTERVAL);
   button2.attach(2, INPUT_PULLUP);
-  button2.interval(DEBOUNCE_INTERVAL); 
+  button2.interval(DEBOUNCE_INTERVAL);
   button3.attach(3, INPUT_PULLUP);
-  button3.interval(DEBOUNCE_INTERVAL); 
+  button3.interval(DEBOUNCE_INTERVAL);
   button4.attach(4, INPUT_PULLUP);
-  button4.interval(DEBOUNCE_INTERVAL); 
-  
+  button4.interval(DEBOUNCE_INTERVAL);
+
   // Apparently, pin 10 has to be defined as an OUTPUT pin to designate the Arduino as the SPI master.
   // Even if pin 10 is not being used... Is this true for Teensy 4.1?
   // The default mode is INPUT. You must explicitly set pin 10 to OUTPUT (and leave it as OUTPUT).
@@ -289,7 +307,7 @@ void dwell(const int count)
 
 void draw_to_xyrgb(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
 {
-   brightness(red, green, blue);   // Set RGB intensity levels from 0 to 255
+  brightness(red, green, blue);   // Set RGB intensity levels from 0 to 255
   _draw_lineto(x, y, v_config[5].pval);
 }
 
@@ -552,47 +570,6 @@ void callback(EventResponderRef eventResponder)
   activepin = 0;
 }
 
-/* ***************** SETTINGS CODE ********************/
-
-void read_vstcm_config()
-{
-  params_t *vstcm_par;
-  vstcm_par = &v_config[0];
-
-
-
-  // Modify to store to SD card instead of EEPROM
-
-
-
-  // Read saved settings
-  // eeprom_read_block((void*)&vstcm_config, (void*)0, sizeof(settingsType));
-
-  // If settings have not been previously definedthen use default values
-  //  if (vstcm_config->config_ok != 999)
-  //    {
-  //               param name                           value             min      max
-  vstcm_par[0]  = {"TEST PATTERN",                      0,                0,         4};
-  vstcm_par[1]  = {"BEAM TRANSIT SPEED",                OFF_SHIFT,        0,        50};
-  vstcm_par[2]  = {"WAIT WITH BEAM ON BEFORE TRANSIT",  OFF_DWELL0,       0,        50};
-  vstcm_par[3]  = {"WAIT BEFORE BEAM TRANSIT",          OFF_DWELL1,       0,        50};
-  vstcm_par[4]  = {"WAIT AFTER BEAM TRANSIT",           OFF_DWELL2,       0,        50};
-  vstcm_par[5]  = {"NORMAL SHIFT",                      NORMAL_SHIFT,     0,       255};
-  vstcm_par[6]  = {"FLIP X AXIS",                       FLIP_X,           0,         1};
-  vstcm_par[7]  = {"FLIP Y AXIS",                       FLIP_Y,           0,         1};
-  vstcm_par[8]  = {"SWAP XY",                           SWAP_XY,          0,         1};
-  vstcm_par[9]  = {"OFF JUMP",                          OFF_JUMP,         0,         1};
-  vstcm_par[10] = {"CLOCKSPEED",                        CLOCKSPEED, 2000000, 120000000};
-  vstcm_par[11] = {"(UNDEFINED)",                       0,                0,         0};
-  vstcm_par[12] = {"(UNDEFINED)",                       0,                0,         0};
-  vstcm_par[13] = {"NORMAL TEXT",                       NORMAL,           0,       255};
-  vstcm_par[14] = {"BRIGHT TEXT",                       BRIGHTER,         0,       255};
-  vstcm_par[15] = {"TEST PATTERN DELAY",                SERIAL_WAIT_TIME, 0,       255};
-  //   }
-
-  opt_select = 0;     // Start at beginning of parameter list
-}
-
 void show_vstcm_config_screen()
 {
   int i;
@@ -669,7 +646,7 @@ void manage_buttons()
   button2.update();
   button3.update();
   button4.update();
-   
+
   if (button3.fell() || com == 0x08)           // SW3 Left button - decrease value of current parameter
   {
     if (v_config[opt_select].pval > v_config[opt_select].min)
@@ -814,9 +791,9 @@ void make_test_pattern()
 void moveto(int offset, int x, int y, int red, int green, int blue)
 {
   // Store coordinates of vectors and colour info in a buffer
-  
+
   DataChunk_t *localChunk = &Chunk[offset][nb_points[offset]];
-  
+
   localChunk->x = x;
   localChunk->y = y;
   localChunk->red = red;
@@ -849,7 +826,7 @@ void draw_test_pattern(int offset)
     {
       if (Chunk[offset][i].red == 0)
         draw_moveto(Chunk[offset][i].x, Chunk[offset][i].y);
-     //   draw_to_xyrgb(Chunk[offset][i].x, Chunk[offset][i].y, 0, 0, 0);
+      //   draw_to_xyrgb(Chunk[offset][i].x, Chunk[offset][i].y, 0, 0, 0);
       else
         // draw_to_xyrgb(Chunk[i].x, Chunk[i].y, Chunk[i].red, Chunk[i].green, Chunk[i].blue);
         draw_to_xyrgb(Chunk[offset][i].x, Chunk[offset][i].y, red, green, blue);
@@ -860,4 +837,147 @@ void draw_test_pattern(int offset)
     for (i = 0; i < nb_points[offset]; i++)
       draw_to_xyrgb(Chunk[offset][i].x, Chunk[offset][i].y, Chunk[offset][i].red, Chunk[offset][i].green, Chunk[offset][i].blue);
   }
+}
+
+/* ***************** SETTINGS CODE ********************/
+
+void read_vstcm_config()
+{
+  int i, j;
+ // params_t *vstcm_par;
+//  vstcm_par = &v_config[0];
+  const int chipSelect = BUILTIN_SDCARD;
+  char buf;
+  char param_name[20];
+  char param_value[20];
+  uint8_t pos_pn, pos_pv;
+
+  //  Initialise settings with default values
+
+  //               ini file            display label                       value             min      max
+//  vstcm_par[0]  = {"",                   "TEST PATTERN",                     0,                0,         4};
+/*  v_config[0]  = {{"",                   "TEST PATTERN",                     0,                0,         4}};
+  vstcm_par[1]  = {"OFF_SHIFT\n",        "BEAM TRANSIT SPEED",               OFF_SHIFT,        0,        50};
+  vstcm_par[2]  = {"OFF_DWELL0\n",       "WAIT WITH BEAM ON BEFORE TRANSIT", OFF_DWELL0,       0,        50};
+  vstcm_par[3]  = {"OFF_DWELL1\n",       "WAIT BEFORE BEAM TRANSIT",         OFF_DWELL1,       0,        50};
+  vstcm_par[4]  = {"OFF_DWELL2\n",       "WAIT AFTER BEAM TRANSIT",          OFF_DWELL2,       0,        50};
+  vstcm_par[5]  = {"NORMAL_SHIFT\n",     "NORMAL SHIFT",                     NORMAL_SHIFT,     0,       255};
+  vstcm_par[6]  = {"FLIP_X\n",           "FLIP X AXIS",                      FLIP_X,           0,         1};
+  vstcm_par[7]  = {"FLIP_Y\n",           "FLIP Y AXIS",                      FLIP_Y,           0,         1};
+  vstcm_par[8]  = {"SWAP_XY\n",          "SWAP XY",                          SWAP_XY,          0,         1};
+  vstcm_par[9]  = {"OFF_JUMP\n",         "OFF JUMP",                         OFF_JUMP,         0,         1};
+  vstcm_par[10] = {"CLOCKSPEED\n",       "CLOCKSPEED",                       CLOCKSPEED, 2000000, 120000000};
+  vstcm_par[11] = {"IR_RECEIVE_PIN\n",   "IR_RECEIVE_PIN",                   IR_RECEIVE_PIN,   0,        54};
+  vstcm_par[12] = {"AUDIO_PIN\n",        "AUDIO_PIN",                        AUDIO_PIN,        0,        54};
+  vstcm_par[13] = {"NORMAL\n",           "NORMAL TEXT",                      NORMAL,           0,       255};
+  vstcm_par[14] = {"BRIGHTER\n",         "BRIGHT TEXT",                      BRIGHTER,         0,       255};
+  vstcm_par[15] = {"SERIAL_WAIT_TIME\n", "TEST PATTERN DELAY",               SERIAL_WAIT_TIME, 0,       255};
+*/
+  // Read the vstcm.ini file on the SD card if it exists
+
+  // see if the SD card is present and can be initialised:
+  if (!SD.begin(chipSelect))
+  {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    return;
+  }
+  else
+    Serial.println("Card initialised.");
+
+  // open the settings file on the sd card
+  File dataFile = SD.open("vstcm.ini", FILE_READ);
+
+  if (dataFile)
+  {
+    while (dataFile.available())
+    {
+      for (i = 1; i < NB_PARAMS; i++)
+      {
+        pos_pn = 0;
+
+        memset(param_name, 0, sizeof param_name);
+
+        while (1)   // read the parameter name until an equals sign is encountered
+        {
+
+          // provide code for a timeout in case there's a problem reading the file
+
+
+          buf = dataFile.read();
+
+          if (buf == 0x3D)      // stop reading if it's an equals sign
+            break;
+          else if (buf != 0x0A && buf != 0x0d)      // ignore carriage return
+          {
+            param_name[pos_pn] = buf;
+            pos_pn ++;
+          }
+        }
+
+        pos_pv = 0;
+
+        memset(param_value, 0, sizeof param_value);
+
+        while (1)   // read the parameter value until a semicolon is encountered
+        {
+
+          // provide code for a timeout in case there's a problem reading the file
+
+
+          buf = dataFile.read();
+
+          if (buf == 0x3B)      // stop reading if it's a semicolon
+            break;
+          else if (buf != 0x0A && buf != 0x0d)      // ignore carriage return
+          {
+            param_value[pos_pv] = buf;
+            pos_pv ++;
+          }
+        }
+
+        // Find the setting in the predefined array and update the value with the one stored on SD
+
+        bool bChanged = false;
+
+        for (j = 0; j < NB_PARAMS; j++)
+        {
+          if (!memcmp(param_name, v_config[j].ini_label, pos_pn))
+          {
+            Serial.print(param_name);
+            Serial.print(" ");
+            Serial.print(pos_pn);
+            Serial.print(" characters long, AKA ");
+            Serial.print(v_config[j].ini_label);
+            Serial.print(" ");
+            Serial.print(sizeof v_config[j].ini_label);
+            Serial.print(" characters long, changed from ");
+            Serial.print(v_config[j].pval);
+            v_config[j].pval = atoi(param_value);
+            Serial.print(" to ");
+            Serial.println(v_config[j].pval);
+            bChanged = true;
+            break;
+          }
+        }
+
+        if (bChanged == false)
+        {
+          Serial.print(param_name);
+          Serial.println(" not found");
+        }
+      } // end of for i loop
+    }
+
+    // close the file:
+    dataFile.close();
+  }
+  else
+    // if the file didn't open, print an error:
+    Serial.println("Error opening file");
+
+
+  // If the vstcm.ini file doesn't exist, then write the default one
+
+  opt_select = 0;     // Start at beginning of parameter list
 }
