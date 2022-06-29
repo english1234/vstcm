@@ -93,10 +93,15 @@ This may seem obvious, but it's worth downloading Kicad in order to view the sch
 
 Follow the instructions on this page to download and install the Arduino environment and Teensyduino extension: https://www.pjrc.com/teensy/td_download.html
 Use the Arduino software to load the .ino file in the Teensy code directory.
+
 Connect the Teensy via USB to your computer.
+
 Choose the Teensy 4.1 in the Teensyduino options, and overclock to 816Mhz, as well as the "Fastest" option.
-Press the compile button.
+
+Press the compile button. You may need to add the Bounce2 library if you don't already have it.
+
 Press the upload button (or the button on the Teensy if it doesn't upload automatically).
+
 (You can also use PlatformIO if you prefer).
 
 ## Testing the vstcm
