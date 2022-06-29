@@ -16,7 +16,7 @@ Compared to the original version, the new vstcm adds:
 - a 6502 emulator which allows it to play games on its own without a Raspberry Pi or MAME
 - an upgrade to the Teensy 4.1 for more power (eg >800Mhz as opposed to 120Mhz for the Teensy 3.2)
 - Asteroids style test patterns in Red, Green & Blue to aid CRT convergence
-- a configuration menu
+- a configuration menu with settings stored on the built in SD card
 - programmable onboard control buttons
 - programmable IR remote control buttons
 - extra pots to control X & Y position (to complement the existing X & Y size pots)
