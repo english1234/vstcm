@@ -400,7 +400,6 @@ uint8_t MEMRD(uint32_t addr, int32_t PC, uint32_t cyc)
       break;
     case BZ_INPUTS:
       result = g_soc_curr_switch = read_gpio();
-      result = 0xFF;
       break;
     case MBLO:
       result = mb_result & 0xff;
@@ -650,9 +649,8 @@ void disable_sound(uint32_t mask)
 void start_sample(uint32_t mask)
 {
   // {1 radar,  2 bump,  4 blocked,  8 extra life,  0x10 enemy appears,  0x20 saucer hit,  0x40 short saucer sound,  0x80 high score melody}
-  if (mask) {
+  if (mask)
     g_aud_smask |= (mask << 8);
-  }
 }
 
 int16_t get_sample()
@@ -792,7 +790,20 @@ uint16_t read_gpio()
     */
     com = IrReceiver.decodedIRData.command;
     Serial.println(com, HEX);
-    return com;
+
+    if (com == 0x45)  // 1
+      return 8;       // left forward
+    if (com == 0x07)  // 7
+      return 4;       // left reverse
+    if (com == 0x47)  // 3
+      return 2;       // right forward
+    if (com == 0x09)  // 9
+      return 1;       // right forward
+    if (com == 0x1C)  // OK
+      return 32;      // start game
+    if (com == 0x0D)  // #
+      return 16;      // left reverse
+
   }
   else
     //   return GPIOB->IDR; <- any pressed buttons
@@ -1526,11 +1537,11 @@ void plot(int32_t x, int32_t y, int32_t z)
   // problem with scaling is making weird vectors when missile explodes
   // try serial printing values to scale correctly
 
-  Serial.print("x ");
-  Serial.print(x*8-4097);
-  Serial.print(" y ");
-  Serial.println(y*8-4097);
- 
+  /* Serial.print("x ");
+    Serial.print(x*8-4097);
+    Serial.print(" y ");
+    Serial.println(y*8-4097);
+  */
   dac_out(x * 8 - 4097 , y * 8 - 4097, z);
 }
 
