@@ -23,8 +23,9 @@ const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
 #define SDI                 11        // MOSI on SPI0
 #define SCK                 13        // SCK on SPI0
 #define BUFFERED                      // If defined, uses buffer on DACs
-#define REST_X            2048        // Wait in the middle of the screen
-#define REST_Y            2048
+
+const int REST_X          = 2048;     // Wait in the middle of the screen
+const int REST_Y          = 2048;
 
 // Protocol flags from AdvanceMAME
 #define FLAG_COMPLETE         0x0
@@ -84,28 +85,28 @@ DMAMEM char dmabuf[2] __attribute__((aligned(32)));
 static uint16_t x_pos;                 // Current position of beam
 static uint16_t y_pos;
 
-// Settings
-const int  OFF_SHIFT    =     5;       // Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
-const int  OFF_DWELL0   =     0;       // Time to sit beam on before starting a transit
-const int  OFF_DWELL1   =     0;       // Time to sit before starting a transit
-const int  OFF_DWELL2   =     0;       // Time to sit after finishing a transit
-const int  NORMAL_SHIFT =     3;       // The higher the number, the less flicker and faster draw but more wavy lines
-const bool OFF_JUMP     = false;
-const bool FLIP_X       = false;       // Sometimes the X and Y need to be flipped and/or swapped
-const bool FLIP_Y       = false;
-const bool SWAP_XY      = false;
-const uint32_t CLOCKSPEED   = 115000000;
-const int  NORMAL1      =    100;      // Brightness of text in parameter list
-const int  BRIGHTER     =    128;
+// Settings with default values
+const int  OFF_SHIFT      =     5;     // Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
+const int  OFF_DWELL0     =     0;     // Time to sit beam on before starting a transit
+const int  OFF_DWELL1     =     0;     // Time to sit before starting a transit
+const int  OFF_DWELL2     =     0;     // Time to sit after finishing a transit
+const int  NORMAL_SHIFT   =     3;     // The higher the number, the less flicker and faster draw but more wavy lines
+const bool OFF_JUMP       = false;
+const bool FLIP_X         = false;     // Sometimes the X and Y need to be flipped and/or swapped
+const bool FLIP_Y         = false;
+const bool SWAP_XY        = false;
+const uint32_t CLOCKSPEED = 115000000;
+const int  NORMAL1        =   100;     // Brightness of text in parameter list
+const int  BRIGHTER       =   128;
 // how long in milliseconds to wait for data before displaying a test pattern
 // this can be increased if the test pattern appears during gameplay
 const int  SERIAL_WAIT_TIME = 100;
 const int  AUDIO_PIN        = 10;      // Connect audio output to GND and pin 10
 
-// Settings stored in Teensy EPROM
+// Settings stored on Teensy SD card
 typedef struct {
   char ini_label[20];     // Text string of parameter label in vstcm.ini
-  char param[40];         // Parameter label
+  char param[40];         // Parameter label displayed on screen
   uint32_t pval;          // Parameter value
   uint32_t min;           // Min value of parameter
   uint32_t max;           // Max value of parameter
@@ -113,22 +114,22 @@ typedef struct {
 
 #define NB_PARAMS 16
 static params_t v_config[NB_PARAMS] = {
-{"",                 "TEST PATTERN",                     0,                0,         4},
-{"OFF_SHIFT",        "BEAM TRANSIT SPEED",               OFF_SHIFT,        0,        50},
-{"OFF_DWELL0",       "WAIT WITH BEAM ON BEFORE TRANSIT", OFF_DWELL0,       0,        50},
-{"OFF_DWELL1",       "WAIT BEFORE BEAM TRANSIT",         OFF_DWELL1,       0,        50},
-{"OFF_DWELL2",       "WAIT AFTER BEAM TRANSIT",          OFF_DWELL2,       0,        50},
-{"NORMAL_SHIFT",     "NORMAL SHIFT",                     NORMAL_SHIFT,     0,       255},
-{"FLIP_X",           "FLIP X AXIS",                      FLIP_X,           0,         1},
-{"FLIP_Y",           "FLIP Y AXIS",                      FLIP_Y,           0,         1},
-{"SWAP_XY",          "SWAP XY",                          SWAP_XY,          0,         1},
-{"OFF_JUMP",         "OFF JUMP",                         OFF_JUMP,         0,         1},
-{"CLOCKSPEED",       "CLOCKSPEED",                       CLOCKSPEED, 2000000, 120000000},
-{"IR_RECEIVE_PIN",   "IR_RECEIVE_PIN",                   IR_RECEIVE_PIN,   0,        54},
-{"AUDIO_PIN",        "AUDIO_PIN",                        AUDIO_PIN,        0,        54},
-{"NORMAL1",          "NORMAL TEXT",                      NORMAL1,          0,       255},
-{"BRIGHTER",         "BRIGHT TEXT",                      BRIGHTER,         0,       255},
-{"SERIAL_WAIT_TIME", "TEST PATTERN DELAY",               SERIAL_WAIT_TIME, 0,       255}
+  {"TEST_PATTERN",     "TEST PATTERN",                     0,                0,         4},
+  {"OFF_SHIFT",        "BEAM TRANSIT SPEED",               OFF_SHIFT,        0,        50},
+  {"OFF_DWELL0",       "WAIT WITH BEAM ON BEFORE TRANSIT", OFF_DWELL0,       0,        50},
+  {"OFF_DWELL1",       "WAIT BEFORE BEAM TRANSIT",         OFF_DWELL1,       0,        50},
+  {"OFF_DWELL2",       "WAIT AFTER BEAM TRANSIT",          OFF_DWELL2,       0,        50},
+  {"NORMAL_SHIFT",     "NORMAL SHIFT",                     NORMAL_SHIFT,     0,       255},
+  {"FLIP_X",           "FLIP X AXIS",                      FLIP_X,           0,         1},
+  {"FLIP_Y",           "FLIP Y AXIS",                      FLIP_Y,           0,         1},
+  {"SWAP_XY",          "SWAP XY",                          SWAP_XY,          0,         1},
+  {"OFF_JUMP",         "OFF JUMP",                         OFF_JUMP,         0,         1},
+  {"CLOCKSPEED",       "CLOCKSPEED",                       CLOCKSPEED, 2000000, 120000000},
+  {"IR_RECEIVE_PIN",   "IR_RECEIVE_PIN",                   IR_RECEIVE_PIN,   0,        54},
+  {"AUDIO_PIN",        "AUDIO_PIN",                        AUDIO_PIN,        0,        54},
+  {"NORMAL1",          "NORMAL TEXT",                      NORMAL1,          0,       255},
+  {"BRIGHTER",         "BRIGHT TEXT",                      BRIGHTER,         0,       255},
+  {"SERIAL_WAIT_TIME", "TEST PATTERN DELAY",               SERIAL_WAIT_TIME, 0,       255}
 };
 
 static int opt_select;    // Currently selected setting
@@ -140,14 +141,14 @@ Bounce button2 = Bounce();
 Bounce button3 = Bounce();
 Bounce button4 = Bounce();
 
-#define DEBOUNCE_INTERVAL 25    // Measured in ms
+const uint8_t DEBOUNCE_INTERVAL = 25;    // Measured in ms
 
 void setup()
 {
   Serial.begin(115200);
   while ( !Serial && millis() < 4000 );
 
-  read_vstcm_config();      // Read saved settings
+  read_vstcm_config();      // Read saved settings from Teensy SD card
 
   IR_remote_setup();
 
@@ -605,6 +606,8 @@ void show_vstcm_config_screen()
       y -= line_size;
     }
 
+    draw_string("PRESS CENTRE BUTTON / OK TO SAVE SETTINGS", 550, 400, 6, v_config[13].pval);
+    
     draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
     draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
   }
@@ -614,8 +617,6 @@ void manage_buttons()
 {
   // Use the buttons on the PCB to adjust and save settings
 
-  params_t *vstcm_par;
-  vstcm_par = &v_config[opt_select];
   int com = 0;    // Command received from IR remote
 
 #ifdef IR_REMOTE
@@ -638,8 +639,6 @@ void manage_buttons()
   }
 #endif
 
-  bool write_vstcm_config = false;
-
   // Update all the button objects
   button0.update();
   button1.update();
@@ -647,46 +646,32 @@ void manage_buttons()
   button3.update();
   button4.update();
 
-  if (button3.fell() || com == 0x08)           // SW3 Left button - decrease value of current parameter
-  {
-    if (v_config[opt_select].pval > v_config[opt_select].min)
-    {
-      vstcm_par->pval --;
-      write_vstcm_config = true;
-    }
-  }
-
-  if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
-  {
-    if (opt_select ++ > NB_PARAMS - 1)
-      opt_select = 0;
-  }
-
-  if (button1.fell() || com == 0x5A)          // SW4 Right button - increase value of current parameter
-  {
-    if (v_config[opt_select].pval < v_config[opt_select].max)
-    {
-      vstcm_par->pval ++;
-      write_vstcm_config = true;
-    }
-  }
-
-  if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
-  {
-    //    Serial.println("2");
-  }
-
   if (button4.fell() || com == 0x18)          // SW5 Up button - go up list of options and loop around
   {
     if (opt_select -- < 0)
       opt_select = 12;
   }
-
-  if (write_vstcm_config == true)       // If something has changed, then update the settings in EPROM
+  
+  if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
   {
-    // write settings (command below needs rewriting)
-    //   eeprom_write_block((const void*)&v_config, (void*)0, sizeof(settingsType));   // disabled for now while testing
+    if (opt_select ++ > NB_PARAMS - 1)
+      opt_select = 0;
   }
+  
+  if (button3.fell() || com == 0x08)          // SW3 Left button - decrease value of current parameter
+  {
+    if (v_config[opt_select].pval > v_config[opt_select].min)
+      v_config[opt_select].pval --;
+  }
+  
+  if (button1.fell() || com == 0x5A)          // SW4 Right button - increase value of current parameter
+  {
+    if (v_config[opt_select].pval < v_config[opt_select].max)
+       v_config[opt_select].pval ++;
+  }
+
+  if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
+     write_vstcm_config();                    // Update the settings on the SD card
 }
 
 // An IR remote can be used instead of the onboard buttons, as the PCB
@@ -699,7 +684,7 @@ void IR_remote_setup()
 
   // Start the receiver and if not 3. parameter specified,
   // take LED_BUILTIN pin from the internal boards definition as default feedback LED
-  IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
+  IrReceiver.begin(v_config[11].pval, ENABLE_LED_FEEDBACK);
 
   // attachInterrupt(digitalPinToInterrupt(IR_RECEIVE_PIN), IR_remote_loop, CHANGE);
 #endif
@@ -844,36 +829,11 @@ void draw_test_pattern(int offset)
 void read_vstcm_config()
 {
   int i, j;
- // params_t *vstcm_par;
-//  vstcm_par = &v_config[0];
   const int chipSelect = BUILTIN_SDCARD;
   char buf;
   char param_name[20];
   char param_value[20];
   uint8_t pos_pn, pos_pv;
-
-  //  Initialise settings with default values
-
-  //               ini file            display label                       value             min      max
-//  vstcm_par[0]  = {"",                   "TEST PATTERN",                     0,                0,         4};
-/*  v_config[0]  = {{"",                   "TEST PATTERN",                     0,                0,         4}};
-  vstcm_par[1]  = {"OFF_SHIFT\n",        "BEAM TRANSIT SPEED",               OFF_SHIFT,        0,        50};
-  vstcm_par[2]  = {"OFF_DWELL0\n",       "WAIT WITH BEAM ON BEFORE TRANSIT", OFF_DWELL0,       0,        50};
-  vstcm_par[3]  = {"OFF_DWELL1\n",       "WAIT BEFORE BEAM TRANSIT",         OFF_DWELL1,       0,        50};
-  vstcm_par[4]  = {"OFF_DWELL2\n",       "WAIT AFTER BEAM TRANSIT",          OFF_DWELL2,       0,        50};
-  vstcm_par[5]  = {"NORMAL_SHIFT\n",     "NORMAL SHIFT",                     NORMAL_SHIFT,     0,       255};
-  vstcm_par[6]  = {"FLIP_X\n",           "FLIP X AXIS",                      FLIP_X,           0,         1};
-  vstcm_par[7]  = {"FLIP_Y\n",           "FLIP Y AXIS",                      FLIP_Y,           0,         1};
-  vstcm_par[8]  = {"SWAP_XY\n",          "SWAP XY",                          SWAP_XY,          0,         1};
-  vstcm_par[9]  = {"OFF_JUMP\n",         "OFF JUMP",                         OFF_JUMP,         0,         1};
-  vstcm_par[10] = {"CLOCKSPEED\n",       "CLOCKSPEED",                       CLOCKSPEED, 2000000, 120000000};
-  vstcm_par[11] = {"IR_RECEIVE_PIN\n",   "IR_RECEIVE_PIN",                   IR_RECEIVE_PIN,   0,        54};
-  vstcm_par[12] = {"AUDIO_PIN\n",        "AUDIO_PIN",                        AUDIO_PIN,        0,        54};
-  vstcm_par[13] = {"NORMAL\n",           "NORMAL TEXT",                      NORMAL,           0,       255};
-  vstcm_par[14] = {"BRIGHTER\n",         "BRIGHT TEXT",                      BRIGHTER,         0,       255};
-  vstcm_par[15] = {"SERIAL_WAIT_TIME\n", "TEST PATTERN DELAY",               SERIAL_WAIT_TIME, 0,       255};
-*/
-  // Read the vstcm.ini file on the SD card if it exists
 
   // see if the SD card is present and can be initialised:
   if (!SD.begin(chipSelect))
@@ -885,7 +845,7 @@ void read_vstcm_config()
   else
     Serial.println("Card initialised.");
 
-  // open the settings file on the sd card
+  // open the vstcm.ini file on the sd card
   File dataFile = SD.open("vstcm.ini", FILE_READ);
 
   if (dataFile)
@@ -898,12 +858,19 @@ void read_vstcm_config()
 
         memset(param_name, 0, sizeof param_name);
 
+        uint32_t read_start_time = millis();
+        
         while (1)   // read the parameter name until an equals sign is encountered
         {
 
           // provide code for a timeout in case there's a problem reading the file
 
-
+          if (millis() - read_start_time > 2000u)
+            {
+            Serial.println("SD card read timeout");
+            break;
+            }
+            
           buf = dataFile.read();
 
           if (buf == 0x3D)      // stop reading if it's an equals sign
@@ -923,8 +890,12 @@ void read_vstcm_config()
         {
 
           // provide code for a timeout in case there's a problem reading the file
-
-
+          if (millis() - read_start_time > 2000u)
+            {
+            Serial.println("SD card read timeout");
+            break;
+            }
+            
           buf = dataFile.read();
 
           if (buf == 0x3B)      // stop reading if it's a semicolon
@@ -967,17 +938,64 @@ void read_vstcm_config()
           Serial.println(" not found");
         }
       } // end of for i loop
+      
+      break;
     }
 
     // close the file:
     dataFile.close();
   }
   else
+  {
     // if the file didn't open, print an error:
-    Serial.println("Error opening file");
+    Serial.println("Error opening file for reading");
 
-
-  // If the vstcm.ini file doesn't exist, then write the default one
+    // If the vstcm.ini file doesn't exist, then write the default one
+    write_vstcm_config();
+  }
 
   opt_select = 0;     // Start at beginning of parameter list
+}
+
+void write_vstcm_config()
+{
+  int i;
+  char buf[20];
+
+  // Write the settings file to the SD card with currently selected values
+  // Format of each line is <PARAMETER NAME>=<PARAMETER VALUE>; followed by a newline
+  
+  File dataFile = SD.open("vstcm.ini", O_RDWR);
+
+  if (dataFile)
+  {
+    for (i = 0; i < NB_PARAMS; i++)
+    {
+      Serial.print("Writing ");
+      Serial.print(v_config[i].ini_label);
+      
+      dataFile.write(v_config[i].ini_label);
+      dataFile.write("=");
+      memset(buf, 0, sizeof buf);
+      ltoa(v_config[i].pval, buf, 10);
+      
+      Serial.print(" with value ");
+      Serial.print(v_config[i].pval);
+      Serial.print(" AKA ");
+      Serial.println(buf);
+      
+      dataFile.write(buf);
+      dataFile.write(";");
+      dataFile.write(0x0d);
+      dataFile.write(0x0a);
+    }
+
+    // close the file:
+    dataFile.close();
+  }
+  else
+  {
+    // if the file didn't open, print an error:
+    Serial.println("Error opening file for writing");
+  }
 }
