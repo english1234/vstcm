@@ -126,6 +126,9 @@ Plug it in.
 
 Switch on! 
 
+If you have a IR remote then you can control the game in a rather basic manner for the moment... (press OK to start)
+
+
 ## Testing games with AdvanceMAME
 
 A Raspberry Pi 4 or 400 is recommended (I have also tested with a Pi 3 Model B+ 2017 and an Orange Pi 3 LTS which seem to work ok too). If you are running the vstcm from the Raspberry/Orange Pi then a 3A supply would be preferable.
