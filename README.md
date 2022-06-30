@@ -110,11 +110,13 @@ Once the board is built and the Teensy programmed and fitted, it can be connecte
 
 Before connecting to the deflection board, it would probably be a good idea to make sure the vstcm is generating appropriate voltages at its outputs (preferably with an oscilloscope, or failing that with a decent multimeter). 
 
+If you want to save changes to settings shown on the onscreen menu, then put a SD card in the Teensy, and put the vstcm.ini file in the root directory.
+
 ![typicalsetup](http://robinchampion.com/vstcm/typicalsetup.jpg)
 
 ## Testing Battlezone with the 6502 emulator
 
-Put the following ROM files on a SD card in a directory called roms/Battlezone: 036414a.01, 036413.01, 036412.01, 036411.01, 036410.01, 036409.01, 036422.01, 036421.01.
+Put the following ROM files on a SD card in a directory called roms/Battlezone: 036414a.01, 036413.01, 036412.01, 036411.01, 036410.01, 036409.01, 036422.01, 036421.01 (it's up to you to find them from somewhere...).
 
 Put the SD card in the slot on the Teensy.
 
