@@ -29,7 +29,7 @@ The board was built with simplicity in mind using components that are easy to fi
 ## Programme code
 
 Currently, the board can work in either of two ways:
-- on its own, running a 6502 emulator, and with the original game ROM files stored on the SD card of the Teensy. So far, Battlezone and Asteroids work with this, but it shouldn't be too much trouble to get others working. The code is a rough port of vecsim (https://github.com/morbos/bzone), and currently does not handle sound or game controls on the Teensy (please feel free to contribute the necessary mods to the code...). See instructions below for how to get this to work.
+- on its own, running a 6502 emulator, and with the original game ROM files stored on the SD card of the Teensy. So far, Battlezone and Asteroids work with this, but it shouldn't be too much trouble to get others working. The code is a rough port of vecsim (https://github.com/morbos/bzone), and currently does not handle sound on the Teensy (please feel free to contribute the necessary mods to the code...). See instructions below for how to get this to work.
 - connected to a Raspberry Pi running MAME. The programme code for this option is a development of that which was provided with the original version of the v.st, with modifications made by "Swapfile" (Github user) to interface with AdvanceMAME, and then further modifications made by myself in order to add the new functionality specific to the vstcm. Ideally it should be rewritten or optimised by someone more familiar with the inner workings of the Teensy 4.1, and it is hoped that the publication on github will encourage contributions to develop this as a relatively cheap and easy solution for the vector arcade / vector graphics community.
 
 ## History of development
