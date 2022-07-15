@@ -1,19 +1,29 @@
 /*
-   VSTCM
+   VSTCM v2
 
    Vector Signal Transceiver Colour Mod using MCP4922 DACs on the Teensy 4.1
 
    Based on: https://trmm.net/V.st
    incorporating mods made by "Swapfile" (Github) for Advanced Mame compatibility
+   and mods by fcawth to increase speed
 
    robin@robinchampion.com 2022
 
+   NOTE: This code is for v2 of the standard PCB only. Wiring mods are required to run v3 code.
+   
 */
 
 #include <SPI.h>
 #include <SD.h>
 #include <Bounce2.h>
 #include "asteroids_font.h"
+
+// SPI register bits
+#define LPSPI_SR_WCF    ((uint32_t)(1<<8))  // Received Word complete flag
+#define LPSPI_SR_FCF    ((uint32_t)(1<<9))  // Frame complete flag
+#define LPSPI_SR_TCF    ((uint32_t)(1<<10)) // Transfer complete flag
+#define LPSPI_SR_MBF    ((uint32_t)(1<<24)) // Module busy flag
+#define LPSPI_TCR_RXMSK ((uint32_t)(1<<19)) // Receive Data Mask (when 1 no data received to FIFO)
 
 // Teensy SS pins connected to DACs
 const int SS0_IC5_RED     =  8;       // RED output
@@ -69,33 +79,32 @@ static int nb_points[NUMBER_OF_TEST_PATTERNS];
 
 static long fps;                       // Approximate FPS used to benchmark code performance improvements
 
-#define IR_REMOTE                      // define if IR remote is fitted
+#define IR_RECEIVE_PIN      32         // Put this outside the ifdef so that it doesn't break the menu
+#define IR_REMOTE                      // Define if IR remote is fitted  TODO:deactivate if the menu is not shown? Has about a 10% reduction of frame rate when active
 #ifdef IR_REMOTE
 #define SUPPRESS_ERROR_MESSAGE_FOR_BEGIN
 #include <IRremote.hpp>
-#define IR_RECEIVE_PIN      32
 #endif
 
-EventResponder callbackHandler;        // DMA SPI callback
+uint32_t mytcr; // Keeps track of what the TCR register should be put back to after 16 bit mode - bit of a hack but reads and writes are a bit funny for this register (FIFOs?)
+int spiflag;                           // Keeps track of an active SPI transaction in progress
 volatile int activepin;                // Active CS pin of DAC receiving data
 volatile bool show_vstcm_config;       // Shows settings if true
-
-DMAMEM char dmabuf[2] __attribute__((aligned(32)));
 
 static uint16_t x_pos;                 // Current position of beam
 static uint16_t y_pos;
 
 // Settings with default values
-const int  OFF_SHIFT      =     5;     // Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
+const int  OFF_SHIFT      =    20;     // Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
 const int  OFF_DWELL0     =     0;     // Time to sit beam on before starting a transit
 const int  OFF_DWELL1     =     0;     // Time to sit before starting a transit
 const int  OFF_DWELL2     =     0;     // Time to sit after finishing a transit
-const int  NORMAL_SHIFT   =     3;     // The higher the number, the less flicker and faster draw but more wavy lines
+const int  NORMAL_SHIFT   =     5;     // The higher the number, the less flicker and faster draw but more wavy lines
 const bool OFF_JUMP       = false;
 const bool FLIP_X         = false;     // Sometimes the X and Y need to be flipped and/or swapped
 const bool FLIP_Y         = false;
 const bool SWAP_XY        = false;
-const uint32_t CLOCKSPEED = 115000000;
+const uint32_t CLOCKSPEED = 60000000;  // This is 3x the max clock in the datasheet but seems to work!!
 const int  NORMAL1        =   100;     // Brightness of text in parameter list
 const int  BRIGHTER       =   128;
 // how long in milliseconds to wait for data before displaying a test pattern
@@ -125,8 +134,8 @@ static params_t v_config[NB_PARAMS] = {
   {"SWAP_XY",          "SWAP XY",                          SWAP_XY,          0,         1},
   {"OFF_JUMP",         "OFF JUMP",                         OFF_JUMP,         0,         1},
   {"CLOCKSPEED",       "CLOCKSPEED",                       CLOCKSPEED, 2000000, 120000000},
-  {"IR_RECEIVE_PIN",   "IR_RECEIVE_PIN",                   IR_RECEIVE_PIN,   0,        54},
-  {"AUDIO_PIN",        "AUDIO_PIN",                        AUDIO_PIN,        0,        54},
+  {"IR_RECEIVE_PIN",   "IR RECEIVE PIN",                   IR_RECEIVE_PIN,   0,        54},
+  {"AUDIO_PIN",        "AUDIO PIN",                        AUDIO_PIN,        0,        54},
   {"NORMAL1",          "NORMAL TEXT",                      NORMAL1,          0,       255},
   {"BRIGHTER",         "BRIGHT TEXT",                      BRIGHTER,         0,       255},
   {"SERIAL_WAIT_TIME", "TEST PATTERN DELAY",               SERIAL_WAIT_TIME, 0,       255}
@@ -188,18 +197,17 @@ void setup()
 
   delay(1);                   // https://www.pjrc.com/better-spi-bus-design-in-3-steps/
 
+  SPI.setCS(10);
   SPI.begin();
 
-  // Shutdown the unused DAC channel A (0) on IC5
-  // (not sure if this works as is or if it's even particularly useful)
-  digitalWriteFast(SS0_IC5_RED, LOW);
-  delayNanoseconds(100);
-  SPI.transfer16(0b0110000000000000);
-  digitalWriteFast(SS0_IC5_RED, HIGH);
+  // Some posts seem to indicate that doing a begin and end like this will help conflicts with other things on the Teensy??
+  SPI.beginTransaction(SPISettings(v_config[10].pval, MSBFIRST, SPI_MODE0));  // Doing this begin and end here should make it so we don't have to do it each time
+  SPI.endTransaction();
 
-  // Setup the SPI DMA callback
-  callbackHandler.attachImmediate(&callback);
-  callbackHandler.clearEvent();
+  mytcr = IMXRT_LPSPI4_S.TCR ;
+  // This will break all stock SPI transactions from this point on - disable receiver and go to 16 bit mode
+  IMXRT_LPSPI4_S.TCR = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;
+  mytcr = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;
 
   show_vstcm_config = true;   // Start off showing the settings screen until serial data received
 
@@ -241,12 +249,16 @@ void loop()
   brightness(0, 0, 0);
   goto_x(REST_X);
   goto_y(REST_Y);
+  SPI_flush();
 
   fps = 1000000 / waiting;
 }
 
 void brightness(uint8_t red, uint8_t green, uint8_t blue)
 {
+  if (LastColInt.red == red && LastColInt.green == green && LastColInt.blue == blue)
+    return;
+
   dwell(v_config[2].pval);
 
   if (LastColInt.red != red)
@@ -296,13 +308,12 @@ void goto_y(uint16_t y)
 
 void dwell(const int count)
 {
+  SPI_flush();              // Get the dacs set to their latest values before we wait
+
   // can work better or faster without this on some monitors
   for (int i = 0 ; i < count ; i++)
   {
-    if (i & 1)
-      goto_x(x_pos);
-    else
-      goto_y(y_pos);
+    delayNanoseconds(200);  // NOTE this used to write the X and Y position but now the dacs won't get updated with repeated values
   }
 }
 
@@ -374,22 +385,23 @@ void draw_moveto(int x1, int y1)
   }
 }
 
+// This is a modification of the original drawing routine to use the "bright shift" differently
+// Before everything was done at a lower and lower resolution so there were more steps in the lines
+// Now we run at full resolution (one step of the 12-bit DAC at a time) but we only update to the DAC every "bright shift" counts
+// Since we are now updating the DACs for x and y at the same time, the draws are much more smooth because
+// they are points along a line instead of separate x and y steps.  Also there is much more resolution
+// for tuning the speeds this way since you aren't changing by powers of two like before.  The Teensy goes so fast that this seems
+// to work well but it could probably still be fixed up to use a different line drawing algorithm
 void _draw_lineto(int x1, int y1, const int bright_shift)
 {
   int dx, dy, sx, sy;
-
+  int flag;
   const int x1_orig = x1;
   const int y1_orig = y1;
+  int count;
 
-  int x_off = x1 & ((1 << bright_shift) - 1);
-  int y_off = y1 & ((1 << bright_shift) - 1);
-  x1 >>= bright_shift;
-  y1 >>= bright_shift;
-  int x0 = x_pos >> bright_shift;
-  int y0 = y_pos >> bright_shift;
-
-  goto_x(x_pos);
-  goto_y(y_pos);
+  int x0 = x_pos;
+  int y0 = y_pos;
 
   if (x0 <= x1)
   {
@@ -414,24 +426,32 @@ void _draw_lineto(int x1, int y1, const int bright_shift)
   }
 
   int err = dx - dy;
-
+  count = 0;
   while (1)
   {
     if (x0 == x1 && y0 == y1)
       break;
-
+    flag = 0;
     int e2 = 2 * err;
     if (e2 > -dy)
     {
       err = err - dy;
       x0 += sx;
-      goto_x(x_off + (x0 << bright_shift));
+      flag = 1;
     }
     if (e2 < dx)
     {
       err = err + dx;
       y0 += sy;
-      goto_y(y_off + (y0 << bright_shift));
+      flag = 1;
+    }
+    if (flag) {
+      count++;
+      if (count >= bright_shift) {
+        goto_x(x0);
+        goto_y(y0);
+        count = 0;
+      }
     }
   }
 
@@ -440,35 +460,58 @@ void _draw_lineto(int x1, int y1, const int bright_shift)
   goto_y(y1_orig);
 }
 
+// Finish the last SPI transactions
+void SPI_flush()
+{
+  // Wait for the last transaction to finish and then set CS high from the last transaction
+  // By doing this the code can do other things instead of busy waiting for the SPI transaction
+  // like it does with the stock functions.
+  if (spiflag)
+    while (!(IMXRT_LPSPI4_S.SR & LPSPI_SR_FCF));  // Loop until the last frame is complete
+
+  digitalWriteFast(activepin, HIGH);              // Set the CS from the last transaction high
+
+  IMXRT_LPSPI4_S.SR = LPSPI_SR_FCF;                 // Clear the flag
+  spiflag = 0;
+  activepin = 0;
+}
+
 void MCP4922_write(int cs_pin, byte dac, uint16_t value)
 {
-  dac = dac << 7; // dac value is either 0 or 128
+  // Wait for the last transaction to finish and then set CS high from the last transaction
+  // By doing this the code can do other things instead of busy waiting for the SPI transaction
+  // like it does with the stock functions.
+  if (spiflag)
+    while (!(IMXRT_LPSPI4_S.SR & LPSPI_SR_FCF));  // Loop until the last frame is complete
 
-  value &= 0x0FFF; // mask out just the 12 bits of data
+  digitalWriteFast(activepin, HIGH);              // Set the CS from the last transaction high
+
+  // Everything between here and setting the CS pin low determines how long the CS signal is high
+  // Right now (with clearing the flag, masking the value, select channel, store new CS) it is high about 50ns
+  IMXRT_LPSPI4_S.SR = LPSPI_SR_FCF;               // Clear the flag
+
+  value &= 0x0FFF;                                // mask out just the 12 bits of data
 
   // add the output channel A or B on the selected DAC, and buffer flag
 #ifdef BUFFERED
   // select the output channel on the selected DAC, buffered, no gain
-  value |= 0x7000 | (dac == 128 ? 0x8000 : 0x0000);
+  value |= 0x7000 | (dac  ? 0x8000 : 0x0000);
 #else
   // select the output channel on the selected DAC, unbuffered, no gain
-  value |= 0x3000 | (dac == 128 ? 0x8000 : 0x0000);
+  value |= 0x3000 | (dac  ? 0x8000 : 0x0000);
 #endif
 
-  while (activepin != 0)  // wait until previous transfer is complete
-    ;
+  activepin = cs_pin;                             // store to deactivate at end of transfer
 
-  activepin = cs_pin;     // store to deactivate at end of transfer
   digitalWriteFast(cs_pin, LOW);
 
-  dmabuf[0] = dac | 0x30 | ((value >> 8) & 0x0f);
-  dmabuf[1] = value & 0xff;
-
-  // if we don't use a clean begin & end transaction then other code stops working properly, such as button presses
-  SPI.beginTransaction(SPISettings(v_config[10].pval, MSBFIRST, SPI_MODE0));
-
-  // This uses non blocking SPI with DMA
-  SPI.transfer(dmabuf, nullptr, 2, callbackHandler);
+  // Set up the transaction directly with the SPI registers because the normal transfer16
+  // function will busy wait for the SPI transfer to complete.  We will wait for completion
+  // and de-assert CS the next time around to speed things up.
+  // By doing this the code can do other things instead of busy waiting for the SPI transaction
+  // like it does with the stock functions.
+  spiflag = 1;
+  IMXRT_LPSPI4_S.TDR = value; // Send data to the SPI fifo and start transaction but don't wait for it to be done
 }
 
 // Read data from Raspberry Pi or other external computer
@@ -563,14 +606,6 @@ int read_data()
   return 0;
 }
 
-void callback(EventResponderRef eventResponder)
-{
-  // End SPI DMA write to DAC
-  SPI.endTransaction();
-  digitalWriteFast(activepin, HIGH);
-  activepin = 0;
-}
-
 void show_vstcm_config_screen()
 {
   int i;
@@ -607,7 +642,7 @@ void show_vstcm_config_screen()
     }
 
     draw_string("PRESS CENTRE BUTTON / OK TO SAVE SETTINGS", 550, 400, 6, v_config[13].pval);
-    
+
     draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
     draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
   }
@@ -651,27 +686,27 @@ void manage_buttons()
     if (opt_select -- < 0)
       opt_select = 12;
   }
-  
+
   if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
   {
     if (opt_select ++ > NB_PARAMS - 1)
       opt_select = 0;
   }
-  
+
   if (button3.fell() || com == 0x08)          // SW3 Left button - decrease value of current parameter
   {
     if (v_config[opt_select].pval > v_config[opt_select].min)
       v_config[opt_select].pval --;
   }
-  
+
   if (button1.fell() || com == 0x5A)          // SW4 Right button - increase value of current parameter
   {
     if (v_config[opt_select].pval < v_config[opt_select].max)
-       v_config[opt_select].pval ++;
+      v_config[opt_select].pval ++;
   }
 
   if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
-     write_vstcm_config();                    // Update the settings on the SD card
+    write_vstcm_config();                    // Update the settings on the SD card
 }
 
 // An IR remote can be used instead of the onboard buttons, as the PCB
@@ -859,18 +894,18 @@ void read_vstcm_config()
         memset(param_name, 0, sizeof param_name);
 
         uint32_t read_start_time = millis();
-        
+
         while (1)   // read the parameter name until an equals sign is encountered
         {
 
           // provide code for a timeout in case there's a problem reading the file
 
           if (millis() - read_start_time > 2000u)
-            {
+          {
             Serial.println("SD card read timeout");
             break;
-            }
-            
+          }
+
           buf = dataFile.read();
 
           if (buf == 0x3D)      // stop reading if it's an equals sign
@@ -891,11 +926,11 @@ void read_vstcm_config()
 
           // provide code for a timeout in case there's a problem reading the file
           if (millis() - read_start_time > 2000u)
-            {
+          {
             Serial.println("SD card read timeout");
             break;
-            }
-            
+          }
+
           buf = dataFile.read();
 
           if (buf == 0x3B)      // stop reading if it's a semicolon
@@ -938,7 +973,7 @@ void read_vstcm_config()
           Serial.println(" not found");
         }
       } // end of for i loop
-      
+
       break;
     }
 
@@ -964,7 +999,7 @@ void write_vstcm_config()
 
   // Write the settings file to the SD card with currently selected values
   // Format of each line is <PARAMETER NAME>=<PARAMETER VALUE>; followed by a newline
-  
+
   File dataFile = SD.open("vstcm.ini", O_RDWR);
 
   if (dataFile)
@@ -973,17 +1008,17 @@ void write_vstcm_config()
     {
       Serial.print("Writing ");
       Serial.print(v_config[i].ini_label);
-      
+
       dataFile.write(v_config[i].ini_label);
       dataFile.write("=");
       memset(buf, 0, sizeof buf);
       ltoa(v_config[i].pval, buf, 10);
-      
+
       Serial.print(" with value ");
       Serial.print(v_config[i].pval);
       Serial.print(" AKA ");
       Serial.println(buf);
-      
+
       dataFile.write(buf);
       dataFile.write(";");
       dataFile.write(0x0d);
