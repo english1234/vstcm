@@ -40,13 +40,18 @@ If you want to get in touch to ask questions, or contribute, I can be contacted 
 
 A dedicated vstcm web page can be found here: https://robinchampion.com/vst_colour_mod.htm
 
+Thread on KLOV: https://forums.arcade-museum.com/threads/announcing-the-vstcm-colour-vector-generator.505940/
+
+Thread on UKVAC: http://www.ukvac.com/forum/announcing-the-vstcm-colour-vector-generator_topic388998_page1.html
+
+
 ## Getting the PCB built
 
 A ZIP file is in the Gerbers directory. This can be uploaded to your PCB manufacturer of choice. It's a 2 sided 10cm x 10cm board so should be extremely cheap (JLPCB charged less than 5€ / $5 + shipping for 10 pieces in May 2022).
 
 ## Components
 
-The BOM is in BOM teensyv.txt and has Mouser references for many parts at the right hand side. 
+The BOM is in a dedicated folder and has Mouser references for many parts at the right hand side. 
 
 - IC2: You need to choose if you are going to use an external supply or not and if so what voltage to use (5V, 9V or 12V). Recom makes these parts, but so do Traco and there may be other brands. Make sure there is a D (for double) at the end of the model number which generates +/- voltages, rather than the S (single) version. See power options below.
 - R12, R15 & R16: these resistors are in the op amp for the RGB signals and are marked as 68 ohm in the BOM, however the circuit was designed with 10K in those places. 10K is producing bent vectors on my setup, I'm currently experimenting with 68R and it's working pretty well. 
