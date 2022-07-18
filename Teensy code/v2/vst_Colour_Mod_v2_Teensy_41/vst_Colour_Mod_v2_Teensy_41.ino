@@ -95,21 +95,21 @@ static uint16_t x_pos;                 // Current position of beam
 static uint16_t y_pos;
 
 // Settings with default values
-const int  OFF_SHIFT      =    20;     // Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
-const int  OFF_DWELL0     =     0;     // Time to sit beam on before starting a transit
-const int  OFF_DWELL1     =     0;     // Time to sit before starting a transit
-const int  OFF_DWELL2     =     0;     // Time to sit after finishing a transit
+const int  OFF_SHIFT      =    10;     // Smaller numbers == slower transits (the higher the number, the less flicker and faster draw but more wavy lines)
+const int  OFF_DWELL0     =     8;     // Time to sit beam on before starting a transit
+const int  OFF_DWELL1     =     3;     // Time to sit before starting a transit
+const int  OFF_DWELL2     =     3;     // Time to sit after finishing a transit
 const int  NORMAL_SHIFT   =     5;     // The higher the number, the less flicker and faster draw but more wavy lines
 const bool OFF_JUMP       = false;
 const bool FLIP_X         = false;     // Sometimes the X and Y need to be flipped and/or swapped
 const bool FLIP_Y         = false;
 const bool SWAP_XY        = false;
-const uint32_t CLOCKSPEED = 60000000;  // This is 3x the max clock in the datasheet but seems to work!!
-const int  NORMAL1        =   100;     // Brightness of text in parameter list
-const int  BRIGHTER       =   128;
+const uint32_t CLOCKSPEED = 40000000; //This is 2x the max clock in the datasheet but seems to work!!
+const int  NORMAL1        =   200;     // Brightness of text in parameter list
+const int  BRIGHTER       =   150;
 // how long in milliseconds to wait for data before displaying a test pattern
 // this can be increased if the test pattern appears during gameplay
-const int  SERIAL_WAIT_TIME = 100;
+const int  SERIAL_WAIT_TIME = 150;
 const int  AUDIO_PIN        = 10;      // Connect audio output to GND and pin 10
 
 // Settings stored on Teensy SD card
@@ -125,7 +125,7 @@ typedef struct {
 static params_t v_config[NB_PARAMS] = {
   {"TEST_PATTERN",     "TEST PATTERN",                     0,                0,         4},
   {"OFF_SHIFT",        "BEAM TRANSIT SPEED",               OFF_SHIFT,        0,        50},
-  {"OFF_DWELL0",       "WAIT WITH BEAM ON BEFORE TRANSIT", OFF_DWELL0,       0,        50},
+  {"OFF_DWELL0",       "BEAM SETTLING DELAY",              OFF_DWELL0,       0,        50},
   {"OFF_DWELL1",       "WAIT BEFORE BEAM TRANSIT",         OFF_DWELL1,       0,        50},
   {"OFF_DWELL2",       "WAIT AFTER BEAM TRANSIT",          OFF_DWELL2,       0,        50},
   {"NORMAL_SHIFT",     "NORMAL SHIFT",                     NORMAL_SHIFT,     0,       255},
@@ -218,39 +218,44 @@ void loop()
 {
   elapsedMicros waiting;      // Auto updating, used for FPS calculation
 
-  uint32_t draw_start_time = millis();
+  unsigned long draw_start_time ; //Needs to be unsigned long?
 
+  draw_start_time = millis();
+  if (!Serial) {
+    read_data(1); //init read_data if the serial port is not open
+    Serial.flush();
+  }
   while (1)
   {
     if (Serial.available())
     {
       show_vstcm_config = false;
-      if (read_data() == 1)
+      if (read_data(0) == 1)
         break;
     }
-
-    if (millis() - draw_start_time > SERIAL_WAIT_TIME)
+    else if ((millis() - draw_start_time) > SERIAL_WAIT_TIME)  //Changed this to check only if serial is not available
       show_vstcm_config = true;
 
     if (show_vstcm_config)
       break;
   }
 
-  draw_start_time = 0;
+  //draw_start_time = 0;  //Why set this to 0??
 
   if (show_vstcm_config)
   {
     show_vstcm_config_screen();      // Show settings screen and manage associated control buttons
-    if (millis() - draw_start_time > SERIAL_WAIT_TIME / 4)  // Don't process the buttons every single loop
-      manage_buttons();
+   // if (millis() - draw_start_time > SERIAL_WAIT_TIME / 4)  // Don't process the buttons every single loop
+    //  manage_buttons();  Do this below because it was showing a bright spot when writing to the SD card
   }
 
   // Go to the center of the screen, turn the beam off (prevents stray coloured lines from appearing)
   brightness(0, 0, 0);
+  dwell(v_config[3].pval);
   goto_x(REST_X);
   goto_y(REST_Y);
   SPI_flush();
-
+  if (show_vstcm_config)  manage_buttons(); //Moved here to avoid bright spot on the monitor when doing SD card operations
   fps = 1000000 / waiting;
 }
 
@@ -259,7 +264,6 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue)
   if (LastColInt.red == red && LastColInt.green == green && LastColInt.blue == blue)
     return;
 
-  dwell(v_config[2].pval);
 
   if (LastColInt.red != red)
   {
@@ -278,6 +282,11 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue)
     LastColInt.blue = blue;
     MCP4922_write(SS2_IC3_GRE_BLU, DAC_CHAN_B, blue << 4);
   }
+  
+ //Dwell moved here since it takes about 4us to fully turn on or off the beam
+  //Possibly change where this is depending on if the beam is being turned on or off??
+  dwell(v_config[2].pval);    //Wait this amount before changing the beam (turning it on or off)
+
 }
 
 void goto_x(uint16_t x)
@@ -287,9 +296,9 @@ void goto_x(uint16_t x)
     x_pos = x;
 
     if (v_config[6].pval == false)      // If FLIP X then invert x axis
-      MCP4922_write(SS1_IC4_X_Y, DAC_X_CHAN, 4095 - x);
-    else
-      MCP4922_write(SS1_IC4_X_Y, DAC_X_CHAN, x);
+      x = 4095-x;
+      
+     MCP4922_write(SS1_IC4_X_Y, DAC_X_CHAN, x);
   }
 }
 
@@ -300,9 +309,9 @@ void goto_y(uint16_t y)
     y_pos = y;
 
     if (v_config[7].pval == false)     // If FLIP Y then invert y axis
-      MCP4922_write(SS1_IC4_X_Y, DAC_Y_CHAN, 4095 - y);
-    else
-      MCP4922_write(SS1_IC4_X_Y, DAC_Y_CHAN, y);
+      y=4095-y;
+    
+    MCP4922_write(SS1_IC4_X_Y, DAC_Y_CHAN, y);
   }
 }
 
@@ -313,7 +322,7 @@ void dwell(const int count)
   // can work better or faster without this on some monitors
   for (int i = 0 ; i < count ; i++)
   {
-    delayNanoseconds(200);  // NOTE this used to write the X and Y position but now the dacs won't get updated with repeated values
+    delayNanoseconds(500);  // NOTE this used to write the X and Y position but now the dacs won't get updated with repeated values
   }
 }
 
@@ -385,24 +394,28 @@ void draw_moveto(int x1, int y1)
   }
 }
 
-// This is a modification of the original drawing routine to use the "bright shift" differently
-// Before everything was done at a lower and lower resolution so there were more steps in the lines
-// Now we run at full resolution (one step of the 12-bit DAC at a time) but we only update to the DAC every "bright shift" counts
-// Since we are now updating the DACs for x and y at the same time, the draws are much more smooth because
-// they are points along a line instead of separate x and y steps.  Also there is much more resolution
-// for tuning the speeds this way since you aren't changing by powers of two like before.  The Teensy goes so fast that this seems
-// to work well but it could probably still be fixed up to use a different line drawing algorithm
+//This is a modification of the original drawing routine to use the "bright shift" differently
+//Before everything was done at a lower and lower resolution so there were more steps in the lines
+//Now we run at full resolution (one step of the 12-bit DAC at a time) but we only update to the DAC every "bright shift" counts
+//Since we are now updating the DACs for x and y at the same time, the draws are much more smooth because
+//they are points along a line instead of separate x and y steps.  Also there is much more resolution
+//for tuning the speeds this way since you aren't changing by powers of two like before.  The Teensy goes so fast that this seems
+//to work well but it could probably still be fixed up to use a different line drawing algorithm
 void _draw_lineto(int x1, int y1, const int bright_shift)
 {
   int dx, dy, sx, sy;
   int flag;
-  const int x1_orig = x1;
-  const int y1_orig = y1;
+  int x1_orig;
+  int y1_orig;
   int count;
+  
 
   int x0 = x_pos;
   int y0 = y_pos;
 
+  x1_orig = x1;
+  y1_orig = y1;
+ // delayNanoseconds(4000);
   if (x0 <= x1)
   {
     dx = x1 - x0;
@@ -452,12 +465,14 @@ void _draw_lineto(int x1, int y1, const int bright_shift)
         goto_y(y0);
         count = 0;
       }
+
     }
   }
-
+  
   // ensure that we end up exactly where we want
   goto_x(x1_orig);
   goto_y(y1_orig);
+  SPI_flush();
 }
 
 // Finish the last SPI transactions
@@ -518,19 +533,57 @@ void MCP4922_write(int cs_pin, byte dac, uint16_t value)
 // using AdvanceMAME protocol published here
 // https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c
 
-int read_data()
+#define NUM_JSON_OPTS 12
+#define MAX_JSON_STR_LEN 512
+char *json_opts[]={"\"productName\"","\"version\"","\"flipx\"","\"flipy\"","\"swapxy\"","\"bwDisplay\"","\"vertical\"","\"crtSpeed\"","\"crtJumpSpeed\"","\"remote\"","\"crtType\"","\"defaultGame\""};
+char *json_vals[]={"\"VSTCM\"","\"V3.0FC\"","false","false","false","false","false","15","9","true","\"CUSTOM\"","\"none\""};
+
+//Build up the information string and return the length including two nulls at the end.
+//Currently does not check for overflow so make sure the string is long enough!!
+uint32_t build_json_info_str(char *str) {
+  int i;
+  uint32_t len;
+  str[0]=0;
+   strcat (str,"{\n");
+  for (i=0;i<NUM_JSON_OPTS;i++) {
+   strcat (str,json_opts[i]);
+   strcat (str,":");
+   strcat (str,json_vals[i]);
+   if (i< (NUM_JSON_OPTS-1)) strcat(str,","); 
+   strcat (str,"\n");
+  }
+  strcat (str,"}\n");
+  len=strlen(str);
+  str[len+1]=0;  //Double null terminate
+  return(len+2); //Length includes both nulls
+  
+}
+char json_str[MAX_JSON_STR_LEN];
+int read_data(int init)
 {
   static uint32_t cmd = 0;
+  
   static uint8_t gl_red, gl_green, gl_blue;
   static int frame_offset = 0;
+ 
   char buf1[5] = "";
   uint8_t c = -1;
+  uint32_t len;
+ // int i;
 
+  if (init) {
+    frame_offset = 0;
+    return 0;
+  }
+  
   c = Serial.read();    // read one byte at a time
-
+  
   if (c == -1) // if serial port returns nothing then exit
     return -1;
-
+   //The following attempts to sync the data with the host
+  //Otherwise if it ever gets off it will be off forever
+  
+ 
   cmd = cmd << 8 | c;
   frame_offset++;
   if (frame_offset < 4)
@@ -564,18 +617,7 @@ int read_data()
     gl_green = (cmd >> 8)  & 0xFF;
     gl_blue  = (cmd >> 0)  & 0xFF;
   }
-  else if (header == FLAG_COMPLETE_MONOCHROME)
-  {
-    // pick the max brightness from r g and b and mix colours
-    uint8_t mix = max(max((cmd >> 0) & 0xFF, (cmd >> 8) & 0xFF), (cmd >> 16) & 0xFF);
-
-    //  gl_red = mix * 3 / 5;
-    //  gl_green = gl_green / 2;
-    //  gl_blue = gl_green / 3;
-    gl_red = 0;
-    gl_green = mix;
-    gl_blue = 0;
-  }
+ 
   else if (header == FLAG_FRAME)
   {
     //  uint32_t frame_complexity = cmd & 0b0001111111111111111111111111111;
@@ -583,6 +625,8 @@ int read_data()
   }
   else if (header == FLAG_COMPLETE)
   {
+    // Check FLAG_COMPLETE_MONOCHROME like "if(cmd&FLAG_COMPLETE_MONOCHROME) ... "
+    // Not sure what to do differently if monochrome frame complete??
     // Add FPS on games as a guide for optimisation
     draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
     draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
@@ -594,14 +638,31 @@ int read_data()
     Serial.flush();          // not sure if this useful, may help in case of manual quit on MAME
     return -1;
   }
-  else if (header == FLAG_CMD_GET_DVG_INFO)
-  {
-    // provide a reply of some sort
-    Serial.write(0xFFFFFFFF);
+  else if (header == FLAG_CMD && ((cmd&0xFF) == FLAG_CMD_GET_DVG_INFO))
+  { // Some info about the host comes in as follows from the advmame code:
+    // sscanf(ADV_VERSION, "%u.%u", &major, &minor);
+    // version = ((major & 0xf) << 12) | ((minor & 0xf) << 8) | (DVG_RELEASE << 4) | (DVG_BUILD);
+    //  cmd |= version << 8;
+    //  Currently DVG_RELEASE and DVG_BUILD are both zero
+    // The response needs to be the following:
+    // 1. Echo back the command in reverse order (least significant first)  like: 01 00 00 A0
+    // 2. Send the length of the JSON string including two nulls at the end and all whitespace etc
+    // 3. Send the JSON string followed by two nulls
+    len=build_json_info_str(json_str);
+    Serial.write(cmd&0xFF); 
+    Serial.write((cmd>>8)&0xFF);
+    Serial.write((cmd>>16)&0xFF);
+    Serial.write((cmd>>24)&0xFF);
+    Serial.write(len&0xFF); 
+    Serial.write((len>>8)&0xFF);
+    Serial.write(0); //Only send the first 16 bits since we better not have a strong more than 64K long!
+    Serial.write(0);  
+    Serial.write(json_str,len);
+    
     return 0;
   }
-  else
-    Serial.println("Unknown");
+ // else
+   // Serial.println("Unknown");  //This might be messing things up?
 
   return 0;
 }
@@ -873,12 +934,12 @@ void read_vstcm_config()
   // see if the SD card is present and can be initialised:
   if (!SD.begin(chipSelect))
   {
-    Serial.println("Card failed, or not present");
+ //   Serial.println("Card failed, or not present");
     // don't do anything more:
     return;
   }
-  else
-    Serial.println("Card initialised.");
+//  else
+ //   Serial.println("Card initialised.");
 
   // open the vstcm.ini file on the sd card
   File dataFile = SD.open("vstcm.ini", FILE_READ);
@@ -902,7 +963,7 @@ void read_vstcm_config()
 
           if (millis() - read_start_time > 2000u)
           {
-            Serial.println("SD card read timeout");
+  //          Serial.println("SD card read timeout");
             break;
           }
 
@@ -927,7 +988,7 @@ void read_vstcm_config()
           // provide code for a timeout in case there's a problem reading the file
           if (millis() - read_start_time > 2000u)
           {
-            Serial.println("SD card read timeout");
+   //         Serial.println("SD card read timeout");
             break;
           }
 
@@ -950,7 +1011,7 @@ void read_vstcm_config()
         {
           if (!memcmp(param_name, v_config[j].ini_label, pos_pn))
           {
-            Serial.print(param_name);
+  /*          Serial.print(param_name);
             Serial.print(" ");
             Serial.print(pos_pn);
             Serial.print(" characters long, AKA ");
@@ -958,10 +1019,10 @@ void read_vstcm_config()
             Serial.print(" ");
             Serial.print(sizeof v_config[j].ini_label);
             Serial.print(" characters long, changed from ");
-            Serial.print(v_config[j].pval);
+            Serial.print(v_config[j].pval);*/
             v_config[j].pval = atoi(param_value);
-            Serial.print(" to ");
-            Serial.println(v_config[j].pval);
+  //          Serial.print(" to ");
+  //          Serial.println(v_config[j].pval);
             bChanged = true;
             break;
           }
@@ -969,8 +1030,8 @@ void read_vstcm_config()
 
         if (bChanged == false)
         {
-          Serial.print(param_name);
-          Serial.println(" not found");
+ //         Serial.print(param_name);
+ //         Serial.println(" not found");
         }
       } // end of for i loop
 
@@ -983,7 +1044,7 @@ void read_vstcm_config()
   else
   {
     // if the file didn't open, print an error:
-    Serial.println("Error opening file for reading");
+ //   Serial.println("Error opening file for reading");
 
     // If the vstcm.ini file doesn't exist, then write the default one
     write_vstcm_config();
@@ -1006,19 +1067,19 @@ void write_vstcm_config()
   {
     for (i = 0; i < NB_PARAMS; i++)
     {
-      Serial.print("Writing ");
-      Serial.print(v_config[i].ini_label);
+ //     Serial.print("Writing ");
+ //     Serial.print(v_config[i].ini_label);
 
       dataFile.write(v_config[i].ini_label);
       dataFile.write("=");
       memset(buf, 0, sizeof buf);
       ltoa(v_config[i].pval, buf, 10);
 
-      Serial.print(" with value ");
+ /*     Serial.print(" with value ");
       Serial.print(v_config[i].pval);
       Serial.print(" AKA ");
       Serial.println(buf);
-
+*/
       dataFile.write(buf);
       dataFile.write(";");
       dataFile.write(0x0d);
@@ -1031,6 +1092,6 @@ void write_vstcm_config()
   else
   {
     // if the file didn't open, print an error:
-    Serial.println("Error opening file for writing");
+//    Serial.println("Error opening file for writing");
   }
 }

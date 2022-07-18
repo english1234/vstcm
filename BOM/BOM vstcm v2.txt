@@ -26,7 +26,7 @@
 | R1, R2                                 |  2   | 5.1K 1% 1/4W    | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MFR-25FBF52-5K1         | 
 | R3, R4, R5, R6, R9, R10, R14           |  7   | 10.2K 1% 1/4W   | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC1022F            | 
 | R7, R8                                 |  2   | 20K 1% 1/4W     | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC2002F            | 
-| R12, R15, R16                          |  3   | 68R 5% 1/4W CARB| R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR-25JB-52-68R         | 
+| R12, R15, R16                          |  3   | 3.6K 5% 1/4W CAR| R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | 660-CFS1/4CT52R362J     | 
 | R11, R13, R22, R23, R24, R28, R29, R30 |  8   | 10.2K 1% 1/4W   | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | MF1/4DC1022F            | 
 | R17, R18, R19, R20, R21                |  5   | 75R 5% 1/4W CARB| R-US_0204/7              | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR-25JB-52-75R         | 
 | R25                                    |  1   | 1K 1/3W 5% CARB | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR25J1K0               | 
