@@ -1,5 +1,5 @@
 /*
-   Atari Vector game simulator
+   Atari Vector game simulator / Battlezone
 
    Copyright 1991, 1993, 1996 Hedley Rainnie, Doug Neubauer, and Eric Smith
    Copyright 2015 Hedley Rainnie
@@ -9,6 +9,10 @@
    Adapted for vstcm by Robin Champion June 2022
    https://github.com/english1234/vstcm
 
+   Controls work using IR remote on vstcm
+
+   Sound is experimental!
+   
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
@@ -29,6 +33,11 @@
 #include <SD.h>
 #include <IRremote.hpp>
 #include <sys/types.h>
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
 #include "bzone.h"
 
 void dopush(uint8_t val, uint16_t PC)
@@ -512,16 +521,32 @@ void MEMWR(uint32_t addr, int32_t val, int32_t PC, uint32_t cyc)
           g_aud_enable = 0;
 
         if (val & bit(0)) // expl
-          enable_sound((val & bit(1)) ? EXPLODE_HI : EXPLODE_LO);
-
+        {
+          //    enable_sound((val & bit(1)) ? EXPLODE_HI : EXPLODE_LO);
+          playSdRaw1.play("roms/Battlezone/explo.hex");
+       /*   if (val & bit(1))
+            playSdWav1.play("roms/Battlezone/explode1.wav");
+          else
+            playSdWav1.play("roms/Battlezone/explode2.wav");*/
+        }
         if (val & bit(2))  // shell
-          enable_sound((val & bit(3)) ? SHELL_HI : SHELL_LO);
-
+        {
+          //  enable_sound((val & bit(3)) ? SHELL_HI : SHELL_LO);
+          playSdRaw1.play("roms/Battlezone/shellhi.hex");
+      /*    if (val & bit(3))
+            playSdWav1.play("roms/Battlezone/fire1.wav");
+          else
+            playSdWav1.play("roms/Battlezone/fire2.wav");*/
+        }
         if (val & bit(7))
         { // motor
-          disable_sound(MOTOR_HI);
-          disable_sound(MOTOR_LO);
-          enable_sound((val & bit(4)) ? MOTOR_HI : MOTOR_LO);
+          //  disable_sound(MOTOR_HI);
+          //  disable_sound(MOTOR_LO);
+          // enable_sound((val & bit(4)) ? MOTOR_HI : MOTOR_LO);
+       /*   if (val & bit(4))
+            playSdWav1.play("roms/Battlezone/motor_slow_mono.wav");
+          else
+            playSdWav1.play("roms/Battlezone/motor_fast.wav");*/
         }
 
         // execute a function here to flash LEDs
@@ -545,7 +570,7 @@ void MEMWR(uint32_t addr, int32_t val, int32_t PC, uint32_t cyc)
 // Bzone audio support
 
 const int16_t explode_lo[] = {
-  //#include "expLo.hex"
+  // #include "expLo.hex"
 };
 const int16_t explode_hi[] = {
   //#include "expHi.hex"
@@ -624,9 +649,14 @@ void add_sounds()
 {
   uint i;
   uint32_t len;
-  for (i = 0; i < sizeof(sounds) / sizeof(sound_rec); i++) {
-    uint32_t p = (uint32_t)sounds[i].ptr;
-    if (p) {
+  uint32_t p;
+
+  for (i = 0; i < sizeof(sounds) / sizeof(sound_rec); i++)
+  {
+    p = (uint32_t)sounds[i].ptr;
+
+    if (p)
+    {
       len = REG32(p + 0x28);
       len /= 2; // Len in 16bit samples
       len += AUDACITY_WAV_HDR_OFF;
@@ -652,9 +682,9 @@ void start_sample(uint32_t mask)
   if (mask)
     g_aud_smask |= (mask << 8);
 }
-
-int16_t get_sample()
-{
+/*
+  int16_t get_sample()
+  {
   uint32_t i;
   int16_t worklist[16];
   uint16_t idx = 0;
@@ -663,15 +693,19 @@ int16_t get_sample()
   if (0 == g_aud_enable)
     return 0;
 
-  for (i = 1; i < sizeof(sounds) / sizeof(sound_rec); i++) {
-    if (g_aud_smask & bit(i)) {
+  for (i = 1; i < sizeof(sounds) / sizeof(sound_rec); i++)
+  {
+    if (g_aud_smask & bit(i))
+    {
       worklist[idx++] = sounds[i].ptr[sounds[i].idx];
       sounds[i].idx++;
-      if (sounds[i].idx == sounds[i].len) {
+
+      if (sounds[i].idx == sounds[i].len)
+      {
         sounds[i].idx = AUDACITY_WAV_HDR_OFF;
-        if (sounds[i].oneshot) {
+
+        if (sounds[i].oneshot)
           g_aud_smask &= ~bit(i);
-        }
       }
     }
   }
@@ -680,16 +714,19 @@ int16_t get_sample()
     return worklist[0];
   else
     return mixer(worklist, 32768 / idx, idx << 1);
-}
-
+  }
+*/
 void init_dac()
 {
   // Apparently, pin 10 has to be defined as an OUTPUT pin to designate the Arduino as the SPI master.
   // Even if pin 10 is not being used... Is this true for Teensy 4.1?
   // The default mode is INPUT. You must explicitly set pin 10 to OUTPUT (and leave it as OUTPUT).
-  pinMode(10, OUTPUT);
-  digitalWriteFast(10, HIGH);
-  delayNanoseconds(100);
+  /*  pinMode(10, OUTPUT);
+    digitalWriteFast(10, HIGH);
+    delayNanoseconds(100);
+  */
+  //  pinMode(10, OUTPUT);
+  //  pinMode(12, OUTPUT);
 
   // Set chip select pins to output
   pinMode(SS0_IC5_RED, OUTPUT);
@@ -707,19 +744,23 @@ void init_dac()
 
   delay(1);         // https://www.pjrc.com/better-spi-bus-design-in-3-steps/
 
+  SPI.setCS(10);
   SPI.begin();
 
-  // Setup the SPI DMA callback
-  callbackHandler.attachImmediate(&callback);
-  callbackHandler.clearEvent();
-}
+  // Shutdown the unused DAC channel A (0) on IC5
+  // (not sure if this works as is or if it's even particularly useful)
+  digitalWriteFast(SS0_IC5_RED, LOW);
+  delayNanoseconds(100);
+  SPI.transfer16(0b0110000000000000);
+  digitalWriteFast(SS0_IC5_RED, HIGH);
 
-void callback(EventResponderRef eventResponder)
-{
-  // End SPI DMA write to DAC
+  //  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));  //Doing this begin and end here should make it so we don't have to do it each time
   //  SPI.endTransaction();
-  digitalWriteFast(activepin, HIGH);
-  activepin = 0;
+  //  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));  //Doing this begin and end here should make it so we don't have to do it each time
+
+  // mytcr = IMXRT_LPSPI4_S.TCR ;
+  // IMXRT_LPSPI4_S.TCR = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK; //This will break all stock SPI transactions from this point on - disable receiver and go to 16 bit mode
+  // mytcr = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;
 }
 
 void dac_out(uint16_t ch1, uint16_t ch2, int z)
@@ -988,8 +1029,8 @@ void avg_draw_vector_list(void)
 
   pc = 0;
   sp = 0;
-#define XREF 8192   // The smaller these numbers are, the faster the game executes!
-#define YREF 8192
+#define XREF 9472   // The smaller these numbers are, the faster the game executes!
+#define YREF 9984
   xscale = 8192;
   yscale = 8192;
   statz = 0;
@@ -1255,9 +1296,9 @@ void setup()
   // Apparently, pin 10 has to be defined as an OUTPUT pin to designate the Arduino as the SPI master.
   // Even if pin 10 is not being used... Is this true for Teensy 4.1?
   // The default mode is INPUT. You must explicitly set pin 10 to OUTPUT (and leave it as OUTPUT).
-  pinMode(10, OUTPUT);
-  digitalWriteFast(10, HIGH);
-  delayNanoseconds(100);
+  //  pinMode(10, OUTPUT);
+  // digitalWriteFast(10, HIGH);
+  // delayNanoseconds(100);
 
   InitSD();                 // Initialise SD card
   IR_remote_setup();        // Set up IR remote
@@ -1273,12 +1314,7 @@ void setup()
   g_cpu_save_totcycles = 0;
   g_cpu_irq_cycle = 6144;
 
-  // code seems to run a little faster if we do begin and end here rather than on each cycle
-  SPI.beginTransaction(SPISettings(115000000, MSBFIRST, SPI_MODE0));
-  SPI.endTransaction();
-
-  // Turn beam off while setting up game
-  MCP4922_write(SS2_IC3_GRE_BLU, DAC_CHAN_A, 0);
+  AudioMemory(8);
 }
 
 // math box simulation (Battlezone/Red Baron/Tempest)
@@ -1679,31 +1715,47 @@ void goto_y(uint16_t y)
 
 void MCP4922_write(int cs_pin, byte dac, uint16_t value)
 {
-  dac = dac << 7; // dac value is either 0 or 128
-
+  //Wait for the last transaction to finish and then set CS high from the last transaction
+  //By doing this the code can do other things instead of busy waiting for the SPI transaction
+  //like it does with the stock functions.
+  //  while (!(IMXRT_LPSPI4_S.SR & LPSPI_SR_FCF));  //Loop until the last frame is complete
+  //  digitalWriteFast(activepin, HIGH); //Set the CS from the last transaction high
+  //Everything between here and setting the CS pin low determines how long the CS signal is high
+  //Right now (with clearing the flag, masking the value, select channel, store new CS) it is high about 50ns
+  // IMXRT_LPSPI4_S.SR = LPSPI_SR_FCF; //Clear the flag
+  //IMXRT_LPSPI4_S.TCR=mytcr; //Go back to 8 bit mode (can stay in 16 bit mode)
+  //temp = IMXRT_LPSPI4_S.RDR; //Go ahead and read the receive FIFO (not necessary since we have masked receive data above)
+  dac = (dac & 1) << 7;
   value &= 0x0FFF; // mask out just the 12 bits of data
 
   // add the output channel A or B on the selected DAC, and buffer flag
 #ifdef BUFFERED
   // select the output channel on the selected DAC, buffered, no gain
-  value |= 0x7000 | (dac == 128 ? 0x8000 : 0x0000);
+  value |= 0x7000 | (dac  ? 0x8000 : 0x0000);
 #else
   // select the output channel on the selected DAC, unbuffered, no gain
-  value |= 0x3000 | (dac == 128 ? 0x8000 : 0x0000);
+  value |= 0x3000 | (dac  ? 0x8000 : 0x0000);
 #endif
 
-  while (activepin != 0)  // wait until previous transfer is complete
-    ;
-
   activepin = cs_pin;     // store to deactivate at end of transfer
+  byte low = value & 0xff;
+  byte high = dac | 0x30 | ((value >> 8) & 0x0f);
+
+  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));  //Doing this begin and end here should make it so we don't have to do it each time
   digitalWriteFast(cs_pin, LOW);
+  delayNanoseconds(100);
+  // better to use SPI.transfer16? spi.transfer with eventresponder works in non blocking mode with DMA apparently
+  SPI.transfer(high);
+  SPI.transfer(low);
+  digitalWriteFast(cs_pin, HIGH);
+  delayNanoseconds(100);
+  //Set up the transaction directly with the SPI registers because the normal transfer16
+  //function will busy wait for the SPI transfer to complete.  We will wait for completion
+  //and de-assert CS the next time around to speed things up.
+  //By doing this the code can do other things instead of busy waiting for the SPI transaction
+  //like it does with the stock functions.
+  //IMXRT_LPSPI4_S.TCR=(mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15);  // turn on 16 bit mode  (this is done above and we keep it on now)
+  // IMXRT_LPSPI4_S.TDR = value; //Send data to the SPI fifo and start transaction but don't wait for it to be done
+  SPI.endTransaction();
 
-  dmabuf[0] = dac | 0x30 | ((value >> 8) & 0x0f);
-  dmabuf[1] = value & 0xff;
-
-  // if we don't use a clean begin & end transaction then other code stops working properly, such as button presses
-  // SPI.beginTransaction(SPISettings(115000000, MSBFIRST, SPI_MODE0));
-
-  // This uses non blocking SPI with DMA
-  SPI.transfer(dmabuf, nullptr, 2, callbackHandler);
 }
