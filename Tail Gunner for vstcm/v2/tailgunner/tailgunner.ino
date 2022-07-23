@@ -127,14 +127,14 @@ void loop()
   waitline(5);
 
   // Go to the center of the screen, turn the beam off (prevents stray coloured lines from appearing)
-  brightness(0, 0, 0);
-  dwell(8);
-  goto_x(2048);
-  goto_y(2048);
+  /*  brightness(0, 0, 0);
+    dwell(8);
+    goto_x(2048);
+    goto_y(2048);*/
   //  SPI_flush();
 }
 
-static void SlowSetPixel(uint16_t x, uint16_t y, int vgColour)
+static void SlowSetPixel(int32_t x, int32_t y, int vgColour)
 {
   unsigned char *p;
 
@@ -143,8 +143,8 @@ static void SlowSetPixel(uint16_t x, uint16_t y, int vgColour)
   *p = *p | (15 << ((x & 1) << 2)); // draw in colour 15 (brightest, when we add grey scale)
 
   // scale up the coordinates to better suit 4096 x 4096
-  x = x * 12;
-  y = y * 12;
+  // x = x * 12;
+  //  y = y * 12;
 
   /*  Serial.print(x);
     Serial.print(";");
@@ -156,7 +156,7 @@ static void SlowSetPixel(uint16_t x, uint16_t y, int vgColour)
 
   brightness(0, vgColour * 10, 0);
 
-  goto_x(x + 500);
+  goto_x(x);
   goto_y(y);
 }
 
@@ -164,11 +164,11 @@ static void SlowSetPixel(uint16_t x, uint16_t y, int vgColour)
 // this is rock-solid reliable code that can be trusted during the debugging phase
 // (and also it appears to be fast enough already!)
 
-static void SlowDrawLine(int y1, int x1, int y2, int x2, int vgColour)
+static void SlowDrawLine(int32_t y1, int32_t x1, int32_t y2, int32_t x2, int vgColour)
 {
-  int temp, dx, dy;
-  uint16_t x, y;
-  int x_sign, y_sign, flag;
+  int32_t temp, dx, dy;
+  uint32_t x, y;
+  int32_t x_sign, y_sign, flag;
 
   dx = abs(x2 - x1); // Delta of X
   dy = abs(y2 - y1); // Delta of Y
@@ -318,7 +318,7 @@ void CinemaClearScreen()
   /* CAN WE DO SOMETHING LIKE: vsync(); */
 }
 
-void CinemaVectorData(int FromX, int FromY, int ToX, int ToY, int vgColour)
+void CinemaVectorData(uint32_t FromX, uint32_t FromY, uint32_t ToX, uint32_t ToY, uint32_t vgColour)
 {
   /* TWEAK THESE TO MAKE THEM FIT... */
 
@@ -333,10 +333,10 @@ void CinemaVectorData(int FromX, int FromY, int ToX, int ToY, int vgColour)
   }
 
   // scale 1024x768 to 340x240, and rotate
-  FromX = FromX / 3;
-  ToX = ToX / 3;
-  FromY = FromY / 3;
-  ToY = ToY / 3;
+  /* FromX = FromX / 3;
+    ToX = ToX / 3;
+    FromY = FromY / 3;
+    ToY = ToY / 3;*/
 
   if (FromX < 0) FromX = 0;
   if (FromY < 0) FromY = 0;
@@ -347,11 +347,12 @@ void CinemaVectorData(int FromX, int FromY, int ToX, int ToY, int vgColour)
   if (FromY >= SCREEN_Y) FromY = SCREEN_Y - 1;
   if (FromX >= SCREEN_X) FromX = SCREEN_X - 1;
 
+
   // sign extend short to long
-  ToX = ToX << 16;
-  ToX = ToX >> 16;
-  FromX = FromX << 16;
-  FromX = FromX >> 16;
+  /*  ToX = ToX << 16;
+    ToX = ToX >> 16;
+    FromX = FromX << 16;
+    FromX = FromX >> 16;*/
 
   SlowDrawLine(FromX, FromY, ToX, ToY, vgColour);
 }
@@ -437,21 +438,38 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue)
   dwell(10); //Wait this amount before changing the beam (turning it on or off)
 }
 
-void goto_x(uint16_t x)
+void goto_x(int32_t x)
 {
+  // 11 to 783
+
+  x = x * 5;
+  Serial.print(x);
+  Serial.print(";");
+
+  if (x > 4095) x = 4095;
+  if (x < 1) x = 1;
+
   if (x != x_pos)     // no point if the beam is already in the right place
   {
     x_pos = x;
 
     //   if (v_config[6].pval == false)      // If FLIP X then invert x axis
-    //   x = 4095-x;
+    x = 4095 - x;
 
     MCP4922_write(SS1_IC4_X_Y, DAC_X_CHAN, x);
   }
 }
 
-void goto_y(uint16_t y)
+void goto_y(int32_t y)
 {
+  // 2 to 1012
+
+  y = y * 4;
+  Serial.print(y);
+  Serial.println(";");
+
+  if (y > 4095) y = 4095;
+  if (y < 1) y = 1;
   if (y != y_pos)     // no point if the beam is already in the right place
   {
     y_pos = y;
