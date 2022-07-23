@@ -67,9 +67,9 @@ static uint16_t y_pos;
 /* Now the same information for Graham's machine */
 
 /* Define new types for the c-cpu emulator */
-typedef short unsigned int CINEWORD;      /* 12bits on the C-CPU */
+typedef long unsigned int CINEWORD;      /* 12bits on the C-CPU */
 typedef unsigned char      CINEBYTE;      /* 8 (or less) bits on the C-CPU */
-typedef short signed int   CINESWORD;     /* 12bits on the C-CPU */
+typedef long signed int   CINESWORD;     /* 12bits on the C-CPU */
 typedef signed char        CINESBYTE;     /* 8 (or less) bits on the C-CPU */
 typedef unsigned long int  CINELONG;
 
@@ -176,9 +176,11 @@ static int sound_addr_B = 0;
 static int sound_addr_C = 0;
 static int sound_data = 0;
 
-#define SCREEN_X 640
-#define SCREEN_Y 480
-#define FRAMEBUFFER_SIZE (SCREEN_X * SCREEN_Y)
+#define SCREEN_X 4096
+#define SCREEN_Y 4096
+//#define FRAMEBUFFER_SIZE (SCREEN_X * SCREEN_Y)
+//#define SURFACE_SIZE (FRAMEBUFFER_SIZE / 2)
+#define FRAMEBUFFER_SIZE (640 * 480)
 #define SURFACE_SIZE (FRAMEBUFFER_SIZE / 2)
 
 // This is just a guess at the correct structure of GPDRAWSURFACE
