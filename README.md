@@ -1,9 +1,11 @@
 # VSTCM - the v.st Colour Mod - a colour vector graphics generator
 The vstcm is a vector signal transceiver PCB which generates colour vector graphics to be displayed on an oscilloscope or vector monitor such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc. 
 
-When used with a Raspberry Pi (or Orange Pi) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games, but it can also play certain games all by itself using an emulator.
+When used with a computer (Raspberry Pi, PC, ...) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games, but it can also play certain games all by itself using various emulators.
 
 (Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard! - see below).
+
+THE CURRENT VERSION OF THE PCB IS V3. A V2 PCB CAN BE UPGRADED TO V3. NOTE THAT V2 CODE IS NOT COMPATIBLE WITH V3. SOME CODE IN THE V2 ARCHIVE HAS NOT YET BEEN PORTED TO V3.
 
 ![vstcm pcb](http://robinchampion.com/vstcm/vstcmpcb.jpg)
 
@@ -21,6 +23,7 @@ Compared to the original version, the new vstcm adds:
 - programmable IR remote control buttons
 - extra pots to control X & Y position (to complement the existing X & Y size pots)
 - several power source options: either USB, or external 5V/9V/12V
+- V3 of the PCB is faster and has a better quality image
 
 ![testscreen1](http://robinchampion.com/vstcm/testscreen2.jpg)
 
