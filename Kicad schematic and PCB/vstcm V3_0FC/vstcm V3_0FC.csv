@@ -1,143 +1,31 @@
-"Source:","C:\Users\cawthorne\Documents\GitHub\vstcm\Kicad schematic and PCB V3FC\vstcm V3_0FC\vstcm V3_0FC.kicad_sch"
-"Date:","8/7/2022 7:15:52 PM"
-"Tool:","Eeschema (6.0.2)"
-"Generator:","C:\Program Files\KiCad\6.0\bin\scripting\plugins/bom_csv_grouped_by_value.py"
-"Component Count:","97"
-
-"Individual Components:"
-
-"Item","Qty","Reference(s)","Value","LibPart","Footprint","Datasheet","MANUFACTURER","MAXIMUM_PACKAGE_HEIGHT","PARTREV","STANDARD"
-"","","BL_GND1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","BL_SIG1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","C1","1.0uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C2","10uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C3","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C4","4.7uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C5","2.2uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C6","10uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C7","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C8","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C9","4.7uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C10","4.7uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C11","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C12","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C13","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C14","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C15","10uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C16","10uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C17","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C18","10uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C19","1.0uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C20","22uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"","","C21","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C22","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C23","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C24","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C25","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C26","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","C27","10uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"","","GR_GND1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","GR_SIG1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","IC1","TL3474","teensyv-eagle-import:QUAD_OPAMPP","Package_DIP:DIP-14_W7.62mm_Socket","","","","",""
-"","","IC2","RB-0512D","RB-0512D_P:RB-0512D","footprints2:RECOM_0512D","","Recom","10.2mm","0/2015","Manufacturer recommendations"
-"","","IC3","MCP4922-E/P","teensyv-eagle-import:MCP4922-E{slash}P","Package_DIP:DIP-14_W7.62mm_Socket","","","","",""
-"","","IC4","MCP4922-E/P","teensyv-eagle-import:MCP4922-E{slash}P","Package_DIP:DIP-14_W7.62mm_Socket","","","","",""
-"","","IC5","MCP4922-E/P","teensyv-eagle-import:MCP4922-E{slash}P","Package_DIP:DIP-14_W7.62mm_Socket","","","","",""
-"","","IC6","TL3474","teensyv-eagle-import:QUAD_OPAMPP","Package_DIP:DIP-14_W7.62mm_Socket","","","","",""
-"","","J1","Conn_01x24_Male","Connector:Conn_01x24_Male","Connector_PinHeader_2.54mm:PinHeader_1x24_P2.54mm_Vertical","~","","","",""
-"","","J2","Conn_01x05_Male","Connector:Conn_01x05_Male","Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical","~","","","",""
-"","","J3","Conn_01x25_Male","Connector:Conn_01x25_Male","Connector_PinHeader_2.54mm:PinHeader_1x25_P2.54mm_Vertical","~","","","",""
-"","","J6","Conn_01x02_Male","Connector:Conn_01x02_Male","Connector_Molex:Molex_KK-254_AE-6410-02A_1x02_P2.54mm_Vertical","~","","","",""
-"","","J7","Conn_01x03_Male","Connector:Conn_01x03_Male","Connector_Molex:Molex_KK-254_AE-6410-03A_1x03_P2.54mm_Vertical","~","","","",""
-"","","J8","Conn_01x01_Male","Connector:Conn_01x01_Male","Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical","~","","","",""
-"","","J9","Conn_01x02_Male","Connector:Conn_01x02_Male","Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical","~","","","",""
-"","","L1","L","Device:L","Inductor_THT:L_Axial_L12.0mm_D5.0mm_P15.24mm_Horizontal_Fastron_MISC","~","","","",""
-"","","R1","1K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R2","1K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R3","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R4","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R5","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R6","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R7","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R8","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R9","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R10","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R11","5K","teensyv-eagle-import:R-US_0204{slash}7","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R12","15K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R13","5K","teensyv-eagle-import:R-US_0204{slash}7","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R14","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R15","15K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R16","15K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R17","75R","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R18","75R","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R19","75R","teensyv-eagle-import:R-US_0204{slash}7","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R20","75R","teensyv-eagle-import:R-US_0204{slash}7","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R21","75R","teensyv-eagle-import:R-US_0204{slash}7","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R22","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R23","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R24","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R25","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R26","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R27","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R28","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R29","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R30","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","R31","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"","","RE_GND1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","RE_SIG1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","RV1","20K","Device:R_Potentiometer","Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical","~","","","",""
-"","","RV2","20K","Device:R_Potentiometer","Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical","~","","","",""
-"","","RV3","20K","Device:R_Potentiometer","Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical","~","","","",""
-"","","RV4","20K","Device:R_Potentiometer","Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical","~","","","",""
-"","","SW1","SW_Push","Switch:SW_Push","Button_Switch_THT:SW_PUSH_6mm_H4.3mm","~","","","",""
-"","","SW2","SW_Push","Switch:SW_Push","Button_Switch_THT:SW_PUSH_6mm_H4.3mm","~","","","",""
-"","","SW3","SW_Push","Switch:SW_Push","Button_Switch_THT:SW_PUSH_6mm_H4.3mm","~","","","",""
-"","","SW4","SW_Push","Switch:SW_Push","Button_Switch_THT:SW_PUSH_6mm_H4.3mm","~","","","",""
-"","","SW5","SW_Push","Switch:SW_Push","Button_Switch_THT:SW_PUSH_6mm_H4.3mm","~","","","",""
-"","","TP1","Conn_01x01_Male","Connector:Conn_01x01_Male","Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical","~","","","",""
-"","","TP2","Conn_01x01_Male","Connector:Conn_01x01_Male","Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical","~","","","",""
-"","","TP3","Conn_01x01_Male","Connector:Conn_01x01_Male","Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical","~","","","",""
-"","","U1","Teensy4.1","Teensy:Teensy4.1","Teensy:Teensy41","","","","",""
-"","","U3","LP2950-3_3_TO92","Regulator_Linear:LP2950-5.0_TO92","Package_TO_SOT_THT:TO-92","http://www.ti.com/lit/ds/symlink/lp2951.pdf","","","",""
-"","","U5","LM2940T-5.0","Regulator_Linear:LM2936-5.0","Package_TO_SOT_THT:TO-220-3_Vertical","http://www.ti.com/lit/ds/symlink/lm2936.pdf","","","",""
-"","","X_GND1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","X_SIG1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","Y_GND1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"","","Y_SIG1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-
-
-
-"Collated Components:"
-
-"Item","Qty","Reference(s)","Value","LibPart","Footprint","Datasheet","MANUFACTURER","MAXIMUM_PACKAGE_HEIGHT","PARTREV","STANDARD"
-"1","10","BL_GND1, BL_SIG1, GR_GND1, GR_SIG1, RE_GND1, RE_SIG1, X_GND1, X_SIG1, Y_GND1, Y_SIG1","MountingHole_Pad","Mechanical:MountingHole_Pad","MountingHole:MountingHole_2.2mm_M2_DIN965_Pad_TopBottom","~","","","",""
-"2","2","C1, C19","1.0uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"3","3","C2, C6, C27","10uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"4","14","C3, C7, C8, C11, C12, C13, C14, C17, C21, C22, C23, C24, C25, C26","0.1uF","teensyv-eagle-import:C-US025-024X044","Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm","","","","",""
-"5","3","C4, C9, C10","4.7uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"6","1","C5","2.2uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"7","3","C15, C16, C18","10uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"8","1","C20","22uF","Device:C_Polarized","Capacitor_THT:CP_Radial_D5.0mm_P2.00mm","~","","","",""
-"9","2","IC1, IC6","TL3474","teensyv-eagle-import:QUAD_OPAMPP","Package_DIP:DIP-14_W7.62mm_Socket","","","","",""
-"10","1","IC2","RB-0512D","RB-0512D_P:RB-0512D","footprints2:RECOM_0512D","","Recom","10.2mm","0/2015","Manufacturer recommendations"
-"11","3","IC3, IC4, IC5","MCP4922-E/P","teensyv-eagle-import:MCP4922-E{slash}P","Package_DIP:DIP-14_W7.62mm_Socket","","","","",""
-"12","1","J1","Conn_01x24_Male","Connector:Conn_01x24_Male","Connector_PinHeader_2.54mm:PinHeader_1x24_P2.54mm_Vertical","~","","","",""
-"13","1","J2","Conn_01x05_Male","Connector:Conn_01x05_Male","Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical","~","","","",""
-"14","1","J3","Conn_01x25_Male","Connector:Conn_01x25_Male","Connector_PinHeader_2.54mm:PinHeader_1x25_P2.54mm_Vertical","~","","","",""
-"15","1","J6","Conn_01x02_Male","Connector:Conn_01x02_Male","Connector_Molex:Molex_KK-254_AE-6410-02A_1x02_P2.54mm_Vertical","~","","","",""
-"16","1","J7","Conn_01x03_Male","Connector:Conn_01x03_Male","Connector_Molex:Molex_KK-254_AE-6410-03A_1x03_P2.54mm_Vertical","~","","","",""
-"17","4","J8, TP1, TP2, TP3","Conn_01x01_Male","Connector:Conn_01x01_Male","Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical","~","","","",""
-"18","1","J9","Conn_01x02_Male","Connector:Conn_01x02_Male","Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical","~","","","",""
-"19","1","L1","L","Device:L","Inductor_THT:L_Axial_L12.0mm_D5.0mm_P15.24mm_Horizontal_Fastron_MISC","~","","","",""
-"20","2","R1, R2","1K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"21","9","R3, R4, R5, R6, R9, R10, R14, R25, R26","10k","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"22","10","R7, R8, R22, R23, R24, R27, R28, R29, R30, R31","10K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"23","2","R11, R13","5K","teensyv-eagle-import:R-US_0204{slash}7","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"24","3","R12, R15, R16","15K","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"25","2","R17, R18","75R","teensyv-eagle-import:R-US_0204{slash}2V","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"26","3","R19, R20, R21","75R","teensyv-eagle-import:R-US_0204{slash}7","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","","","","",""
-"27","4","RV1, RV2, RV3, RV4","20K","Device:R_Potentiometer","Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical","~","","","",""
-"28","5","SW1, SW2, SW3, SW4, SW5","SW_Push","Switch:SW_Push","Button_Switch_THT:SW_PUSH_6mm_H4.3mm","~","","","",""
-"29","1","U1","Teensy4.1","Teensy:Teensy4.1","Teensy:Teensy41","","","","",""
-"30","1","U3","LP2950-3_3_TO92","Regulator_Linear:LP2950-5.0_TO92","Package_TO_SOT_THT:TO-92","http://www.ti.com/lit/ds/symlink/lp2951.pdf","","","",""
-"31","1","U5","LM2940T-5.0","Regulator_Linear:LM2936-5.0","Package_TO_SOT_THT:TO-220-3_Vertical","http://www.ti.com/lit/ds/symlink/lm2936.pdf","","","",""
+"Id";"Designator";"Package";"Quantity";"Designation";"Supplier and ref";
+1;"BL_GND1,Y_GND1,RE_SIG1,RE_GND1,Y_SIG1,BL_SIG1,GR_SIG1,X_SIG1,GR_GND1,X_GND1";"Molex156Pin";10;"MountingHole_Pad";;;
+2;"IC4,IC3,IC5";"DIP-14_W7.62mm_Socket";3;"MCP4922-E/P";;;
+3;"U5";"TO-220-3_Vertical";1;"LM2940T-5.0";;;
+4;"R15,R16,R12";"R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal";3;"15K";;;
+5;"SW2,SW4,SW5,SW1,SW3";"SW_PUSH_6mm_H4.3mm";5;"SW_Push";;;
+6;"R21,R17,R20,R19,R18";"R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal";5;"75R";;;
+7;"RV1,RV4,RV3,RV2";"Potentiometer_Bourns_3386P_Vertical";4;"20K";;;
+8;"R4,R5,R25,R14,R3,R26,R9,R6,R10";"R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal";9;"10k";;;
+9;"C18,C15,C16";"CP_Radial_D5.0mm_P2.00mm";3;"10uF";;;
+10;"C22,C12,C7,C24,C3,C17,C23,C21,C26,C13,C8,C25,C11,C14";"C_Disc_D5.0mm_W2.5mm_P2.50mm";14;"0.1uF";;;
+11;"R24,R23,R8,R27,R29,R7,R22,R31,R28,R30";"R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal";10;"10K";;;
+12;"R11,R13";"R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal";2;"5K";;;
+13;"C2,C27,C6";"C_Disc_D5.0mm_W2.5mm_P2.50mm";3;"10uF";;;
+14;"C4,C10,C9";"CP_Radial_D5.0mm_P2.00mm";3;"4.7uF";;;
+15;"TP1,TP3,J8,TP2";"PinHeader_1x01_P2.54mm_Vertical";4;"Conn_01x01_Male";;;
+16;"C20";"CP_Radial_D5.0mm_P2.00mm";1;"22uF";;;
+17;"J7";"Molex_KK-254_AE-6410-03A_1x03_P2.54mm_Vertical";1;"Conn_01x03_Male";;;
+18;"IC1,IC6";"DIP-14_W7.62mm_Socket";2;"TL3474";;;
+19;"J1";"PinHeader_1x24_P2.54mm_Vertical";1;"Conn_01x24_Male";;;
+20;"J9";"PinHeader_1x02_P2.54mm_Vertical";1;"Conn_01x02_Male";;;
+21;"R1,R2";"R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal";2;"1K";;;
+22;"C5";"CP_Radial_D5.0mm_P2.00mm";1;"2.2uF";;;
+23;"J6";"Molex_KK-254_AE-6410-02A_1x02_P2.54mm_Vertical";1;"Conn_01x02_Male";;;
+24;"U3";"TO-92";1;"LP2950-3_3_TO92";;;
+25;"C1,C19";"C_Disc_D5.0mm_W2.5mm_P2.50mm";2;"1.0uF";;;
+26;"J3";"PinHeader_1x25_P2.54mm_Vertical";1;"Conn_01x25_Male";;;
+27;"L1";"L_Axial_L12.0mm_D5.0mm_P15.24mm_Horizontal_Fastron_MISC";1;"L";;;
+28;"U1";"Teensy41";1;"Teensy4.1";;;
+29;"IC2";"RECOM_0512D";1;"RB-0512D";;;
+30;"J2";"PinHeader_1x05_P2.54mm_Vertical";1;"Conn_01x05_Male";;;
