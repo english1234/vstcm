@@ -33,13 +33,13 @@ The board was built with simplicity in mind using components that are easy to fi
 
 Currently, the board can work in either of two ways:
 - on its own, running a 6502 emulator, and with the original game ROM files stored on the SD card of the Teensy. So far, Battlezone and Asteroids work with this, but it shouldn't be too much trouble to get others working. The code is a rough port of vecsim (https://github.com/morbos/bzone), and currently does not handle sound on the Teensy (please feel free to contribute the necessary mods to the code...). See instructions below for how to get this to work.
-- connected to a Raspberry Pi running MAME. The programme code for this option is a development of that which was provided with the original version of the v.st, with modifications made by "Swapfile" (Github user) to interface with AdvanceMAME, and then further modifications made by myself in order to add the new functionality specific to the vstcm. Ideally it should be rewritten or optimised by someone more familiar with the inner workings of the Teensy 4.1, and it is hoped that the publication on github will encourage contributions to develop this as a relatively cheap and easy solution for the vector arcade / vector graphics community.
+- connected to a Raspberry Pi running MAME. The programme code for this option is a development of that which was provided with the original version of the v.st, with modifications made by "Swapfile" (Github user) to interface with AdvanceMAME, and then further modifications made by myself in order to add the new functionality specific to the vstcm, followed by extensive optimisation by fcawth (cf his fork of this project). There is scope for further improvement (see the wiki for this project in the link above), and it is hoped that the publication on github will encourage contributions to develop this as a relatively cheap and easy solution for the vector arcade / vector graphics community.
 
 ## History of development
 
-For those interested in seeing how things got to this point, the development of the PCB is being documented with plenty of pictures (in French, but use Google Translate if required) here : https://www.gamoover.net/Forums/index.php?topic=43469.0 (from page 5) and also shows previous work on building vector arcade HV boards, an Amplifone deflection reproduction, an Asteroids game PCB reproduction, a bit of yoke rewinding, etc.
+For those interested in seeing how things got to this point, the inital development of the PCB was documented with plenty of pictures (in French, but use Google Translate if required) here : https://www.gamoover.net/Forums/index.php?topic=43469.0 (from page 5) and also shows previous work on building vector arcade HV boards, an Amplifone deflection reproduction, an Asteroids game PCB reproduction, a bit of yoke rewinding, etc.
 
-If you want to get in touch to ask questions, or contribute, I can be contacted at: robin@robinchampion.com or on Github (user english1234), Gamoover (english2), UKVAC (english2), KLOV (english2), as well as hanging around on the various vector graphics/Vectrex forums on Facebook.
+If you want to get in touch to ask questions, or contribute, I can be contacted at: robin@robinchampion.com or on Github (user english1234), Gamoover (english2), UKVAC (english2), KLOV (english2), as well as via the various vector graphics/Vectrex forums on Facebook.
 
 A dedicated vstcm web page can be found here: https://robinchampion.com/vst_colour_mod.htm
 
@@ -57,12 +57,9 @@ A ZIP file is in the Gerbers directory. This can be uploaded to your PCB manufac
 The BOM is in a dedicated folder and has Mouser references for many parts at the right hand side. 
 
 - IC2: You need to choose if you are going to use an external supply or not and if so what voltage to use (5V, 9V or 12V). Recom makes these parts, but so do Traco and there may be other brands. Make sure there is a D (for double) at the end of the model number which generates +/- voltages, rather than the S (single) version. See power options below.
-- R12, R15 & R16: these resistors are in the op amp for the RGB signals and were marked as 68 ohm in the BOM, however the circuit was designed with 10K in those places. 10K is producing bent vectors on my setup, and 68 ohm is producing too much gain. The current recommended value is 3.6K. 
-- J6/J7: The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
-- U4: The TXS0108E	which converts voltage from 3.3V to 5V is described as having a DIP20 footprint. It's actually a bit wider than that, so I removed the DIP socket and used pin headers instead which I had to bend a little to get it to fit. This part was used as the previous Teensy 3.2 had 5V outputs whereas the Teensy 4.1 uses 3.3V. Theoretically, installing one of these avoided having to recalculate the values of the resistors in the Op Amp circuit, but since then I removed this part on my board and jumpered rows 2, 3, 4, 5 and 8 and everything seems to work fine with no further changes, so it can probably be left out as long as the Teensy is happy to produce the necessary voltage (a bit above 3.3V) to get the DACs to detect a high signal. 
+- The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
 - U5: See power options below. I have also used a 7805 as a direct replacement with a small heatsink on it, which gets quite warm but hasn't burnt out as yet.
-
- - optional IR remote: I really recommend this - see "IR remote programmable control buttons" below.
+- optional IR remote: I really recommend this - see "IR remote programmable control buttons" below.
  
 I would recommend socketing everything on the board (Teensy, DACs, Op Amps) so that they can be swapped out if better choices are found in the future.
 
@@ -104,7 +101,7 @@ Use the Arduino software to load the .ino file in the Teensy code directory.
 
 Connect the Teensy via USB to your computer.
 
-Choose the Teensy 4.1 in the Teensyduino options, and overclock to 816Mhz, as well as the "Fastest" option.
+Choose the Teensy 4.1 in the Teensyduino options, and overclock to 816Mhz, as well as the "Fastest" option. Make sure you have the latest version of Teensyduino.
 
 Press the compile button. You may need to add the Bounce2 library if you don't already have it.
 
@@ -124,6 +121,7 @@ If you want to save changes to settings shown on the onscreen menu, then put a S
 
 ## Testing Battlezone with the 6502 emulator
 
+THIS CODE ONLY WORKS CURRENTLY WITH THE V2 OF THE PCB.
 Put the following ROM files on a SD card in a directory called roms/Battlezone: 036414a.01, 036413.01, 036412.01, 036411.01, 036410.01, 036409.01, 036422.01, 036421.01 (it's up to you to find them from somewhere...).
 
 Put the SD card in the slot on the Teensy.
