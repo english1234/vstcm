@@ -19,6 +19,7 @@ static char json_str[MAX_JSON_STR_LEN];
 extern params_t v_config[NB_PARAMS];
 extern unsigned long dwell_time;
 extern float line_draw_speed;
+extern bool spot_triggered;
 
 // Read data from Raspberry Pi or other external computer
 // using AdvanceMAME protocol published here
@@ -119,8 +120,8 @@ int read_data(int init)
     // Not sure what to do differently if monochrome frame complete??
     // Add FPS on games as a guide for optimisation
     if (v_config[9].pval == true) 
-    {
-      draw_string("DT:", 3000, 150, 6, v_config[13].pval);
+    { if (spot_triggered) draw_string("*DT:", 3000, 150, 6, v_config[13].pval);
+      else draw_string("DT:", 3000, 150, 6, v_config[13].pval);
       // draw_string("DS:", 3000, 150, 6, v_config[13].pval);
       // draw_string(itoa(line_draw_speed*NORMAL_SHIFT_SCALING, buf1, 10), 3400, 150, 6, v_config[13].pval);
       draw_string(itoa(dwell_time, buf1, 10), 3400, 150, 6, v_config[13].pval);

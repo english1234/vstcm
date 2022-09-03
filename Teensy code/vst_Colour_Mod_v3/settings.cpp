@@ -21,7 +21,7 @@ params_t v_config[NB_PARAMS] = {
   {"OFF_DWELL0",       "Beam settling delay",              OFF_DWELL0,       0,        50},
   {"OFF_DWELL1",       "Wait before beam transit",         OFF_DWELL1,       0,        50},
   {"OFF_DWELL2",       "Wait after beam transit",          OFF_DWELL2,       0,        50},
-  {"NORMAL_SHIFT",     "Normal shift",                     NORMAL_SHIFT,     1,       255},
+  {"NORMAL_SHIFT",     "Drawing Speed",                     NORMAL_SHIFT,     1,       255},
   {"FLIP_X",           "Flip X axis",                      FLIP_X,           0,         1},
   {"FLIP_Y",           "Flip Y axis",                      FLIP_Y,           0,         1},
   {"SWAP_XY",          "Swap XY",                          SWAP_XY,          0,         1},
