@@ -13,7 +13,7 @@
 #include "settings.h"
 
 char const *json_opts[] = {"\"productName\"", "\"version\"", "\"flipx\"", "\"flipy\"", "\"swapxy\"", "\"bwDisplay\"", "\"vertical\"", "\"crtSpeed\"", "\"crtJumpSpeed\"", "\"remote\"", "\"crtType\"", "\"defaultGame\""};
-char const *json_vals[] = {"\"VSTCM\"", "\"V3.0FC\"", "false", "false", "false", "false", "false", "15", "9", "true", "\"CUSTOM\"", "\"none\""};
+char const *json_vals[] = {"\"VSTCM\"", "\"V3.0\"", "false", "false", "false", "false", "false", "15", "9", "true", "\"CUSTOM\"", "\"none\""};
 static char json_str[MAX_JSON_STR_LEN];
 
 extern params_t v_config[NB_PARAMS];
@@ -80,7 +80,7 @@ int read_data(int init)
     return 0;
 
   frame_offset = 0;
-
+  
   uint8_t header = (cmd >> 29) & 0b00000111;
 
   //common case first

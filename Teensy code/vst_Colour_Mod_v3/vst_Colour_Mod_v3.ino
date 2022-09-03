@@ -171,13 +171,13 @@ void loop()
       draw_moveto (SPOT_GOTOMIN, SPOT_GOTOMIN);
       SPI_flush();
       delayMicroseconds(100);
-      if (dwell_time > 15) // For really long dwell times, do the moves again
+      if (dwell_time > 10) // For really long dwell times, do the moves again
         draw_moveto (SPOT_GOTOMAX, SPOT_GOTOMAX); //If we have time, do the moves again
         SPI_flush();
-        delayMicroseconds(100);
+        delayMicroseconds(200);
         draw_moveto (SPOT_GOTOMIN, SPOT_GOTOMIN); //Try to move back to the min again
         SPI_flush();
-        delayMicroseconds(100);
+        delayMicroseconds(200);
     }
     else spot_triggered=false;
   }
