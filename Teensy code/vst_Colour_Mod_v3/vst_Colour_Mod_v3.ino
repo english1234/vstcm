@@ -29,7 +29,7 @@ const int REST_Y       = 2048;
 
 //For spot killer fix - if the total distance in x or y is less than SPOT_MAX, it will go to the corners to try to stop
 //the spot killer from triggering
-const int SPOT_MAX     = 3300;
+const int SPOT_MAX     = 3400;
 const int SPOT_GOTOMAX = 4076;
 const int SPOT_GOTOMIN = 20;
 
