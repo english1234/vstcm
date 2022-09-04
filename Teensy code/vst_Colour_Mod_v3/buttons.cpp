@@ -9,7 +9,10 @@
 
 #include <Bounce2.h>
 #include "settings.h"
-
+#ifdef IR_REMOTE
+#define SUPPRESS_ERROR_MESSAGE_FOR_BEGIN
+#include <IRremote.hpp>
+#endif
 // Bounce objects to read five pushbuttons (pins 0-4)
 static Bounce button0 = Bounce();
 static Bounce button1 = Bounce();

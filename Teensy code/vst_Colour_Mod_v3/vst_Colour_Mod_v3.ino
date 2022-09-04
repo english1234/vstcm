@@ -18,11 +18,8 @@
 #include "spi_fct.h"
 #include "buttons.h"
 
-#define IR_REMOTE                      // define if IR remote is fitted  TODO:deactivate if the menu is not shown? Has about a 10% reduction of frame rate when active
-#ifdef IR_REMOTE
-#define SUPPRESS_ERROR_MESSAGE_FOR_BEGIN
-#include <IRremote.hpp>
-#endif
+
+
 
 const int REST_X       = 2048;     // Wait in the middle of the screen
 const int REST_Y       = 2048;
