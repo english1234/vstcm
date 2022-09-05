@@ -18,26 +18,26 @@
 #include "spi_fct.h"
 #include "buttons.h"
 
-#define IR_REMOTE                      // define if IR remote is fitted  TODO:deactivate if the menu is not shown? Has about a 10% reduction of frame rate when active
-#ifdef IR_REMOTE
-#define SUPPRESS_ERROR_MESSAGE_FOR_BEGIN
-#include <IRremote.hpp>
-#endif
+
+
 
 const int REST_X       = 2048;     // Wait in the middle of the screen
 const int REST_Y       = 2048;
 
-//For spot killer fix - if the min or max is beyond these limits we will go to the appropriate side
-const int SPOT_MAX     = 3500;
-const int SPOT_GOTOMAX = 4050;
-const int SPOT_GOTOMIN = 40;
+//For spot killer fix - if the total distance in x or y is less than SPOT_MAX, it will go to the corners to try to stop
+//the spot killer from triggering
+const int SPOT_MAX     = 3400;
+const int SPOT_GOTOMAX = 4076;
+const int SPOT_GOTOMIN = 20;
+
+bool spot_triggered;
 
 //EXPERIMENTAL automatic draw rate adjustment based on how much idle time there is between frames
 //Defines and global for the auto-speed feature
 #define NORMAL_SHIFT_SCALING   2.0
 #define MAX_DELTA_SHIFT        6    // These are the limits on the auto-shift for speeding up drawing complex frames
 #define MIN_DELTA_SHIFT       -3
-#define DELTA_SHIFT_INCREMENT  0.2
+#define DELTA_SHIFT_INCREMENT  0.1
 #define SPEEDUP_THRESHOLD_MS   2    // If the dwell time is less than this then the drawing rate will try to speed up (lower resolution)
 #define SLOWDOWN_THRESHOLD_MS  8    // If the dwell time is greater than this then the drawing rate will slow down (higher resolution)
 //If the thresholds are too close together there can be "blooming" as the rate goes up and down too quickly - maybe make it limit the
@@ -129,7 +129,7 @@ void loop()
   if (show_vstcm_config)
   {
     delta_shift = 0;
-    line_draw_speed = (float)v_config[5].pval / NORMAL_SHIFT_SCALING + 1.0 ;
+    line_draw_speed = (float)v_config[5].pval / NORMAL_SHIFT_SCALING + 3.0 ; //Make things a little bit faster for the menu
     show_vstcm_config_screen();      // Show settings screen and manage associated control buttons
   }
   else
@@ -159,14 +159,26 @@ void loop()
   
   if (!show_vstcm_config)
   {
-    if (((frame_max_x - frame_min_x) < SPOT_MAX) || ((frame_max_y - frame_min_y) < SPOT_MAX))
+    if (((frame_max_x - frame_min_x) < SPOT_MAX) || ((frame_max_y - frame_min_y) < SPOT_MAX) || (dwell_time > 10))
     {
+      spot_triggered=true;
       draw_moveto (SPOT_GOTOMAX, SPOT_GOTOMAX);
+      SPI_flush();
+      if (dwell_time>5)delayMicroseconds(200);
+      else delayMicroseconds(100);
       draw_moveto (SPOT_GOTOMIN, SPOT_GOTOMIN);
-
-      if (dwell_time > 3)
-        draw_moveto (SPOT_GOTOMAX, SPOT_GOTOMAX); //If we have time, do a move back all the way to the max
+      SPI_flush();
+      if (dwell_time>5)delayMicroseconds(200);
+      else delayMicroseconds(100);
+      if (dwell_time > 10) // For really long dwell times, do the moves again
+        draw_moveto (SPOT_GOTOMAX, SPOT_GOTOMAX); //If we have time, do the moves again
+        SPI_flush();
+        delayMicroseconds(200);
+        draw_moveto (SPOT_GOTOMIN, SPOT_GOTOMIN); //Try to move back to the min again
+        SPI_flush();
+        delayMicroseconds(200);
     }
+    else spot_triggered=false;
   }
   
   goto_xy(REST_X, REST_Y);
