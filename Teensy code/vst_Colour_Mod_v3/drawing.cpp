@@ -30,7 +30,7 @@ uint16_t gamma_red[256];
 uint16_t gamma_green[256];
 uint16_t gamma_blue[256];
 
-extern params_t v_config[NB_PARAMS];
+extern params_t v_setting[NB_SETTINGS];
 extern int Spiflag, Spi1flag; //Keeps track of an active SPI transaction in progress
 
 //extern void SPI_flush();
@@ -85,9 +85,9 @@ void draw_moveto(int x1, int y1)
 
   // hold the current position for a few clocks
   // with the beam off
-  dwell(v_config[3].pval);
-  _draw_lineto(x1, y1, v_config[1].pval);
-  dwell(v_config[4].pval);
+  dwell(v_setting[3].pval);
+  _draw_lineto(x1, y1, v_setting[1].pval);
+  dwell(v_setting[4].pval);
   if (x1> frame_max_x) frame_max_x=x1;
   else if (x1<frame_min_x) frame_min_x=x1;
   if (y1> frame_max_y) frame_max_y=y1;
@@ -268,7 +268,7 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue)
   //Possibly change where this is depending on if the beam is being turned on or off??
   if (LastColInt.red || LastColInt.green || LastColInt.blue) Beam_on = true;
   else Beam_on = false;
-  dwell(v_config[2].pval); //Wait this amount before changing the beam (turning it on or off)
+  dwell(v_setting[2].pval); //Wait this amount before changing the beam (turning it on or off)
 }
 
 void goto_xy(uint16_t x, uint16_t y) {
@@ -277,7 +277,7 @@ void goto_xy(uint16_t x, uint16_t y) {
   if ((x_pos == x) && (y_pos == y)) return;
    x_pos = x;
    y_pos = y;
-  if (v_config[10].pval == true ) {
+  if (v_setting[10].pval == true ) {
     xf = x - 2048;
     yf = y - 2048;
     xcorr = xf * (1.0 - yf * yf * .000000013) + 2048.0; //These are experimental at this point but seem to do OK on the 6100 monitor
@@ -285,8 +285,8 @@ void goto_xy(uint16_t x, uint16_t y) {
     x = xcorr;
     y = ycorr;
   } 
-  if (v_config[6].pval == false) x = 4095 - x;
-  if (v_config[7].pval == false) y = 4095 - y;
+  if (v_setting[6].pval == false) x = 4095 - x;
+  if (v_setting[7].pval == false) y = 4095 - y;
   MCP4922_write2(DAC_CHAN_XY, x, y , 0);
 }
 

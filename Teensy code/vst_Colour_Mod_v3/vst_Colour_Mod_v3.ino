@@ -18,9 +18,6 @@
 #include "spi_fct.h"
 #include "buttons.h"
 
-
-
-
 const int REST_X       = 2048;     // Wait in the middle of the screen
 const int REST_Y       = 2048;
 
@@ -46,11 +43,13 @@ float delta_shift = 0 ;
 
 long fps;                           // Approximate FPS used to benchmark code performance improvements
 
-volatile bool show_vstcm_config;    // Shows settings if true
+volatile bool show_vstcm_splash;    // Shows splash screen if true (usually if nothing else is running such as a a game)
+volatile bool show_vstcm_settings;  // Shows settings screen if true
+volatile bool show_something;       // Shows either settings or splash screen if true
 
 unsigned long dwell_time = 0;
 
-extern params_t v_config[NB_PARAMS];
+extern params_t v_setting[NB_SETTINGS];
 extern float line_draw_speed;
 extern int frame_max_x;
 extern int frame_min_x;
@@ -65,19 +64,22 @@ void setup()
   init_gamma();
 
   //TODO: maybe if a button is pressed it will load defaults instead of reading the sdcard?
-  read_vstcm_config();      // Read saved settings from Teensy SD card
+  read_vstcm_config();          // Read saved settings from Teensy SD card
 
   IR_remote_setup();
 
-  buttons_setup();          // Configure buttons on vstcm for input using built in pullup resistors
+  buttons_setup();              // Configure buttons on vstcm for input using built in pullup resistors
 
-  SPI_init();               // Set up pins on Teensy as well as SPI registers
+  SPI_init();                   // Set up pins on Teensy as well as SPI registers
 
-  line_draw_speed = (float)v_config[5].pval / NORMAL_SHIFT_SCALING;
+  line_draw_speed = (float)v_setting[5].pval / NORMAL_SHIFT_SCALING;
   //Serial.println(line_draw_speed);
-  show_vstcm_config = true; // Start off showing the settings screen until serial data received
+  
+  show_something = true;
+  show_vstcm_splash = true;     // Start off showing the splash screen until serial data received
+  show_vstcm_settings = false;  // Don't show settings screen until selected from splash screen
 
-  make_test_pattern();      // Prepare buffer of data to draw test patterns quicker
+  make_test_pattern();          // Prepare buffer of data to draw test patterns quicker
 }
 
 void loop()
@@ -93,8 +95,8 @@ void loop()
 
   serial_flag = 0;
   loop_start_time = millis();
-  
-  if (!Serial) 
+
+  if (!Serial)
   {
     read_data(1); //init read_data if the serial port is not open
     Serial.flush();
@@ -112,25 +114,30 @@ void loop()
         serial_flag = 1;
       }
 
-      show_vstcm_config = false;
+      show_something = false;    // Turn off splash or settings screen
 
       if (read_data(0) == 1)
         break;
     }
     else if ((millis() - loop_start_time) > SERIAL_WAIT_TIME)  //Changed this to check only if serial is not available
-      show_vstcm_config = true;
+      show_something = true;     // Show splash screen
 
-    if (show_vstcm_config)
+    if (show_something)
       break;
   }
 
   dwell_time = draw_start_time - loop_start_time; //This is how long it waited after drawing a frame - better than FPS for tuning
 
-  if (show_vstcm_config)
+  if (show_something)
   {
     delta_shift = 0;
-    line_draw_speed = (float)v_config[5].pval / NORMAL_SHIFT_SCALING + 3.0 ; //Make things a little bit faster for the menu
-    show_vstcm_config_screen();      // Show settings screen and manage associated control buttons
+    line_draw_speed = (float)v_setting[5].pval / NORMAL_SHIFT_SCALING + 3.0 ; //Make things a little bit faster for the menu
+
+    if (show_vstcm_splash)
+      show_vstcm_splash_screen();      // Show splash screen and manage associated control buttons
+
+    if (show_vstcm_settings)
+      show_vstcm_settings_screen();    // Show settings screen and manage associated control buttons
   }
   else
   {
@@ -147,49 +154,49 @@ void loop()
     //     if (delta_shift < MIN_DELTA_SHIFT) delta_shift = MIN_DELTA_SHIFT;
     //   }
 
-    line_draw_speed = (float)v_config[5].pval / NORMAL_SHIFT_SCALING + delta_shift;
+    line_draw_speed = (float)v_setting[5].pval / NORMAL_SHIFT_SCALING + delta_shift;
 
     if (line_draw_speed < 1)
       line_draw_speed = 1;
   }
-  
+
   // Go to the center of the screen, turn the beam off (prevents stray coloured lines from appearing)
   brightness(0, 0, 0);
-  dwell(v_config[3].pval);
-  
-  if (!show_vstcm_config)
+  dwell(v_setting[3].pval);
+
+  if (!show_something)
   {
     if (((frame_max_x - frame_min_x) < SPOT_MAX) || ((frame_max_y - frame_min_y) < SPOT_MAX) || (dwell_time > 10))
     {
-      spot_triggered=true;
+      spot_triggered = true;
       draw_moveto (SPOT_GOTOMAX, SPOT_GOTOMAX);
       SPI_flush();
-      if (dwell_time>5)delayMicroseconds(200);
+      if (dwell_time > 5)delayMicroseconds(200);
       else delayMicroseconds(100);
       draw_moveto (SPOT_GOTOMIN, SPOT_GOTOMIN);
       SPI_flush();
-      if (dwell_time>5)delayMicroseconds(200);
+      if (dwell_time > 5)delayMicroseconds(200);
       else delayMicroseconds(100);
       if (dwell_time > 10) // For really long dwell times, do the moves again
         draw_moveto (SPOT_GOTOMAX, SPOT_GOTOMAX); //If we have time, do the moves again
-        SPI_flush();
-        delayMicroseconds(200);
-        draw_moveto (SPOT_GOTOMIN, SPOT_GOTOMIN); //Try to move back to the min again
-        SPI_flush();
-        delayMicroseconds(200);
+      SPI_flush();
+      delayMicroseconds(200);
+      draw_moveto (SPOT_GOTOMIN, SPOT_GOTOMIN); //Try to move back to the min again
+      SPI_flush();
+      delayMicroseconds(200);
     }
-    else spot_triggered=false;
+    else spot_triggered = false;
   }
-  
+
   goto_xy(REST_X, REST_Y);
   SPI_flush();
-  
-  if (show_vstcm_config)
+
+  if (show_something)
     manage_buttons(); //Moved here to avoid bright spot on the monitor when doing SD card operations
-  
+
   fps = 1000000 / waiting;
 
-  if (show_vstcm_config)
+  if (show_something)
     delay(5); //The 6100 monitor likes to spend some time in the middle
   else
     delayMicroseconds(100); //Wait 100 microseconds in the center if displaying a game (tune this?)

@@ -59,11 +59,13 @@ typedef struct {
   uint32_t max;           // Max value of parameter
 } params_t;
 
-#define NB_PARAMS 16
+#define NB_SETTINGS 16    // Number of items in settings menu
+#define NB_SPLASH_CHOICES 3 // Number of items in splash screen menu
 
 void read_vstcm_config();
 void write_vstcm_config();
-void show_vstcm_config_screen();
+void show_vstcm_settings_screen();
+void show_vstcm_splash_screen();
 void make_test_pattern();
 void moveto(int, int, int, int, int, int);
 void draw_test_pattern(int);

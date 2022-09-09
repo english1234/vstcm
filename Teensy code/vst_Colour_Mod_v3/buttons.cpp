@@ -22,8 +22,14 @@ static Bounce button4 = Bounce();
 
 const uint8_t DEBOUNCE_INTERVAL = 25;    // Measured in ms
 
-extern params_t v_config[NB_PARAMS];
-extern int opt_select;    // Currently selected setting
+extern params_t v_setting[NB_SETTINGS];
+extern int sel_setting;    // Currently selected setting
+extern params_t v_splash[NB_SPLASH_CHOICES];
+extern bool show_vstcm_splash;
+extern bool show_vstcm_settings;
+extern int sel_splash;    // Currently selected splash screen menu choice
+
+extern void bzone();
 
 void buttons_setup()
 {
@@ -41,7 +47,7 @@ void buttons_setup()
 
 void manage_buttons()
 {
-  // Use the buttons on the PCB to adjust and save settings
+  // Use the buttons on the PCB or IR remote to adjust and save settings
 
   int com = 0;    // Command received from IR remote
 
@@ -72,32 +78,77 @@ void manage_buttons()
   button3.update();
   button4.update();
 
-  if (button4.fell() || com == 0x18)          // SW5 Up button - go up list of options and loop around
+  if (show_vstcm_splash)    // The splash screen is active, so manage buttons accordingly
   {
-    if (opt_select -- < 0)
-      opt_select = 12;
-  }
+    if (button4.fell() || com == 0x18)          // SW5 Up button - go up list of options and loop around
+    {
+      if (sel_splash -- < 1)
+        sel_splash = (NB_SPLASH_CHOICES - 1);
+    }
 
-  if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
+    if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
+    {
+      sel_splash ++;
+      if (sel_splash > (NB_SPLASH_CHOICES - 1))
+        sel_splash = 0;
+    }
+
+    if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
+    {
+      // Act on the OK button being pressed depending on the selected menu option
+      show_vstcm_splash = false;    // Stop showing splash screen, something else has been selected
+
+      // only one choice for now for testing purposes
+      if (!memcmp(v_splash[sel_splash].ini_label, "SETTINGS", 8))
+        show_vstcm_settings = true;
+      else
+
+        // add other choices here, for now just go back to splash screen
+
+        bzone();
+     //   show_vstcm_splash = true; 
+
+
+    }
+  }
+  else                      // The settings screen is active, so manage buttons accordingly
   {
-    if (opt_select ++ > NB_PARAMS - 1)
-      opt_select = 0;
-  }
+    if (button4.fell() || com == 0x18)          // SW5 Up button - go up list of options and loop around
+    {
+      if (sel_setting -- < 0)
+        sel_setting = 12;
+    }
 
-  if (button3.fell() || com == 0x08)          // SW3 Left button - decrease value of current parameter
-  {
-    if (v_config[opt_select].pval > v_config[opt_select].min)
-      v_config[opt_select].pval --;
-  }
+    if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
+    {
+      if (sel_setting ++ > NB_SETTINGS - 1)
+        sel_setting = 0;
+    }
 
-  if (button1.fell() || com == 0x5A)          // SW4 Right button - increase value of current parameter
-  {
-    if (v_config[opt_select].pval < v_config[opt_select].max)
-      v_config[opt_select].pval ++;
-  }
+    if (button3.fell() || com == 0x08)          // SW3 Left button - decrease value of current parameter
+    {
+      if (v_setting[sel_setting].pval > v_setting[sel_setting].min)
+        v_setting[sel_setting].pval --;
+    }
 
-  if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
-    write_vstcm_config();                    // Update the settings on the SD card
+    if (button1.fell() || com == 0x5A)          // SW4 Right button - increase value of current parameter
+    {
+      if (v_setting[sel_setting].pval < v_setting[sel_setting].max)
+        v_setting[sel_setting].pval ++;
+    }
+
+    if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
+    {
+      write_vstcm_config();                    // Update the settings on the SD card
+      
+      // Act on the OK button being pressed depending on the selected menu option
+      show_vstcm_splash = true;    // Stop showing splash screen, something else has been selected
+
+      // only one choice for now for testing purposes, also need to add return from settings screen choice
+
+      show_vstcm_settings = false;
+    }
+  }
 }
 
 // An IR remote can be used instead of the onboard buttons, as the PCB
@@ -110,7 +161,7 @@ void IR_remote_setup()
 
   // Start the receiver and if not 3. parameter specified,
   // take LED_BUILTIN pin from the internal boards definition as default feedback LED
-  IrReceiver.begin(v_config[11].pval, ENABLE_LED_FEEDBACK);
+  IrReceiver.begin(v_setting[11].pval, ENABLE_LED_FEEDBACK);
 
   // attachInterrupt(digitalPinToInterrupt(IR_RECEIVE_PIN), IR_remote_loop, CHANGE);
 #endif

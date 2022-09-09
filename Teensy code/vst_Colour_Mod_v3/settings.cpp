@@ -13,25 +13,38 @@
 
 static DataChunk_t Chunk[NUMBER_OF_TEST_PATTERNS][MAX_PTS];
 static int nb_points[NUMBER_OF_TEST_PATTERNS];
-int opt_select;    // Currently selected setting
+//
+// Settings menu
+//
+int sel_setting;    // Currently selected setting
 
-params_t v_config[NB_PARAMS] = {
-  {"TEST_PATTERN",     "RGB test patterns",                0,                0,         4},
-  {"OFF_SHIFT",        "Beam transit speed",               OFF_SHIFT,        0,        50},
-  {"OFF_DWELL0",       "Beam settling delay",              OFF_DWELL0,       0,        50},
-  {"OFF_DWELL1",       "Wait before beam transit",         OFF_DWELL1,       0,        50},
-  {"OFF_DWELL2",       "Wait after beam transit",          OFF_DWELL2,       0,        50},
-  {"NORMAL_SHIFT",     "Drawing Speed",                     NORMAL_SHIFT,     1,       255},
-  {"FLIP_X",           "Flip X axis",                      FLIP_X,           0,         1},
-  {"FLIP_Y",           "Flip Y axis",                      FLIP_Y,           0,         1},
-  {"SWAP_XY",          "Swap XY",                          SWAP_XY,          0,         1},
-  {"SHOW DT",          "Show DT",                          SHOW_DT,          0,         1},
-  {"PINCUSHION",       "Pincushion adjustment",            PINCUSHION,       0,         1},
-  {"IR_RECEIVE_PIN",   "IR receive pin",                   IR_RECEIVE_PIN,   0,        54},
-  {"AUDIO_PIN",        "Audio pin",                        AUDIO_PIN,        0,        54},
-  {"NORMAL1",          "Normal text brightness",           NORMAL1,          0,       255},
-  {"BRIGHTER",         "Highlighted text brightness",      BRIGHTER,         0,       255},
-  {"SERIAL_WAIT_TIME", "Test pattern delay",               SERIAL_WAIT_TIME, 0,       255}
+params_t v_setting[NB_SETTINGS] = {
+  {"TEST_PATTERN",     "RGB test patterns",           0,                0,   4},
+  {"OFF_SHIFT",        "Beam transit speed",          OFF_SHIFT,        0,  50},
+  {"OFF_DWELL0",       "Beam settling delay",         OFF_DWELL0,       0,  50},
+  {"OFF_DWELL1",       "Wait before beam transit",    OFF_DWELL1,       0,  50},
+  {"OFF_DWELL2",       "Wait after beam transit",     OFF_DWELL2,       0,  50},
+  {"NORMAL_SHIFT",     "Drawing speed",               NORMAL_SHIFT,     1, 255},
+  {"FLIP_X",           "Flip X axis",                 FLIP_X,           0,   1},
+  {"FLIP_Y",           "Flip Y axis",                 FLIP_Y,           0,   1},
+  {"SWAP_XY",          "Swap XY",                     SWAP_XY,          0,   1},
+  {"SHOW DT",          "Show DT",                     SHOW_DT,          0,   1},
+  {"PINCUSHION",       "Pincushion adjustment",       PINCUSHION,       0,   1},
+  {"IR_RECEIVE_PIN",   "IR receive pin",              IR_RECEIVE_PIN,   0,  54},
+  {"AUDIO_PIN",        "Audio pin",                   AUDIO_PIN,        0,  54},
+  {"NORMAL1",          "Normal text brightness",      NORMAL1,          0, 255},
+  {"BRIGHTER",         "Highlighted text brightness", BRIGHTER,         0, 255},
+  {"SERIAL_WAIT_TIME", "Test pattern delay",          SERIAL_WAIT_TIME, 0, 255}
+};
+//
+// Menu choices on splash screen
+//
+int sel_splash;    // Currently selected menu item on splash screen
+
+params_t v_splash[NB_SPLASH_CHOICES] = {
+  {"BZONE", "Play Battlezone",  0, 0, 0},
+  {"SETTINGS", "Settings menu",    0, 0, 0},
+  {"ACK", "Acknowledgements", 0, 0, 0}
 };
 
 extern long fps;
@@ -62,7 +75,7 @@ void read_vstcm_config()
   {
     while (dataFile.available())
     {
-      for (i = 1; i < NB_PARAMS; i++)
+      for (i = 1; i < NB_SETTINGS; i++)
       {
         pos_pn = 0;
 
@@ -121,22 +134,22 @@ void read_vstcm_config()
 
         bool bChanged = false;
 
-        for (j = 0; j < NB_PARAMS; j++)
+        for (j = 0; j < NB_SETTINGS; j++)
         {
-          if (!memcmp(param_name, v_config[j].ini_label, pos_pn))
+          if (!memcmp(param_name, v_setting[j].ini_label, pos_pn))
           {
             /* Serial.print(param_name);
               Serial.print(" ");
               Serial.print(pos_pn);
               Serial.print(" characters long, AKA ");
-              Serial.print(v_config[j].ini_label);
+              Serial.print(v_setting[j].ini_label);
               Serial.print(" ");
-              Serial.print(sizeof v_config[j].ini_label);
+              Serial.print(sizeof v_setting[j].ini_label);
               Serial.print(" characters long, changed from ");
-              Serial.print(v_config[j].pval); */
-            v_config[j].pval = atoi(param_value);
+              Serial.print(v_setting[j].pval); */
+            v_setting[j].pval = atoi(param_value);
             //  Serial.print(" to ");
-            //  Serial.println(v_config[j].pval);
+            //  Serial.println(v_setting[j].pval);
             bChanged = true;
             break;
           }
@@ -164,7 +177,7 @@ void read_vstcm_config()
     write_vstcm_config();
   }
 
-  opt_select = 0;     // Start at beginning of parameter list
+  sel_setting = 0;     // Start at beginning of parameter list
 }
 
 void write_vstcm_config()
@@ -179,18 +192,18 @@ void write_vstcm_config()
 
   if (dataFile)
   {
-    for (i = 0; i < NB_PARAMS; i++)
+    for (i = 0; i < NB_SETTINGS; i++)
     {
       //  Serial.print("Writing ");
-      //  Serial.print(v_config[i].ini_label);
+      //  Serial.print(v_setting[i].ini_label);
 
-      dataFile.write(v_config[i].ini_label);
+      dataFile.write(v_setting[i].ini_label);
       dataFile.write("=");
       memset(buf, 0, sizeof buf);
-      ltoa(v_config[i].pval, buf, 10);
+      ltoa(v_setting[i].pval, buf, 10);
 
       //   Serial.print(" with value ");
-      //   Serial.print(v_config[i].pval);
+      //   Serial.print(v_setting[i].pval);
       //   Serial.print(" AKA ");
       //   Serial.println(buf);
 
@@ -210,20 +223,19 @@ void write_vstcm_config()
   }
 }
 
-void show_vstcm_config_screen()
+void show_vstcm_settings_screen()
 {
-  int i;
-  char buf1[25] = "";
-
-  if (v_config[0].pval != 0)      // show test pattern instead of settings
+  if (v_setting[0].pval != 0)      // show test pattern instead of settings
     draw_test_pattern(0);
   else
   {
-    draw_string("v.st Colour Mod v3.0", 950, 3800, 10, v_config[14].pval);
+    draw_string("v.st Colour Mod v3.0", 950, 3800, 10, v_setting[14].pval);
     draw_test_pattern(1);
-    
+
     // Show parameters on screen
 
+    int i;
+    char buf1[25] = "";
     const int x = 300;
     int y = 2800;
     int intensity;
@@ -231,24 +243,65 @@ void show_vstcm_config_screen()
     const int char_size = 5;
     const int x_offset = 3000;
 
-    for (i = 0; i < NB_PARAMS; i++)
+    for (i = 0; i < NB_SETTINGS; i++)
     {
-      if (i == opt_select)      // Highlight currently selected parameter
-        intensity = v_config[14].pval;
+      if (i == sel_setting)      // Highlight currently selected parameter
+        intensity = v_setting[14].pval;
       else
-        intensity = v_config[13].pval;
+        intensity = v_setting[13].pval;
 
-      draw_string(v_config[i].param, x, y, char_size, intensity);
-      itoa(v_config[i].pval, buf1, 10);
+      draw_string(v_setting[i].param, x, y, char_size, intensity);
+      itoa(v_setting[i].pval, buf1, 10);
       draw_string(buf1, x + x_offset, y, char_size, intensity);
       y -= line_size;
     }
 
-    draw_string("PRESS CENTRE BUTTON / OK TO SAVE SETTINGS", 550, 400, 5, v_config[13].pval);
+    draw_string("PRESS CENTRE BUTTON / OK TO SAVE SETTINGS", 550, 400, 5, v_setting[13].pval);
 
-    draw_string("FPS:", 3000, 150, 6, v_config[13].pval);
-    draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_config[13].pval);
+    draw_string("FPS:", 3000, 150, 6, v_setting[13].pval);
+    draw_string(itoa(fps, buf1, 10), 3400, 150, 6, v_setting[13].pval);
   }
+}
+
+void show_vstcm_splash_screen()
+{
+  static int logo_x = 1920;
+  static int logo_y = 3500;
+  static int logo_size = 1;
+  static int logo_offset = 1;
+  static int logo_brightness = 10;
+
+  draw_string("VSTCM", logo_x, logo_y, logo_size, logo_brightness);
+
+  // Animate the VSTCM logo: gets bigger and brighter then smaller and darker on each execution of loop()
+  logo_size += logo_offset;
+  logo_x -= (30 * logo_offset);
+  logo_brightness += (4 * logo_offset);
+
+  if (logo_size < 1 || logo_size > 25)
+    logo_offset = -logo_offset;
+
+  // Show menu choices on splash screen
+
+  int i;
+  const int x = 1100;
+  int y = 2800;
+  int intensity;
+  const int line_size = 256;
+  const int char_size = 9;
+
+  for (i = 0; i < NB_SPLASH_CHOICES; i++)
+  {
+    if (i == sel_splash)      // Highlight currently selected menu choice
+      intensity = v_setting[14].pval;
+    else
+      intensity = v_setting[13].pval;
+
+    draw_string(v_splash[i].param, x, y, char_size, intensity);
+    y -= line_size;
+  }
+
+  draw_string("SELECT OPTION AND PRESS CENTRE BUTTON / OK OR CONNECT MAME TO USB", 200, 400, 4, v_setting[13].pval);
 }
 
 void make_test_pattern()
@@ -355,13 +408,13 @@ void draw_test_pattern(int offset)
 
   if (offset == 0)      // Determine what colour to draw the test pattern
   {
-    if (v_config[0].pval == 1)
+    if (v_setting[0].pval == 1)
       red = 140;
-    else if (v_config[0].pval == 2)
+    else if (v_setting[0].pval == 2)
       green = 140;
-    else if (v_config[0].pval == 3)
+    else if (v_setting[0].pval == 3)
       blue = 140;
-    else if (v_config[0].pval == 4)
+    else if (v_setting[0].pval == 4)
     {
       red = 140;
       green = 140;
