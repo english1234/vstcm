@@ -188,7 +188,7 @@ static int opt_select;    // Currently selected setting
 #define VWIDTH    (480)
 #define VHEIGHT   (272)
 
-uint8_t renderBuffer[VWIDTH*VHEIGHT];  // our render distination. defined in primitives.cpp
+uint8_t renderBuffer[VWIDTH*VHEIGHT];  // our render destination. defined in primitives.cpp
 
 // i'm a C guy at heart..
 static vfont_t context;
@@ -218,28 +218,6 @@ enum _pal {
 static inline void clearFrame (const uint8_t palIdx)
 {
   memset(renderBuffer, palIdx, VWIDTH * VHEIGHT);
-}
-
-int driver_callback (uint32_t msg, intptr_t *value1, uint32_t value2)
-{
-  /*  if (msg == USBD_MSG_DISPLAYREADY) {
-      //delay(50);
-    #if 0
-      char name[DEVICE_NAMELENGTH + 1];
-      char serial[DEVICE_SERIALLENGTH + 1];
-      uint32_t width = 0;
-      uint32_t height = 0;
-      uint32_t version = 0;
-
-    //  usbd480.getDeviceDetails(name, &width, &height, &version, serial);
-      Serial.println(name);
-      Serial.println(serial);
-      Serial.printf("%i %i %i\r\n", width, height, version);
-    #endif
-      doTests = 1;
-    }
-  */
-  return 1;
 }
 
 static inline void buildPalette ()
