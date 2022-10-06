@@ -72,13 +72,14 @@ The PCB can be powered in several ways:
 
 |N° | Power supply option              | Supplies                                    | C3/C4    | IC2      | U5/C19/C20  | Split pad Teensy | Tested |
 |---|----------------------------------|---------------------------------------------|----------|----------|-------------|------------------|--------|
-| 1 | USB 5V                           | Complete circuit inc Teensy                 | Required | RB-0512D | Absent      | No               | No     |
+| 1 | USB 5V                           | Complete circuit inc Teensy                 | Required | RB-0512D | Absent      | No               | Yes    |
 | 2 | USB 5V + external 5V unregulated | USB supplies Teensy, external supplies rest | Required | RB-0512D | Absent      | No               | Yes    |
-| 3 | External 9V unregulated          | Complete circuit inc Teensy                 | Required | RB-0912D | Present     | Yes              | No     |
+| 3 | External 9V unregulated          | Complete circuit inc Teensy                 | Required | RB-0912D | Present     | Yes              | Yes    |
 | 4 | External 12V unregulated         | Complete circuit inc Teensy                 | Required | RB-1212D | Present     | Yes              | Yes    |
 | 5 | USB 5V + external 12V regulated  | USB supplies Teensy, external supplies rest | Absent   | Absent   | Absent      | No               | Yes    |
+| 6 | External 5V regulated            | Complete circuit inc Teensy                 | Required | Required | Absent      | No               | Yes    |
 
-1/ power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. Make sure the Pi has at least a 3A supply.
+1/ power the whole thing via USB from a Raspberry Pi: this requires a short good quality cable. Make sure the Pi has at least a 3A supply.
 
 2/ power the Teensy via USB from a Raspberry Pi, and use a separate external supply (such as a wall wart) for the DACs and Op Amps. 
 
@@ -86,6 +87,8 @@ The PCB can be powered in several ways:
 WARNING: THE V2 OF THE PCB (AS OPPOSED TO V2.1 OR LATER) HAS THE SYMBOL FOR U5 INVERTED. PIN 1 OF THE LM2940 (THE LEFT HAND ONE) NEEDS TO BE AT THE TOP OF THE BOARD, THE SILKSCREEN ON THE PCB AND SCHEMATIC HAVE BEEN CORRECTED FROM V2.1 ONWARDS.
 
 5/ If you already have a perfectly regulated and smooth 12V supply, then you can connect it to J7.
+
+6/ Connect a "wall wart" type 5V supply to J6. Bridge pins 1 and 3 of U5. I used a 1A supply successfully for basic tests.
 
 The choice is really just a matter of what you have on hand. It makes no difference what vector CRT you have, as the output voltages of the PCB are the same whatever you use to power it. If you're connecting to an existing arcade machine, then chances are you have a +/-12V supply coming out of the power brick. Otherwise, many people have a box of old "wall wart" 5V (or 9V or 12V) adapters which will work fine: either fit a barrel connector to the PCB input or chop the connector off the end of the power supply and solder the 2 wires directly to the board (check with a multimeter first which is positive and which is ground). 
 
