@@ -129,7 +129,7 @@ The V3 code contains the code to run Battlezone except for the ROMs. There is al
 
 Put the SD card in the slot on the Teensy.
 
-Upload the bzone.ino to the vstcm using the Arduino software.
+For the standalone V2 version, upload the bzone.ino to the vstcm using the Arduino software.
 
 Plug it in.
 
