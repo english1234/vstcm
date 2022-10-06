@@ -125,8 +125,7 @@ If you want to save changes to settings shown on the onscreen menu, then put a S
 
 ## Testing Battlezone with the 6502 emulator
 
-THIS CODE ONLY WORKS CURRENTLY WITH THE V2 OF THE PCB.
-Put the following ROM files on a SD card in a directory called roms/Battlezone: 036414a.01, 036413.01, 036412.01, 036411.01, 036410.01, 036409.01, 036422.01, 036421.01 (it's up to you to find them from somewhere...).
+The V3 code contains the code to run Battlezone except for the ROMs. There is also a version for VSTCM V2 in the archive. For both of these to work, put the following ROM files on a SD card in a directory called roms/Battlezone: 036414a.01, 036413.01, 036412.01, 036411.01, 036410.01, 036409.01, 036422.01, 036421.01 (it's up to you to find them from somewhere...).
 
 Put the SD card in the slot on the Teensy.
 
