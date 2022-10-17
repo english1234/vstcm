@@ -5,7 +5,7 @@ When used with a computer (Raspberry Pi, PC, ...) running AdvanceMAME, it can be
 
 (Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard! - see below).
 
-THE CURRENT VERSION OF THE PCB IS V3. A V2 PCB CAN BE UPGRADED TO V3. NOTE THAT V2 CODE IS NOT COMPATIBLE WITH V3. SOME CODE IN THE V2 ARCHIVE HAS NOT YET BEEN PORTED TO V3.
+THE CURRENT VERSION OF THE PCB IS V3. A V2 PCB CAN BE UPGRADED TO V3 BY CUTTING TWO TRACKS AND ADDING TWO PATCH WIRES (cf. conversion document). NOTE THAT V2 CODE IS NOT COMPATIBLE WITH V3. SOME CODE IN THE V2 ARCHIVE HAS NOT YET BEEN PORTED TO V3.
 
 ![vstcm pcb](http://robinchampion.com/vstcm/vstcmpcb.jpg)
 
