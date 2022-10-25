@@ -24,7 +24,7 @@ Compared to the original version, the new vstcm adds:
 - extra pots to control X & Y position (to complement the existing X & Y size pots)
 - several power source options: either USB, or external 5V/9V/12V
 - Molex connectors for power and connection to the deflection PCB
-- V3 of the PCB is faster and has a better quality image
+- V3 of the PCB is faster and has a better quality image (drawing speed auto adjusts when it can’t keep up with the games and also has some tweaks to prevent over-sensitive spot killers from triggering when the beam hasn’t moved enough in x and y, which seems to happen on WG6100 more than Amplifone).
 
 ![testscreen1](http://robinchampion.com/vstcm/testscreen2.jpg)
 
