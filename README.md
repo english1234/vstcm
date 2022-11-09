@@ -141,7 +141,7 @@ If you have a IR remote then you can control the game in a rather basic manner f
 ## Testing games with AdvanceMAME
 
 A Raspberry Pi 4 or 400 is recommended (I have also tested with a Pi 3 Model B+ 2017 and an Orange Pi 3 LTS which seem to work ok too). If you are running the vstcm from the Raspberry/Orange Pi then a 3A supply would be preferable.
-Other options (which I have not yet tested) are PC (either Windows or a Linux VM under Windows, or native Linux) or Mac. 
+Other options are PC (either Windows or a Linux VM under Windows, or native Linux) or Mac (the latter not yet tested). 
 I followed the instructions here to download and compile AdvanceMAME: https://www.arcade-projects.com/threads/almost-pixel-perfect-arcade-emulation-on-raspberry-pi-with-advancemame.7777/
 
 ![orangepi](http://robinchampion.com/vstcm/orangepi.jpg)
