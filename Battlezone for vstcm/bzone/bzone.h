@@ -24,6 +24,39 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 */
+/*
+#include <Audio.h>
+
+AudioPlaySdWav  playWav1;
+AudioOutputMQS  audioOutput;
+AudioConnection patchCord1(playWav1, 0, audioOutput, 0);
+AudioConnection patchCord2(playWav1, 1, audioOutput, 1);*/
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
+
+// GUItool: begin automatically generated code
+/*AudioPlaySdWav           playSdWav1;     //xy=135,397
+AudioAmplifier           amp1;           //xy=334,339
+AudioAmplifier           amp2;           //xy=349,430
+AudioOutputMQS           mqs1;           //xy=525,381
+AudioConnection          patchCord1(playSdWav1, 0, amp1, 0);
+AudioConnection          patchCord2(playSdWav1, 1, amp2, 0);
+AudioConnection          patchCord3(amp1, 0, mqs1, 0);
+AudioConnection          patchCord4(amp2, 0, mqs1, 1);*/
+// GUItool: end automatically generated code
+
+
+// GUItool: begin automatically generated code
+AudioPlaySdRaw           playSdRaw1;     //xy=140,487
+AudioAmplifier           amp2;           //xy=349,430
+AudioOutputMQS           mqs1;           //xy=525,381
+AudioConnection          patchCord1(playSdRaw1, amp2);
+AudioConnection          patchCord2(amp2, 0, mqs1, 1);
+AudioConnection          patchCord3(amp2, 0, mqs1, 0);
+// GUItool: end automatically generated code
 
 #if 0
 uint16_t pc_ring[64];
@@ -39,12 +72,40 @@ struct _fifo {
   uint8_t Y;
   uint8_t flags;
 };
-
 struct _fifo fifo[8192];
 unsigned short pcpos = 0;
 #endif
 
 #endif
+
+const int chipSelect = BUILTIN_SDCARD;
+
+// Teensy SS pins connected to DACs
+const int SS0_IC5_RED     =  8;       // RED output
+const int SS1_IC4_X_Y     =  6;       // X and Y outputs
+const int SS2_IC3_GRE_BLU = 22;       // GREEN and BLUE outputs
+#define SDI                 11        // MOSI on SPI0
+#define SCK                 13        // SCK on SPI0
+#define DAC_CHAN_A 0                  // Defines channel A and B of each MCP4922 dual DAC
+#define DAC_CHAN_B 1
+#define BUFFERED                      // If defined, uses buffer on DACs
+#define BRIGHT_SHIFT         5
+#define IR_RECEIVE_PIN      32
+
+//EventResponder callbackHandler;       // DMA SPI callbackHandler
+volatile int activepin;               // Active CS pin of DAC receiving data
+
+//DMAMEM char dmabuf[2] __attribute__((aligned(32)));
+
+//Some additional SPI register bits to possibly work with
+#define LPSPI_SR_WCF ((uint32_t)(1<<8)) //received Word complete flag
+#define LPSPI_SR_FCF ((uint32_t)(1<<9)) //Frame complete flag
+#define LPSPI_SR_TCF ((uint32_t)(1<<10)) //Transfer complete flag
+#define LPSPI_SR_MBF ((uint32_t)(1<<24)) //Module busy flag
+#define LPSPI_TCR_RXMSK ((uint32_t)(1<<19)) //Receive Data Mask (when 1 no data received to FIFO)
+
+uint32_t mytcr; //Keeps track of what the TCR register should be put back to after 16 bit mode - bit of a hack but reads and writes are a bit funny for this register (FIFOs?)
+
 
 /* types of access */
 #define RD 1
@@ -152,56 +213,6 @@ typedef struct {
   int32_t tag;
 } tag_info;
 
-// Bzone audio support
-
-const int16_t explode_lo[] = {
-  // #include "expLo.hex"
-};
-const int16_t explode_hi[] = {
-  //#include "expHi.hex"
-};
-const int16_t shell_lo[] = {
-  //#include "shellLo.hex"
-};
-const int16_t shell_hi[] = {
-  //#include "shellHi.hex"
-};
-const int16_t motor_lo[] = {
-  //#include "motorLo.hex"
-};
-const int16_t motor_hi[] = {
-  //#include "motorHi.hex"
-};
-// Pokey sounds:
-// {1 radar,  2 bump,  4 blocked,  8 extra life,  0x10 enemy appears,  0x20 saucer hit,  0x40 short saucer sound,  0x80 high score melody}
-const int16_t radar[] = {
-  //#include "radar.hex"
-};
-const int16_t bump[] = {
-  //#include "bump.hex"
-};
-const int16_t blocked[] = {
-  //#include "blocked.hex"
-};
-const int16_t life[] = {
-  //#include "life.hex"
-};
-const int16_t enemy[] = {
-  //#include "start.hex"
-};
-const int16_t saucer_hit[] = {
-  //#include "saucerhit.hex"
-};
-const int16_t saucer[] = {
-  //#include "saucer.hex"
-};
-const int16_t high_score[] = {
-  //#include "hiscore.hex"
-};
-const int16_t smart[] = {
-  //#include "smart.hex"
-};
-
 #define SILENCE    (0)
 #define EXPLODE_LO (1 << 1)
 #define EXPLODE_HI (1 << 2)
@@ -212,14 +223,6 @@ const int16_t smart[] = {
 #define SMART      (1 << 7)
 
 #define AUDACITY_WAV_HDR_OFF (0x2c / 2) // divide by 2 so its in samples (16bit)
-
-typedef struct _sound_rec {
-  const int16_t *ptr;
-  uint32_t len; // Len of the sample after processing
-  uint32_t idx; // Curr index into the sample.
-  uint32_t oneshot; // When 1 don't repeat
-} sound_rec;
-
 #define CHECK(x) \
     if(g_smask & bit(x)) { \
         worklist[idx++] = sounds[x].ptr[sounds[x].idx]; \
@@ -271,7 +274,7 @@ static long currenty;
 // Soc
 //DECLAREBSS(RCC_ClocksTypeDef, RCC_Clocks);
 DECLAREBSS(volatile uint32_t, g_soc_sixty_hz);
-//DECLAREBSS(volatile uint32_t, g_soc_curr_switch);
+DECLAREBSS(volatile uint32_t, g_soc_curr_switch);
 // Codec/Audio
 //DECLAREBSS(DMA_Stream_TypeDef, *AUDIO_MAL_DMA_STREAM);
 DECLARE(uint32_t, g_codec_volume, 0xd0);

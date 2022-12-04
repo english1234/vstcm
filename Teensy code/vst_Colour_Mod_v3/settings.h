@@ -60,7 +60,7 @@ typedef struct {
 } params_t;
 
 #define NB_SETTINGS 16    // Number of items in settings menu
-#define NB_SPLASH_CHOICES 3 // Number of items in splash screen menu
+#define NB_SPLASH_CHOICES 18 // Number of items in splash screen menu
 
 void read_vstcm_config();
 void write_vstcm_config();

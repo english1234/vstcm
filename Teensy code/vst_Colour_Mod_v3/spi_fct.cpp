@@ -17,28 +17,20 @@ volatile int Spiflag, Spi1flag; //Keeps track of an active SPI transaction in pr
 void SPI_init()
 {
   uint32_t mytcr; //Keeps track of what the TCR register should be put back to after 16 bit mode - bit of a hack but reads and writes are a bit funny for this register (FIFOs?)
-  
-  // Apparently, pin 10 has to be defined as an OUTPUT pin to designate the Arduino as the SPI master.
-  // Even if pin 10 is not being used... Is this true for Teensy 4.1?
-  // The default mode is INPUT. You must explicitly set pin 10 to OUTPUT (and leave it as OUTPUT).
-  pinMode(10, OUTPUT);
-  digitalWriteFast(10, HIGH);
-  pinMode(CS1, OUTPUT);
-  digitalWriteFast(CS1, HIGH);
-  delayNanoseconds(100);
 
-  // Set chip select pins going to DACs to output
+  // Set chip select pins going to IC4/IC5 DACs to output
   pinMode(CS_R_G_X_Y, OUTPUT);
   digitalWriteFast(CS_R_G_X_Y, HIGH);
   delayNanoseconds(100);
 
+  // Set chip select pins going to IC3 DAC to output
   pinMode(CS_B, OUTPUT);
   digitalWriteFast(CS_B, HIGH);
   delayNanoseconds(100);
 
   pinMode(SDI, OUTPUT);       // Set up clock and data output to DACs
   pinMode(SCK, OUTPUT);
-  pinMode(SDI1, OUTPUT);       // Set up clock and data output to DACs
+  pinMode(SDI1, OUTPUT);      // Set up clock and data output to DACs
   pinMode(SCK1, OUTPUT);
   delay(1);                   // https://www.pjrc.com/better-spi-bus-design-in-3-steps/
 

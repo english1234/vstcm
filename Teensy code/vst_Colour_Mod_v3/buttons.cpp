@@ -8,32 +8,40 @@
 */
 
 #include <Bounce2.h>
+#include <Audio.h>
 #include "settings.h"
 #ifdef IR_REMOTE
 #define SUPPRESS_ERROR_MESSAGE_FOR_BEGIN
 #include <IRremote.hpp>
 #endif
-// Bounce objects to read five pushbuttons (pins 0-4)
-static Bounce button0 = Bounce();
-static Bounce button1 = Bounce();
-static Bounce button2 = Bounce();
-static Bounce button3 = Bounce();
-static Bounce button4 = Bounce();
 
-const uint8_t DEBOUNCE_INTERVAL = 25;    // Measured in ms
+// Bounce objects to read five pushbuttons (pins 0-4)
+Bounce button0;
+Bounce button1;
+Bounce button2;
+Bounce button3;
+Bounce button4;
+
+const uint8_t DEBOUNCE_INTERVAL = 25;  // Measured in ms
 
 extern params_t v_setting[NB_SETTINGS];
-extern int sel_setting;    // Currently selected setting
+extern int sel_setting;  // Currently selected setting
 extern params_t v_splash[NB_SPLASH_CHOICES];
 extern bool show_vstcm_splash;
 extern bool show_vstcm_settings;
-extern int sel_splash;    // Currently selected splash screen menu choice
-
+extern int sel_splash;           // Currently selected splash screen menu choice
+extern AudioPlaySdWav playWav1;  //xy=137,426
 extern void bzone();
+void cinemu_setup(const char *);
 
-void buttons_setup()
-{
-  button0.attach(0, INPUT_PULLUP);        // Attach the debouncer to a pin and use internal pullup resistor
+void buttons_setup() {
+  button0 = Bounce();
+  button1 = Bounce();
+  button2 = Bounce();
+  button3 = Bounce();
+  button4 = Bounce();
+
+  button0.attach(0, INPUT_PULLUP);  // Attach the debouncer to a pin and use internal pullup resistor
   button0.interval(DEBOUNCE_INTERVAL);
   button1.attach(1, INPUT_PULLUP);
   button1.interval(DEBOUNCE_INTERVAL);
@@ -45,16 +53,15 @@ void buttons_setup()
   button4.interval(DEBOUNCE_INTERVAL);
 }
 
-void manage_buttons()
-{
+void manage_buttons() {
   // Use the buttons on the PCB or IR remote to adjust and save settings
 
-  int com = 0;    // Command received from IR remote
+  int com = 0;  // Command received from IR remote
 
 #ifdef IR_REMOTE
-  if (IrReceiver.decode())    // Check if a button has been pressed on the IR remote
+  if (IrReceiver.decode())  // Check if a button has been pressed on the IR remote
   {
-    IrReceiver.resume(); // Enable receiving of the next value
+    IrReceiver.resume();  // Enable receiving of the next value
     /*
        HX1838 Infrared Remote Control Module (£1/$1/1€ on Aliexpress)
 
@@ -78,71 +85,84 @@ void manage_buttons()
   button3.update();
   button4.update();
 
-  if (show_vstcm_splash)    // The splash screen is active, so manage buttons accordingly
+  if (show_vstcm_splash)  // The splash screen is active, so manage buttons accordingly
   {
-    if (button4.fell() || com == 0x18)          // SW5 Up button - go up list of options and loop around
+    if (button4.fell() || com == 0x18)  // SW5 Up button - go up list of options and loop around
     {
-      if (sel_splash -- < 1)
+      //  playWav1.play("roms/Battlezone/explode3.wav");
+      if (sel_splash-- < 1)
         sel_splash = (NB_SPLASH_CHOICES - 1);
     }
 
-    if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
+    if (button0.fell() || com == 0x52)  // SW2 Down button - go down list of options and loop around
     {
-      sel_splash ++;
+      //  playWav1.play("roms/Battlezone/explode3.wav");
+      sel_splash++;
       if (sel_splash > (NB_SPLASH_CHOICES - 1))
         sel_splash = 0;
     }
 
-    if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
+    if (button2.fell() || com == 0x1C)  // SW3 Middle button or OK on IR remote
     {
+      //  playWav1.play("roms/Battlezone/explode3.wav");
       // Act on the OK button being pressed depending on the selected menu option
-      show_vstcm_splash = false;    // Stop showing splash screen, something else has been selected
+      show_vstcm_splash = false;  // Stop showing splash screen, something else has been selected
 
       // only one choice for now for testing purposes
       if (!memcmp(v_splash[sel_splash].ini_label, "SETTINGS", 8))
         show_vstcm_settings = true;
-      else
-
-        // add other choices here, for now just go back to splash screen
-
+      else if (!memcmp(v_splash[sel_splash].ini_label, "BZONE", 5)) {
         bzone();
-     //   show_vstcm_splash = true; 
+        // After Battlezone ends, we return here 
+        show_vstcm_splash = true;  // Stop showing splash screen, something else has been selected
+        show_vstcm_settings = false;
+      }
+      else {
+        // Launch the selected Cinematronics game
+        cinemu_setup(v_splash[sel_splash].ini_label);
 
-
+        // After the selected Cinematronics game ends, we return here 
+        show_vstcm_splash = true;  // Stop showing splash screen, something else has been selected
+        show_vstcm_settings = false;
+      }
     }
-  }
-  else                      // The settings screen is active, so manage buttons accordingly
+  } else  // The settings screen is active, so manage buttons accordingly
   {
-    if (button4.fell() || com == 0x18)          // SW5 Up button - go up list of options and loop around
+    if (button4.fell() || com == 0x18)  // SW5 Up button - go up list of options and loop around
     {
-      if (sel_setting -- < 0)
+      //  playWav1.play("roms/Battlezone/explode3.wav");
+      if (sel_setting-- < 0)
         sel_setting = 12;
     }
 
-    if (button0.fell() || com == 0x52)          // SW2 Down button - go down list of options and loop around
+    if (button0.fell() || com == 0x52)  // SW2 Down button - go down list of options and loop around
     {
-      if (sel_setting ++ > NB_SETTINGS - 1)
+      //  playWav1.play("roms/Battlezone/explode3.wav");
+      if (sel_setting++ > NB_SETTINGS - 1)
         sel_setting = 0;
     }
 
-    if (button3.fell() || com == 0x08)          // SW3 Left button - decrease value of current parameter
+    if (button3.fell() || com == 0x08)  // SW3 Left button - decrease value of current parameter
     {
+      //  playWav1.play("roms/Battlezone/explode3.wav");
       if (v_setting[sel_setting].pval > v_setting[sel_setting].min)
-        v_setting[sel_setting].pval --;
+        v_setting[sel_setting].pval--;
     }
 
-    if (button1.fell() || com == 0x5A)          // SW4 Right button - increase value of current parameter
+    if (button1.fell() || com == 0x5A)  // SW4 Right button - increase value of current parameter
     {
+      //  playWav1.play("roms/Battlezone/explode3.wav");
       if (v_setting[sel_setting].pval < v_setting[sel_setting].max)
-        v_setting[sel_setting].pval ++;
+        v_setting[sel_setting].pval++;
     }
 
-    if (button2.fell() || com == 0x1C)          // SW3 Middle button or OK on IR remote
+    if (button2.fell() || com == 0x1C)  // SW3 Middle button or OK on IR remote
     {
-      write_vstcm_config();                    // Update the settings on the SD card
-      
+      // playWav1.play("roms/Battlezone/explode3.wav");
+      write_vstcm_config();  // Update the settings on the SD card
+
       // Act on the OK button being pressed depending on the selected menu option
-      show_vstcm_splash = true;    // Stop showing splash screen, something else has been selected
+      show_vstcm_splash = true;  // Stop showing splash screen, something else has been selected
 
       // only one choice for now for testing purposes, also need to add return from settings screen choice
 
@@ -155,8 +175,7 @@ void manage_buttons()
 // may be mounted in a arcade cabinet, making it difficult to see changes on the screen
 // when using the physical buttons
 
-void IR_remote_setup()
-{
+void IR_remote_setup() {
 #ifdef IR_REMOTE
 
   // Start the receiver and if not 3. parameter specified,

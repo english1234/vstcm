@@ -11,46 +11,62 @@
 #include "settings.h"
 #include "drawing.h"
 
+char gMsg[50];                        // Optional additional information to show on menu
+
 static DataChunk_t Chunk[NUMBER_OF_TEST_PATTERNS][MAX_PTS];
 static int nb_points[NUMBER_OF_TEST_PATTERNS];
 //
 // Settings menu
 //
-int sel_setting;    // Currently selected setting
+int sel_setting;  // Currently selected setting
 
 params_t v_setting[NB_SETTINGS] = {
-  {"TEST_PATTERN",     "RGB test patterns",           0,                0,   4},
-  {"OFF_SHIFT",        "Beam transit speed",          OFF_SHIFT,        0,  50},
-  {"OFF_DWELL0",       "Beam settling delay",         OFF_DWELL0,       0,  50},
-  {"OFF_DWELL1",       "Wait before beam transit",    OFF_DWELL1,       0,  50},
-  {"OFF_DWELL2",       "Wait after beam transit",     OFF_DWELL2,       0,  50},
-  {"NORMAL_SHIFT",     "Drawing speed",               NORMAL_SHIFT,     1, 255},
-  {"FLIP_X",           "Flip X axis",                 FLIP_X,           0,   1},
-  {"FLIP_Y",           "Flip Y axis",                 FLIP_Y,           0,   1},
-  {"SWAP_XY",          "Swap XY",                     SWAP_XY,          0,   1},
-  {"SHOW DT",          "Show DT",                     SHOW_DT,          0,   1},
-  {"PINCUSHION",       "Pincushion adjustment",       PINCUSHION,       0,   1},
-  {"IR_RECEIVE_PIN",   "IR receive pin",              IR_RECEIVE_PIN,   0,  54},
-  {"AUDIO_PIN",        "Audio pin",                   AUDIO_PIN,        0,  54},
-  {"NORMAL1",          "Normal text brightness",      NORMAL1,          0, 255},
-  {"BRIGHTER",         "Highlighted text brightness", BRIGHTER,         0, 255},
-  {"SERIAL_WAIT_TIME", "Test pattern delay",          SERIAL_WAIT_TIME, 0, 255}
+  { "TEST_PATTERN", "RGB test patterns", 0, 0, 4 },
+  { "OFF_SHIFT", "Beam transit speed", OFF_SHIFT, 0, 50 },
+  { "OFF_DWELL0", "Beam settling delay", OFF_DWELL0, 0, 50 },
+  { "OFF_DWELL1", "Wait before beam transit", OFF_DWELL1, 0, 50 },
+  { "OFF_DWELL2", "Wait after beam transit", OFF_DWELL2, 0, 50 },
+  { "NORMAL_SHIFT", "Drawing speed", NORMAL_SHIFT, 1, 255 },
+  { "FLIP_X", "Flip X axis", FLIP_X, 0, 1 },
+  { "FLIP_Y", "Flip Y axis", FLIP_Y, 0, 1 },
+  { "SWAP_XY", "Swap XY", SWAP_XY, 0, 1 },
+  { "SHOW DT", "Show DT", SHOW_DT, 0, 1 },
+  { "PINCUSHION", "Pincushion adjustment", PINCUSHION, 0, 1 },
+  { "IR_RECEIVE_PIN", "IR receive pin", IR_RECEIVE_PIN, 0, 54 },
+  { "AUDIO_PIN", "Audio pin", AUDIO_PIN, 0, 54 },
+  { "NORMAL1", "Normal text brightness", NORMAL1, 0, 255 },
+  { "BRIGHTER", "Highlighted text brightness", BRIGHTER, 0, 255 },
+  { "SERIAL_WAIT_TIME", "Test pattern delay", SERIAL_WAIT_TIME, 0, 255 }
 };
 //
 // Menu choices on splash screen
 //
-int sel_splash;    // Currently selected menu item on splash screen
+int sel_splash;  // Currently selected menu item on splash screen
 
 params_t v_splash[NB_SPLASH_CHOICES] = {
-  {"BZONE", "Play Battlezone",  0, 0, 0},
-  {"SETTINGS", "Settings menu",    0, 0, 0},
-  {"ACK", "Acknowledgements", 0, 0, 0}
+  { "BZONE", "Battlezone", 0, 0, 0 },
+  { "tailgunner", "Tail Gunner", 0, 0, 0 },
+  { "warrior", "Warrior", 0, 0, 0 },
+  { "armorattack", "Armor Attack", 0, 0, 0 },
+  { "boxingbugs", "Boxing Bugs", 0, 0, 0 },
+  { "demon", "Demon", 0, 0, 0 },
+  { "ripoff", "Rip Off", 0, 0, 0 },
+  { "spacewars", "Space Wars", 0, 0, 0 },
+  { "starcastle", "Star Castle", 0, 0, 0 },
+  { "starhawk", "Star Hawk", 0, 0, 0 },
+  { "speedfreak", "Speed Freak", 0, 0, 0 },
+  { "solarquest", "Solar Quest", 0, 0, 0 },
+  { "cosmicchasm", "Cosmic Chasm", 0, 0, 0 },
+  { "waroftheworlds", "War of the Worlds", 0, 0, 0 },
+  { "barrier", "Barrier", 0, 0, 0 },
+  { "sundance", "Sundance", 0, 0, 0 },
+  { "qb3", "QB3", 0, 0, 0 },
+  { "SETTINGS", "Settings menu", 0, 0, 0 },
 };
 
 extern long fps;
 
-void read_vstcm_config()
-{
+void read_vstcm_config() {
   int i, j;
   const int chipSelect = BUILTIN_SDCARD;
   char buf;
@@ -59,8 +75,7 @@ void read_vstcm_config()
   uint8_t pos_pn, pos_pv;
 
   // see if the SD card is present and can be initialised:
-  if (!SD.begin(chipSelect))
-  {
+  if (!SD.begin(chipSelect)) {
     //Serial.println("Card failed, or not present");
     // don't do anything more:
     return;
@@ -71,37 +86,33 @@ void read_vstcm_config()
   // open the vstcm.ini file on the sd card
   File dataFile = SD.open("vstcm.ini", FILE_READ);
 
-  if (dataFile)
-  {
-    while (dataFile.available())
-    {
-      for (i = 1; i < NB_SETTINGS; i++)
-      {
+  if (dataFile) {
+    while (dataFile.available()) {
+      for (i = 1; i < NB_SETTINGS; i++) {
         pos_pn = 0;
 
         memset(param_name, 0, sizeof param_name);
 
         uint32_t read_start_time = millis();
 
-        while (1)   // read the parameter name until an equals sign is encountered
+        while (1)  // read the parameter name until an equals sign is encountered
         {
 
           // provide code for a timeout in case there's a problem reading the file
 
-          if (millis() - read_start_time > 2000u)
-          {
+          if (millis() - read_start_time > 2000u) {
             //Serial.println("SD card read timeout");
             break;
           }
 
           buf = dataFile.read();
 
-          if (buf == 0x3D)      // stop reading if it's an equals sign
+          if (buf == 0x3D)  // stop reading if it's an equals sign
             break;
-          else if (buf != 0x0A && buf != 0x0d)      // ignore carriage return
+          else if (buf != 0x0A && buf != 0x0d)  // ignore carriage return
           {
             param_name[pos_pn] = buf;
-            pos_pn ++;
+            pos_pn++;
           }
         }
 
@@ -109,24 +120,23 @@ void read_vstcm_config()
 
         memset(param_value, 0, sizeof param_value);
 
-        while (1)   // read the parameter value until a semicolon is encountered
+        while (1)  // read the parameter value until a semicolon is encountered
         {
 
           // provide code for a timeout in case there's a problem reading the file
-          if (millis() - read_start_time > 2000u)
-          {
+          if (millis() - read_start_time > 2000u) {
             //Serial.println("SD card read timeout");
             break;
           }
 
           buf = dataFile.read();
 
-          if (buf == 0x3B)      // stop reading if it's a semicolon
+          if (buf == 0x3B)  // stop reading if it's a semicolon
             break;
-          else if (buf != 0x0A && buf != 0x0d)      // ignore carriage return
+          else if (buf != 0x0A && buf != 0x0d)  // ignore carriage return
           {
             param_value[pos_pv] = buf;
-            pos_pv ++;
+            pos_pv++;
           }
         }
 
@@ -134,10 +144,8 @@ void read_vstcm_config()
 
         bool bChanged = false;
 
-        for (j = 0; j < NB_SETTINGS; j++)
-        {
-          if (!memcmp(param_name, v_setting[j].ini_label, pos_pn))
-          {
+        for (j = 0; j < NB_SETTINGS; j++) {
+          if (!memcmp(param_name, v_setting[j].ini_label, pos_pn)) {
             /* Serial.print(param_name);
               Serial.print(" ");
               Serial.print(pos_pn);
@@ -155,21 +163,18 @@ void read_vstcm_config()
           }
         }
 
-        if (bChanged == false)
-        {
+        if (bChanged == false) {
           //    Serial.print(param_name);
           //    Serial.println(" not found");
         }
-      } // end of for i loop
+      }  // end of for i loop
 
       break;
     }
 
     // close the file:
     dataFile.close();
-  }
-  else
-  {
+  } else {
     // if the file didn't open, print an error:
     //  Serial.println("Error opening file for reading");
 
@@ -177,11 +182,10 @@ void read_vstcm_config()
     write_vstcm_config();
   }
 
-  sel_setting = 0;     // Start at beginning of parameter list
+  sel_setting = 0;  // Start at beginning of parameter list
 }
 
-void write_vstcm_config()
-{
+void write_vstcm_config() {
   int i;
   char buf[20];
 
@@ -190,10 +194,8 @@ void write_vstcm_config()
 
   File dataFile = SD.open("vstcm.ini", O_RDWR);
 
-  if (dataFile)
-  {
-    for (i = 0; i < NB_SETTINGS; i++)
-    {
+  if (dataFile) {
+    for (i = 0; i < NB_SETTINGS; i++) {
       //  Serial.print("Writing ");
       //  Serial.print(v_setting[i].ini_label);
 
@@ -215,20 +217,16 @@ void write_vstcm_config()
 
     // close the file:
     dataFile.close();
-  }
-  else
-  {
+  } else {
     // if the file didn't open, print an error:
     //  Serial.println("Error opening file for writing");
   }
 }
 
-void show_vstcm_settings_screen()
-{
-  if (v_setting[0].pval != 0)      // show test pattern instead of settings
+void show_vstcm_settings_screen() {
+  if (v_setting[0].pval != 0)  // show test pattern instead of settings
     draw_test_pattern(0);
-  else
-  {
+  else {
     draw_string("v.st Colour Mod v3.0", 950, 3800, 10, v_setting[14].pval);
     draw_test_pattern(1);
 
@@ -243,9 +241,8 @@ void show_vstcm_settings_screen()
     const int char_size = 5;
     const int x_offset = 3000;
 
-    for (i = 0; i < NB_SETTINGS; i++)
-    {
-      if (i == sel_setting)      // Highlight currently selected parameter
+    for (i = 0; i < NB_SETTINGS; i++) {
+      if (i == sel_setting)  // Highlight currently selected parameter
         intensity = v_setting[14].pval;
       else
         intensity = v_setting[13].pval;
@@ -263,8 +260,7 @@ void show_vstcm_settings_screen()
   }
 }
 
-void show_vstcm_splash_screen()
-{
+void show_vstcm_splash_screen() {
   static int logo_x = 1920;
   static int logo_y = 3500;
   static int logo_size = 1;
@@ -284,15 +280,14 @@ void show_vstcm_splash_screen()
   // Show menu choices on splash screen
 
   int i;
-  const int x = 1100;
-  int y = 2800;
+  const int x = 1500;
+  int y = 3000;
   int intensity;
-  const int line_size = 256;
-  const int char_size = 9;
+  const int line_size = 128;
+  const int char_size = 6;
 
-  for (i = 0; i < NB_SPLASH_CHOICES; i++)
-  {
-    if (i == sel_splash)      // Highlight currently selected menu choice
+  for (i = 0; i < NB_SPLASH_CHOICES; i++) {
+    if (i == sel_splash)  // Highlight currently selected menu choice
       intensity = v_setting[14].pval;
     else
       intensity = v_setting[13].pval;
@@ -301,16 +296,20 @@ void show_vstcm_splash_screen()
     y -= line_size;
   }
 
-  draw_string("SELECT OPTION AND PRESS CENTRE BUTTON / OK OR CONNECT MAME TO USB", 200, 400, 4, v_setting[13].pval);
+  // Show an additional message if required
+  if (strlen(gMsg) > 0)
+    draw_string(gMsg, 200, 600, 6, v_setting[13].pval);
+
+  draw_string("CHOOSE A GAME OR CONNECT MAME TO USB", 200, 400, 7, v_setting[13].pval);
+  draw_string("Press down on PCB to exit game", 700, 200, 6, v_setting[13].pval);
 }
 
-void make_test_pattern()
-{
+void make_test_pattern() {
   // Prepare buffer of test pattern data as a speed optimisation
 
   int offset, i, j;
 
-  offset = 0;   // Draw Asteroids style test pattern in Red, Green or Blue
+  offset = 0;  // Draw Asteroids style test pattern in Red, Green or Blue
 
   nb_points[offset] = 0;
   int intensity = 150;
@@ -374,21 +373,20 @@ void make_test_pattern()
   const uint16_t height = 3072;
   const int mult = 5;
 
-  for (i = 0, j = 31 ; j <= 255 ; i += 8, j += 32)  //Start at 31 to end up at full intensity?
+  for (i = 0, j = 31; j <= 255; i += 8, j += 32)  //Start at 31 to end up at full intensity?
   {
     moveto(offset, 1100, height + i * mult, 0, 0, 0);
-    moveto(offset, 1500, height + i * mult, j, 0, 0);     // Red
+    moveto(offset, 1500, height + i * mult, j, 0, 0);  // Red
     moveto(offset, 1600, height + i * mult, 0, 0, 0);
-    moveto(offset, 2000, height + i * mult, 0, j, 0);     // Green
+    moveto(offset, 2000, height + i * mult, 0, j, 0);  // Green
     moveto(offset, 2100, height + i * mult, 0, 0, 0);
-    moveto(offset, 2500, height + i * mult, 0, 0, j);     // Blue
+    moveto(offset, 2500, height + i * mult, 0, 0, j);  // Blue
     moveto(offset, 2600, height + i * mult, 0, 0, 0);
-    moveto(offset, 3000, height + i * mult, j, j, j);     // all 3 colours combined
+    moveto(offset, 3000, height + i * mult, j, j, j);  // all 3 colours combined
   }
 }
 
-void moveto(int offset, int x, int y, int red, int green, int blue)
-{
+void moveto(int offset, int x, int y, int red, int green, int blue) {
   // Store coordinates of vectors and colour info in a buffer
 
   DataChunk_t *localChunk = &Chunk[offset][nb_points[offset]];
@@ -399,14 +397,13 @@ void moveto(int offset, int x, int y, int red, int green, int blue)
   localChunk->green = green;
   localChunk->blue = blue;
 
-  nb_points[offset] ++;
+  nb_points[offset]++;
 }
 
-void draw_test_pattern(int offset)
-{
+void draw_test_pattern(int offset) {
   int i, red = 0, green = 0, blue = 0;
 
-  if (offset == 0)      // Determine what colour to draw the test pattern
+  if (offset == 0)  // Determine what colour to draw the test pattern
   {
     if (v_setting[0].pval == 1)
       red = 140;
@@ -414,15 +411,13 @@ void draw_test_pattern(int offset)
       green = 140;
     else if (v_setting[0].pval == 3)
       blue = 140;
-    else if (v_setting[0].pval == 4)
-    {
+    else if (v_setting[0].pval == 4) {
       red = 140;
       green = 140;
       blue = 140;
     }
 
-    for (i = 0; i < nb_points[offset]; i++)
-    {
+    for (i = 0; i < nb_points[offset]; i++) {
       if (Chunk[offset][i].red == 0)
         draw_moveto(Chunk[offset][i].x, Chunk[offset][i].y);
       //   draw_to_xyrgb(Chunk[offset][i].x, Chunk[offset][i].y, 0, 0, 0);
@@ -430,9 +425,7 @@ void draw_test_pattern(int offset)
         // draw_to_xyrgb(Chunk[i].x, Chunk[i].y, Chunk[i].red, Chunk[i].green, Chunk[i].blue);
         draw_to_xyrgb(Chunk[offset][i].x, Chunk[offset][i].y, red, green, blue);
     }
-  }
-  else if (offset == 1)
-  {
+  } else if (offset == 1) {
     for (i = 0; i < nb_points[offset]; i++)
       draw_to_xyrgb(Chunk[offset][i].x, Chunk[offset][i].y, Chunk[offset][i].red, Chunk[offset][i].green, Chunk[offset][i].blue);
   }
