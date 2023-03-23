@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 
-#define IR_REMOTE                      // define if IR remote is fitted  TODO:deactivate if the menu is not shown? Has about a 10% reduction of frame rate when active
+//#define IR_REMOTE                      // define if IR remote is fitted  TODO:deactivate if the menu is not shown? Has about a 10% reduction of frame rate when active
 
 //
 // Test pattern definitions
