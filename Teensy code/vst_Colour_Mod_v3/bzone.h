@@ -25,6 +25,12 @@
 
 */
 
+#ifdef VSTCM
+
+#else
+#include <cstdint>
+#endif
+
 #if 0
 uint16_t pc_ring[64];
 uint16_t ring_idx = 0;
@@ -139,7 +145,8 @@ uint8_t MEMRD(uint32_t addr, int32_t PC, uint32_t cyc);
 void MEMWR(uint32_t addr, int32_t val, int32_t PC, uint32_t cyc);
 
 typedef struct {
-  char *name;
+ // char *name;
+    char name[50];
   uint32_t addr;
   uint32_t len;
   uint32_t offset;
@@ -154,51 +161,51 @@ typedef struct {
 
 // Bzone audio support
 
-const int16_t explode_lo[] = {
+const int16_t explode_lo[1] = {
   // #include "expLo.hex"
 };
-const int16_t explode_hi[] = {
+const int16_t explode_hi[1] = {
   //#include "expHi.hex"
 };
-const int16_t shell_lo[] = {
+const int16_t shell_lo[1] = {
   //#include "shellLo.hex"
 };
-const int16_t shell_hi[] = {
+const int16_t shell_hi[1] = {
   //#include "shellHi.hex"
 };
-const int16_t motor_lo[] = {
+const int16_t motor_lo[1] = {
   //#include "motorLo.hex"
 };
-const int16_t motor_hi[] = {
+const int16_t motor_hi[1] = {
   //#include "motorHi.hex"
 };
 // Pokey sounds:
 // {1 radar,  2 bump,  4 blocked,  8 extra life,  0x10 enemy appears,  0x20 saucer hit,  0x40 short saucer sound,  0x80 high score melody}
-const int16_t radar[] = {
+const int16_t radar[1] = {
   //#include "radar.hex"
 };
-const int16_t bump[] = {
+const int16_t bump[1] = {
   //#include "bump.hex"
 };
-const int16_t blocked[] = {
+const int16_t blocked[1] = {
   //#include "blocked.hex"
 };
-const int16_t life[] = {
+const int16_t life[1] = {
   //#include "life.hex"
 };
-const int16_t enemy[] = {
+const int16_t enemy[1] = {
   //#include "start.hex"
 };
-const int16_t saucer_hit[] = {
+const int16_t saucer_hit[1] = {
   //#include "saucerhit.hex"
 };
-const int16_t saucer[] = {
+const int16_t saucer[1] = {
   //#include "saucer.hex"
 };
-const int16_t high_score[] = {
+const int16_t high_score[1] = {
   //#include "hiscore.hex"
 };
-const int16_t smart[] = {
+const int16_t smart[1] = {
   //#include "smart.hex"
 };
 
@@ -1045,7 +1052,7 @@ void pokey_write (int pokeynum, int reg, uint8_t val, int PC, unsigned long cyc)
 #define IRQEN 0xe
 #define SKCTL 0xf
 
-char *pokey_rreg_name[] =
+const char *pokey_rreg_name[] =
 {
   "POT0", "POT1", "POT2", "POT3",
   "POT4", "POT5", "POT6", "POT7",
@@ -1053,7 +1060,7 @@ char *pokey_rreg_name[] =
   "unused0xC", "unused0xD", "IRQSTAT", "SKSTAT"
 };
 
-char *pokey_wreg_name[] =
+const char *pokey_wreg_name[] =
 {
   "AUDF1", "AUDC1", "AUDF2", "AUDC2",
   "AUDF3", "AUDC3", "AUDF4", "AUDC4",
@@ -1106,17 +1113,17 @@ uint8_t pokey_wreg [MAX_POKEY][MAX_REG];
 
 rom_info battlezone_roms [] =
 {
-  { "roms/Battlezone/036414a.01", 0x5000, 0x0800, 0 },
-  { "roms/Battlezone/036413.01", 0x5800, 0x0800, 0 },
-  { "roms/Battlezone/036412.01", 0x6000, 0x0800, 0 },
-  { "roms/Battlezone/036411.01", 0x6800, 0x0800, 0 },
-  { "roms/Battlezone/036410.01", 0x7000, 0x0800, 0 },
-  { "roms/Battlezone/036409.01", 0x7800, 0x0800, 0 },
+  { "roms/bzone2/036414a.01", 0x5000, 0x0800, 0 },
+  { "roms/bzone2/036413.01", 0x5800, 0x0800, 0 },
+  { "roms/bzone2/036412.01", 0x6000, 0x0800, 0 },
+  { "roms/bzone2/036411.01", 0x6800, 0x0800, 0 },
+  { "roms/bzone2/036410.01", 0x7000, 0x0800, 0 },
+  { "roms/bzone2/036409.01", 0x7800, 0x0800, 0 },
 
-  { "roms/Battlezone/036422.01", 0x3000, 0x0800, 0 },
-  { "roms/Battlezone/036421.01", 0x3800, 0x0800, 0 },
+  { "roms/bzone2/036422.01", 0x3000, 0x0800, 0 },
+  { "roms/bzone2/036421.01", 0x3800, 0x0800, 0 },
 
-  { NULL,   0,      0,           0 }
+  { "",   0,      0,           0}
 };
 
 tag_info battlezone_tags [] =

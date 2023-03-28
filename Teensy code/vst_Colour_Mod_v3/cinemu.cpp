@@ -4,22 +4,30 @@
 * by Zonn Moore 1997                                     *
 *                                                        *
 * Adapted for Teensy 4.1 / VSTCM colour vector generator *
-* by Robin Champion September 2022                       *
+* Robin Champion September 2022                          *
 * robin@robinchampion.com                                *
 *                                                        *
 **********************************************************/
 
+#include "main.h"
+
+#ifdef VSTCM
 #include <arduino.h>
 #include <Bounce2.h>
 #include <SD.h>
-/*#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <errno.h>*/
+#else
+#pragma warning(disable : 4996)     // Get rid of annoying compiler warnings in VC++
+#include <cstdio>
+#include <cstring>
+#include <vcruntime_string.h>
+#include <random>
+#include "../../../SDL2/include/SDL_render.h"
+#endif
+
 #include "cinemu.h"
 #include "drawing.h"
 
+#ifdef VSTCM
 // Bounce objects to read five pushbuttons (pins 0-4)
 static Bounce button0 = Bounce();
 static Bounce button1 = Bounce();
@@ -28,6 +36,10 @@ static Bounce button3 = Bounce();
 static Bounce button4 = Bounce();
 
 DMAMEM UINT8 rom[0x8000];  // TODO: Convert this to a malloc and free it at the end
+#else
+UINT8 rom[0x8000];  // TODO: Convert this to a malloc and free it at the end
+extern SDL_Renderer* rend_2D_orig;  // Renderer for original 2D game
+#endif
 
 extern char gMsg[50];
 
@@ -54,13 +66,14 @@ uint32_t crc32(const void *data, size_t n_bytes, uint32_t *crc) {
 }
 
 int loadROM(const char *fn, unsigned char *block, const unsigned len) {
+#ifdef VSTCM
   unsigned j;
 
   // open the file on the sd card
   File dataFile = SD.open(fn, FILE_READ);
 
   if (dataFile) {
-    Serial.println(fn);
+    //Serial.println(fn);
 
     for (j = 0; j < len; j++)
       block[j] = dataFile.read();
@@ -72,9 +85,30 @@ int loadROM(const char *fn, unsigned char *block, const unsigned len) {
   }
 
   // if the file didn't open, print an error:
-  Serial.print("Error opening file: ");
-  Serial.println(fn);
+  //Serial.print("Error opening file: ");
+  //Serial.println(fn);
+#else
+    char rompath[100];
+    strcpy(rompath, MY_ROMPATH);
+    strcat(rompath, fn);
 
+    FILE* f = fopen(rompath, "rb");
+    if (f == NULL) {
+        strcpy(gMsg, "error: can't open file");
+        fprintf(stderr, "error: can't open file '%s'.\n", rompath);
+        return 1;
+    }
+
+    size_t result = fread(block, sizeof(uint8_t), len, f);
+    if (result != len) {
+        strcpy(gMsg, "error: while reading file");
+        fprintf(stderr, "error: while reading file '%s'\n", rompath);
+        return 1;
+    }
+
+    fclose(f);
+    return 0;
+#endif
   return -1;
 }
 
@@ -85,7 +119,7 @@ int Game;
 #define Yes 1
 
 bool loadTailgunner() {
-  Serial.println("loadTailgunner: starting");
+  //Serial.println("loadTailgunner: starting");
   unsigned char romLoad[0x2000];
   int r = 0;
   r += loadROM("roms/tailg/tgunner.t70", &romLoad[0x0000], 0x800);
@@ -112,7 +146,7 @@ bool loadTailgunner() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH TAIL GUNNER ROMS!");
-    Serial.println("TROUBLE WITH TAIL GUNNER ROMS!");
+    //Serial.println("TROUBLE WITH TAIL GUNNER ROMS!");
     return false;
   }
 
@@ -146,7 +180,7 @@ bool loadRipoff() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH RIP OFF ROMS!");
-    Serial.println("TROUBLE WITH RIP OFF ROMS!");
+    //Serial.println("TROUBLE WITH RIP OFF ROMS!");
     return false;
   }
 
@@ -180,7 +214,7 @@ bool loadArmorAttack() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH ARMOR ATTACK ROMS!");
-    Serial.println("TROUBLE WITH ARMOR ATTACK ROMS!");
+    //Serial.println("TROUBLE WITH ARMOR ATTACK ROMS!");
     return false;
   }
 
@@ -214,7 +248,7 @@ bool loadDemon() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH DEMON ROMS!");
-    Serial.println("TROUBLE WITH DEMON ROMS!");
+    //Serial.println("TROUBLE WITH DEMON ROMS!");
     return false;
   }
 
@@ -258,7 +292,7 @@ bool loadSolarQuest() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH SOLAR QUEST ROMS!");
-    Serial.println("TROUBLE WITH SOLAR QUEST ROMS!");
+    //Serial.println("TROUBLE WITH SOLAR QUEST ROMS!");
     return false;
   }
 
@@ -292,7 +326,7 @@ bool loadWotw() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH WAR OF THE WORLDS ROMS!");
-    Serial.println("TROUBLE WITH WAR OF THE WORLDS ROMS!");
+    //Serial.println("TROUBLE WITH WAR OF THE WORLDS ROMS!");
     return false;
   }
 
@@ -326,7 +360,7 @@ bool loadStarCastle() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH STAR CASTLE ROMS!");
-    Serial.println("TROUBLE WITH STAR CASTLE ROMS!");
+    //Serial.println("TROUBLE WITH STAR CASTLE ROMS!");
     return false;
   }
 
@@ -360,7 +394,7 @@ bool loadSpeedFreak() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH SPEED FREAK ROMS!");
-    Serial.println("TROUBLE WITH SPEED FREAK ROMS!");
+    //Serial.println("TROUBLE WITH SPEED FREAK ROMS!");
     return false;
   }
 
@@ -394,7 +428,7 @@ bool loadWarrior() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH WARRIOR ROMS!");
-    Serial.println("TROUBLE WITH WARRIOR ROMS!");
+    //Serial.println("TROUBLE WITH WARRIOR ROMS!");
     return false;
   }
 
@@ -428,7 +462,7 @@ bool loadSundance() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH SUNDANCE ROMS!");
-    Serial.println("TROUBLE WITH SUNDANCE ROMS!");
+    //Serial.println("TROUBLE WITH SUNDANCE ROMS!");
     return false;
   }
 
@@ -455,7 +489,7 @@ bool loadSpaceWar() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH SPACE WARS ROMS!");
-    Serial.println("TROUBLE WITH SPACE WARS ROMS!");
+    //Serial.println("TROUBLE WITH SPACE WARS ROMS!");
     return false;
   }
 
@@ -482,7 +516,7 @@ bool loadStarHawk() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH STAR HAWK ROMS!");
-    Serial.println("TROUBLE WITH STAR HAWK ROMS!");
+    //Serial.println("TROUBLE WITH STAR HAWK ROMS!");
     return false;
   }
 
@@ -509,7 +543,7 @@ bool loadBarrier() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH BARRIER ROMS!");
-    Serial.println("TROUBLE WITH BARRIER ROMS!");
+    //Serial.println("TROUBLE WITH BARRIER ROMS!");
     return false;
   }
 
@@ -559,7 +593,7 @@ bool loadBoxingBugs() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH BOXING BUGS ROMS!");
-    Serial.println("TROUBLE WITH BOXING BUGS ROMS!");
+    //Serial.println("TROUBLE WITH BOXING BUGS ROMS!");
     return false;
   }
 
@@ -624,7 +658,7 @@ ROM_END
      */
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH COSMIC CHASM ROMS!");
-    Serial.println("TROUBLE WITH COSMIC CHASM ROMS!");
+    //Serial.println("TROUBLE WITH COSMIC CHASM ROMS!");
     return false;
   }
 
@@ -634,10 +668,12 @@ ROM_END
 bool loadQB3() {
   unsigned char romLoad[0x8000];
   int r = 0;
+ 
   r += loadROM("roms/qb3/qb3_le_t7.bin", &romLoad[0x0000], 0x2000);
   r += loadROM("roms/qb3/qb3_lo_p7.bin", &romLoad[0x2000], 0x2000);
   r += loadROM("roms/qb3/qb3_ue_u7.bin", &romLoad[0x4000], 0x2000);
   r += loadROM("roms/qb3/qb3_uo_r7.bin", &romLoad[0x6000], 0x2000);
+
   uint32_t crc;
 
   crc = 0;
@@ -658,7 +694,7 @@ bool loadQB3() {
 
   if (r != 0) {
     strcpy(gMsg, "TROUBLE WITH QB3 ROMS!");
-    Serial.println("TROUBLE WITH QB3 ROMS!");
+    //Serial.println("TROUBLE WITH QB3 ROMS!");
     return false;
   }
 
@@ -1210,7 +1246,7 @@ void line(int32_t xl, int32_t yb, int32_t xr, int32_t yt, int col) {
 
     //v_directDraw32Patterned(tx(xl), ty(yb), tx(xr), ty(yt), (col + 1) * 8 - 1, random());
     //  col = (col + 1) * 8 - 1;
-    col = random(30, 160);
+   // col = random(30, 160);
 
     draw_moveto(tx(xl), ty(yb));
     draw_to_xyrgb(tx(xr), ty(yt), col, col, col);
@@ -1219,11 +1255,11 @@ void line(int32_t xl, int32_t yb, int32_t xr, int32_t yt, int col) {
     // 0x03B2 - 3 lines in the shields have Twinkle values
     // Tailgunner's shields are funny and need fixing.
     //v_directDraw32Patterned(tx(xl), ty(yb), tx(xr), ty(yt), 127, random());  //one way to make sparky shields...
-    col = random(30, 160);
+  //  col = random(30, 160);
     draw_moveto(tx(xl), ty(yb));
     draw_to_xyrgb(tx(xr), ty(yt), col, col, col);
     //DEBUG_OUT("line(%d,%d, %d,%d, %02x) at PC=0x%04x;\n", xl,yb, xr,yt, col, RCregister_PC);
-  } else {
+  } else {  // All other games except Tailgunner
     /* Twinkle may be 0 (sundance), or 7-9 */
     if ((col <= cineTwinkle) || (xl != xr) || (yb != yt)) {
       // DEBUG_OUT("v_directDraw32 (%d,%d, %d,%d, %d);\n", tx(xl), ty(yb), tx(xr), ty(yt), (col + 1) * 8 - 1);
@@ -1363,7 +1399,7 @@ DIP_END
 
 
   // if (currentButtonState & VEC_BUTTON_1_2) ioInputs &= ~RO_IO_P1START; // needs 1 coin
-
+#ifdef VSTCM
   // Update the button objects
   button2.update();
   // middle button on PCB starts game
@@ -1371,7 +1407,7 @@ DIP_END
     ioSwitches &= ~RO_SW_COIN;
     ioInputs &= ~RO_IO_P1START;  // needs 1 coin
   }
-
+#endif
   /* if (currentButtonState & VEC_BUTTON_2_2) ioInputs &= ~RO_IO_P2START; // needs 2 coins and second controller
 
    if (currentButtonState & VEC_BUTTON_1_1) ioInputs &= ~RO_IO_P1LEFT;
@@ -1964,7 +2000,7 @@ void startFrame_starhawk(void) {
 #define SH_SW_COIN 0x80
 
   ioSwitches = initialSwitches | SH_SW_COIN | SH_SW_P1_START | SH_SW_P2_START | SH_SW_P1_FIRE | SH_SW_P2_FIRE;
-
+#ifdef VSTCM
   // Update the button objects
   button2.update();
   // middle button on PCB starts game
@@ -1972,6 +2008,7 @@ void startFrame_starhawk(void) {
     ioSwitches &= ~SH_SW_COIN;
     ioInputs &= ~SH_SW_P1_START;  // needs 1 coin
   }
+#endif
   /* if ((currentButtonState & ~prevButtonState) & (VEC_BUTTON_1_1|VEC_BUTTON_2_1)) ioSwitches &= ~SH_SW_COIN;	// only on rising edge
 
    ioInputs = initialInputs | SH_IO_P1_LEFT | SH_IO_P1_RIGHT | SH_IO_P1_UP | SH_IO_P1_DOWN | SH_IO_P1_SLOW | SH_IO_P1_MED | SH_IO_P1_FAST |
@@ -2325,6 +2362,7 @@ void startFrame_warrior(void) {
   // How to start?
   //if (currentButtonState & VEC_BUTTON_1_2) ioInputs &= ~WA_IO_P1_START;
   //if (currentButtonState & VEC_BUTTON_2_2) ioInputs &= ~WA_IO_P2_START;
+   #ifdef VSTCM
   // Update the button objects
   button2.update();
   // middle button on PCB starts game
@@ -2332,6 +2370,7 @@ void startFrame_warrior(void) {
     // ioSwitches &= ~TG_SW_COIN;
     //  ioInputs &= ~WA_IO_P2_START;
   }
+#endif
   // USE JOYSTICK
   /*  if (currentJoy1X < -30) ioInputs &= ~WA_IO_P1_LEFT;
    if (currentJoy1X > 30) ioInputs &= ~WA_IO_P1_RIGHT;
@@ -2435,12 +2474,13 @@ void startFrame_barrier(void) {
 #define BA_SW_COIN 0x80
 
   ioSwitches = initialSwitches | BA_SW_COIN;
-
+#ifdef VSTCM
   button2.update();
   // middle button on PCB starts game
   if (button2.fell()) {
     ioInputs &= ~BA_IO_P1_START;
   }
+#endif
 /*   if ((currentButtonState & ~prevButtonState) & (VEC_BUTTON_1_1|VEC_BUTTON_2_1)) ioSwitches &= ~BA_SW_COIN;	// only on rising edge
 
    ioInputs = initialInputs | BA_IO_P1_START | BA_IO_P1_LEFT | BA_IO_P1_RIGHT | BA_IO_P1_FWD | BA_IO_P1_REV |
@@ -2645,12 +2685,15 @@ void startFrame_sundance(void) {
   if (currentButtonState & VEC_BUTTON_2_4) ioInputs &= ~SD_IO_P2FIRE;
    prevButtonState = currentButtonState;
 */
+#ifdef VSTCM
   button2.update();
   ioSwitches &= ~SD_SW_COIN;  // start adding credits
   // middle button on PCB starts game
   if (button2.fell()) {
     ioInputs &= ~SD_IO_P1START;
   }
+#endif
+
 #ifdef NEVER
   /*
 # Initialization file for Sundance
@@ -2816,7 +2859,7 @@ void startFrame_tailgunner(void) {
   // default inactive:
   ioInputs = initialInputs | TG_IO_LEFT | TG_IO_RIGHT | TG_IO_UP | TG_IO_DOWN | TG_IO_START | TG_IO_SHIELDS | TG_IO_FIRE;
   ioSwitches = initialSwitches | TG_SW_COIN;
-
+#ifdef VSTCM
   // Update the button objects
   button2.update();
   // middle button on PCB starts game
@@ -2824,6 +2867,7 @@ void startFrame_tailgunner(void) {
     // ioSwitches &= ~TG_SW_COIN;
     ioInputs &= ~TG_IO_START;  // needs 1 coin
   }
+#endif
   /* if ((currentButtonState & ~prevButtonState) & VEC_BUTTON_1_1) ioSwitches &= ~TG_SW_COIN;	// only on rising edge
    prevButtonState = currentButtonState;
 
@@ -3087,6 +3131,7 @@ void startFrame(void) {
       return;
     default:
       // fprintf(stderr, "Game %d not defined!\n", Game);
+        strcpy(gMsg, "Game not defined!");
       return;  // added this just to get it to compile
   }
 }
@@ -8496,7 +8541,7 @@ uint8_t keepDotsTogether;
 
 static int parity = 0;
 
-void cinemu_setup(const char *sel_game) {
+bool cinemu_setup(const char *sel_game) {
   int Rotate;
   int Flip_X, Flip_Y;
   int Switches;
@@ -8505,7 +8550,7 @@ void cinemu_setup(const char *sel_game) {
   int JMI = 0;
   //   char *RomImages[8];
 
-  Serial.println("initialization done.");
+  //Serial.println("initialization done.");
 
   Game = 0;
   useParity = 0;
@@ -8539,7 +8584,7 @@ void cinemu_setup(const char *sel_game) {
 
   if (strcmp(sel_game, "tailgunner") == 0) {
     // if (1 == 1) {  // just make sure we pick tailgunner for test purposes
-    Serial.println("setup: tailgunner selected");
+    //Serial.println("setup: tailgunner selected");
     Game = GAME_TAILGUNNER;
     Rotate = Yes;
     Flip_X = Yes;
@@ -8553,7 +8598,7 @@ void cinemu_setup(const char *sel_game) {
 
     //  Monitor=BiLevel
     vgSetTwinkle(7);
-    if (loadTailgunner() == false) return;
+    if (loadTailgunner() == false) return false;
   } else if (strcmp(sel_game, "ripoff") == 0) {
     Game = GAME_RIPOFF;
     Rotate = Yes;
@@ -8575,7 +8620,7 @@ DIP_END
     //         ^ trying 1 to remove diagnostic frame
     vgSetCineSize(-16, -16, 1041, 785);  // MinX, MinY, MaxX, MaxY
     // Monitor=BiLevel
-    if (loadRipoff() == false) return;
+    if (loadRipoff() == false) return false;
   } else if (strcmp(sel_game, "spacewars") == 0) {
     Game = GAME_SPACEWARS;
     Rotate = Yes;
@@ -8588,7 +8633,7 @@ DIP_END
     vgSetCineSize(0, 0, 1024, 768);  // MinX, MinY, MaxX, MaxY
     // Monitor=BiLevel
     vgSetTwinkle(9);
-    if (loadSpaceWar() == false) return;
+    if (loadSpaceWar() == false) return false;
   } else if (strcmp(sel_game, "boxingbugs") == 0) {
     Game = GAME_BOXINGBUGS;
     Rotate = Yes;
@@ -8603,7 +8648,7 @@ DIP_END
     //         ^ that '1' makes it play the game as opposed to a diag mode
     vgSetCineSize(-1, 0, 1026, 784);  // MinX, MinY, MaxX, MaxY
     // Monitor=Color
-    if (loadBoxingBugs() == false) return;
+    if (loadBoxingBugs() == false) return false;
   } else if (strcmp(sel_game, "armorattack") == 0) {
     Game = GAME_ARMORATTACK;
     Rotate = Yes;
@@ -8615,7 +8660,7 @@ DIP_END
     Switches = 0b1000000;            // diagnostics, no sound, 1 credit per quarter, 5 jeeps per game ???
     vgSetCineSize(2, 2, 1023, 767);  // MinX, MinY, MaxX, MaxY
     // Monitor=BiLevel
-    if (loadArmorAttack() == false) return;
+    if (loadArmorAttack() == false) return false;
   } else if (strcmp(sel_game, "starcastle") == 0) {
     Game = GAME_STARCASTLE;
     // 0=4k, 1=8k, 2=16k, 3=32k
@@ -8625,7 +8670,7 @@ DIP_END
     vgSetCineSize(-9, 3, 1033, 795);  // MinX, MinY, MaxX, MaxY
     // Monitor=BiLevel
     vgSetTwinkle(8);
-    if (loadStarCastle() == false) return;
+    if (loadStarCastle() == false) return false;
   } else if (strcmp(sel_game, "starhawk") == 0) {
     Game = GAME_STARHAWK;
     Rotate = Yes;
@@ -8637,7 +8682,7 @@ DIP_END
     vgSetCineSize(20 + 20, -16, 1130 - 20, 750);
     // Monitor=BiLevel
     vgSetTwinkle(9);
-    if (loadStarHawk() == false) return;
+    if (loadStarHawk() == false) return false;
   } else if (strcmp(sel_game, "speedfreak") == 0) {
     Game = GAME_SPEEDFREAK;
     Rotate = Yes;
@@ -8664,7 +8709,7 @@ DIP_END
     vgSetTwinkle(8);
     //Brightness=100,100,100		; RGB percentages for brightest level
     //Contrast=67,67,67		; RGB percentages for dimest level
-    if (loadSpeedFreak() == false) return;
+    if (loadSpeedFreak() == false) return false;
   } else if (strcmp(sel_game, "demon") == 0) {
     Game = GAME_DEMON;
     Rotate = Yes;
@@ -8677,7 +8722,7 @@ DIP_END
     vgSetCineSize(7, 7, 1021, 805);  // MinX, MinY, MaxX, MaxY
     // Monitor=BiLevel
     vgSetTwinkle(8);
-    if (loadDemon() == false) return;
+    if (loadDemon() == false) return false;
   } else if (strcmp(sel_game, "solarquest") == 0) {
     Game = GAME_SOLARQUEST;
     //if (settings->orientation == 0) {
@@ -8691,7 +8736,7 @@ DIP_END
     Switches = 0;
     vgSetCineSize(0, 0, 1020, 768);  // MinX, MinY, MaxX, MaxY
     // Monitor=64Level
-    if (loadSolarQuest() == false) return;
+    if (loadSolarQuest() == false) return false;
   } else if (strcmp(sel_game, "cosmicchasm") == 0) {
     Game = GAME_COSMICCHASM;
     // 0=4k, 1=8k, 2=16k, 3=32k
@@ -8702,7 +8747,7 @@ DIP_END
     Switches = 0b0101100;
     vgSetCineSize(-1, 0, 1026, 784);  // MinX, MinY, MaxX, MaxY
     // Monitor=Color
-    if (loadCosmicChasm() == false) return;
+    if (loadCosmicChasm() == false) return false;
   } else if (strcmp(sel_game, "waroftheworlds") == 0) {
     Game = GAME_WAROFTHEWORLDS;
     Rotate = Yes;
@@ -8714,7 +8759,7 @@ DIP_END
     //ORIG: Switches=0b0100000; // free play
     Switches = 0b01000000;             // debugging diag mode startup
     vgSetCineSize(-27, 0, 1060, 768);  // MinX, MinY, MaxX, MaxY
-    if (loadWotw() == false) return;
+    if (loadWotw() == false) return false;
     // Monitor=Color
   } else if (strcmp(sel_game, "warrior") == 0) {
     Game = GAME_WARRIOR;
@@ -8728,7 +8773,7 @@ DIP_END
     Switches = 0b00000000;
     vgSetCineSize(0, 0, 1024, 768);  // MinX, MinY, MaxX, MaxY
     // Monitor=BiLevel
-    if (loadWarrior() == false) return;
+    if (loadWarrior() == false) return false;
   } else if (strcmp(sel_game, "barrier") == 0) {
     Game = GAME_BARRIER;
     //Rotate=Yes;
@@ -8743,7 +8788,7 @@ DIP_END
     vgSetCineSize(67, 74, 981, 693);  // MinX, MinY, MaxX, MaxY
     vgSetCineSize(0, 74, 730, 1024);  // MinX, MinY, MaxX, MaxY
     // Monitor=BiLevel
-    if (loadBarrier() == false) return;
+    if (loadBarrier() == false) return false;
   } else if (strcmp(sel_game, "sundance") == 0) {
     Game = GAME_SUNDANCE;
     //Rotate=Yes;
@@ -8759,7 +8804,7 @@ DIP_END
     vgSetCineSize(0, 0, 800, 1024);  // MinX, MinY, MaxX, MaxY
     // Monitor=16Level
     vgSetTwinkle(0);
-    if (loadSundance() == false) return;
+    if (loadSundance() == false) return false;
   } else if (strcmp(sel_game, "qb3") == 0) {
     Game = GAME_QB3;
     // 0=4k, 1=8k, 2=16k, 3=32k
@@ -8772,13 +8817,15 @@ DIP_END
     vgSetTwinkle(8);
     //Brightness=100,100,100		; RGB percentages for brightest level
     //Contrast=67,67,67		; RGB percentages for dimmest level
-    if (loadQB3() == false) return;
+    if (loadQB3() == false) return false;
   } else {
-    /*   fprintf(stderr, "The supported games are:\n");
+#ifndef VSTCM
+    fprintf(stderr, "The supported games are:\n");
     fprintf(stderr, "  armorattack  boxingbugs   demon  ripoff      spacewars   starcastle  sundance    waroftheworlds\n");
     fprintf(stderr, "  barrier      cosmicchasm  qb3    solarquest  speedfreak  starhawk    tailgunner  warrior\n");
-    fprintf(stderr, "\n"); */
-    exit(1);
+    fprintf(stderr, "\n"); 
+#endif
+      return true;
   }
 
   cineSetGame(sel_game, Game);
@@ -8817,6 +8864,10 @@ DIP_END
                  // - it is *start* Frame after all, not *end* Frame...
 
   for (;;) {
+#ifndef VSTCM
+    SDL_RenderClear(rend_2D_orig);
+
+#endif
     cineExec();       // run an unspecified number of CCPU instructions
     if (bNewFrame) {  // If a complete frame's worth ..?
       if (useParity) {
@@ -8827,8 +8878,13 @@ DIP_END
         startFrame();
     }
 
-    // Detect left and right keys pressed simultaneously to end game and return to menu
+#ifndef VSTCM
+    SDL_SetRenderDrawColor(rend_2D_orig, 0, 0, 0, 255);
+    SDL_RenderPresent(rend_2D_orig);
+#endif
 
+    // Detect left and right keys pressed simultaneously to end game and return to menu
+#ifdef VSTCM
     // Update the button objects
     button0.update();
 
@@ -8836,5 +8892,8 @@ DIP_END
       // Quit the game if down button on PCB is pressed
       return;
     }
+#endif
   }
+
+  return false;
 }

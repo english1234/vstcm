@@ -7,7 +7,16 @@
 
 */
 
+#include "main.h"
+
+#ifdef VSTCM
 #include <SD.h>
+#else
+#pragma warning(disable : 4996)     // Get rid of annoying compiler warnings in VC++
+#include <cstdint>
+#include <cstring>
+#endif
+
 #include "advmame.h"
 #include "drawing.h"
 #include "settings.h"
@@ -16,7 +25,7 @@ char const *json_opts[] = { "\"productName\"", "\"version\"", "\"flipx\"", "\"fl
 char const *json_vals[] = { "\"VSTCM\"", "\"V3.0\"", "false", "false", "false", "false", "false", "15", "9", "true", "\"CUSTOM\"", "\"none\"" };
 static char json_str[MAX_JSON_STR_LEN];
 
-extern params_t v_setting[NB_SETTINGS];
+extern params_t v_setting[2][NB_SETTINGS];
 extern unsigned long dwell_time;
 extern float line_draw_speed;
 extern bool spot_triggered;
@@ -48,6 +57,7 @@ uint32_t build_json_info_str(char *str) {
 }
 
 int read_data(int init) {
+#ifdef VSTCM
   static uint32_t cmd = 0;
 
   static uint8_t gl_red, gl_green, gl_blue;
@@ -110,12 +120,12 @@ int read_data(int init) {
     // Check FLAG_COMPLETE_MONOCHROME like "if(cmd&FLAG_COMPLETE_MONOCHROME) ... "
     // Not sure what to do differently if monochrome frame complete??
     // Add FPS on games as a guide for optimisation
-    if (v_setting[9].pval == true) {
-      if (spot_triggered) draw_string("*DT:", 3000, 150, 6, v_setting[13].pval);
-      else draw_string("DT:", 3000, 150, 6, v_setting[13].pval);
-      // draw_string("DS:", 3000, 150, 6, v_setting[13].pval);
-      // draw_string(itoa(line_draw_speed*NORMAL_SHIFT_SCALING, buf1, 10), 3400, 150, 6, v_setting[13].pval);
-      draw_string(itoa(dwell_time, buf1, 10), 3400, 150, 6, v_setting[13].pval);
+    if (v_setting[SETTINGS_MENU][9].pval == true) {
+      if (spot_triggered) draw_string("*DT:", 3000, 150, 6, v_setting[SETTINGS_MENU][13].pval);
+      else draw_string("DT:", 3000, 150, 6, v_setting[SETTINGS_MENU][13].pval);
+      // draw_string("DS:", 3000, 150, 6, v_setting[SETTINGS_MENU][13].pval);
+      // draw_string(itoa(line_draw_speed*NORMAL_SHIFT_SCALING, buf1, 10), 3400, 150, 6, v_setting[SETTINGS_MENU][13].pval);
+      draw_string(itoa(dwell_time, buf1, 10), 3400, 150, 6, v_setting[SETTINGS_MENU][13].pval);
     }
 
     return 1;
@@ -146,6 +156,6 @@ int read_data(int init) {
   } else {
     // Serial.println("Unknown");  //This might be messing things up?
   }
-
+#endif
   return 0;
 }

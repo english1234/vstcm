@@ -28,16 +28,30 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 */
+#include "main.h"
 
+#ifdef VSTCM
 #include <Audio.h>
 #include <SD.h>
 #include <Bounce2.h>
 //#include <IRremote.hpp>
 #include <Wire.h>
 #include <SerialFlash.h>
+#else
+#pragma warning(disable : 4996)     // Get rid of annoying compiler warnings in VC++
+#include <stdlib.h>
+#include <stdio.h>
+#include <cstring>
+#include SDL_PATH
+#endif
+
+#include "main.h"
 #include "bzone.h"
 #include "drawing.h"
 
+extern char gMsg[50];                        // Optional additional information to show on menu
+
+#ifdef VSTCM
 // Bounce objects to read five pushbuttons (pins 0-4)
 extern Bounce button0;
 extern Bounce button1;
@@ -46,7 +60,9 @@ extern Bounce button3;
 extern Bounce button4;
 
 extern AudioPlaySdWav playWav1;  //xy=137,426
-
+#else
+extern SDL_Renderer* rend_2D_orig;  // Renderer for original 2D game
+#endif
 // Add this to the mix
 
 sound_rec sounds[] = {
@@ -85,7 +101,7 @@ uint8_t dopop(uint16_t PC) {
 }
 
 void add_sounds() {
-  uint i;
+  unsigned int i;
   uint32_t len;
   uint32_t p;
 
@@ -116,9 +132,10 @@ void tag_area(unsigned addr, unsigned len, int dir, int tag) {
   }
 }
 
-void read_rom_image(char *fn, unsigned faddr, unsigned len, unsigned off_set) {
-  unsigned j;
+int read_rom_image(char *fn, unsigned faddr, unsigned len, unsigned off_set) {
 
+  unsigned j;
+#ifdef VSTCM
   // open the file on the sd card
   File dataFile = SD.open(fn, FILE_READ);
 
@@ -137,6 +154,37 @@ void read_rom_image(char *fn, unsigned faddr, unsigned len, unsigned off_set) {
   } else
     // if the file didn't open, print an error:
     Serial.println("Error opening file");
+#else
+    char rompath[100];
+    char rom[2048];
+
+    strcpy(rompath, MY_ROMPATH);
+    strcat(rompath, fn);
+
+    FILE* f = fopen(rompath, "rb");
+    if (f == NULL) {
+        strcpy(gMsg, "error: can't open file");
+       // fprintf(stderr, "error: can't open file '%s'.\n", rompath);
+        return 1;
+    }
+
+    size_t result = fread(rom, sizeof(uint8_t), len, f);
+    if (result != len) {
+        strcpy(gMsg, "error: while reading file");
+      //  fprintf(stderr, "error: while reading file '%s'\n", rompath);
+        return 1;
+    }
+
+    for (j = 0; j < len; j++) {
+        g_sys_mem[faddr].cell = rom[j];
+        g_sys_mem[faddr].tagr = 0;
+        g_sys_mem[faddr].tagw = ROMWRT;
+        faddr++;
+    }
+
+    fclose(f);
+#endif
+    return 0;
 }
 
 void copy_rom(unsigned src, unsigned dest, unsigned len) {
@@ -151,9 +199,13 @@ void copy_rom(unsigned src, unsigned dest, unsigned len) {
   }
 }
 
-void setup_roms_and_tags(rom_info *rom_list, tag_info *tag_list) {
-  while (rom_list->name != NULL) {
-    read_rom_image(rom_list->name, rom_list->addr, rom_list->len, rom_list->offset);
+int setup_roms_and_tags(rom_info *rom_list, tag_info *tag_list) {
+  while (1) {
+      if (strlen(rom_list->name) == 0)
+          break;
+
+    if (read_rom_image(rom_list->name, rom_list->addr, rom_list->len, rom_list->offset) == 1)
+        return 1;
     rom_list++;
   }
 
@@ -161,11 +213,13 @@ void setup_roms_and_tags(rom_info *rom_list, tag_info *tag_list) {
     tag_area(tag_list->addr, tag_list->len, tag_list->dir, tag_list->tag);
     tag_list++;
   }
+  return 0;
 }
 
-void setup_game(void) {
+int setup_game(void) {
   tag_area(0x0000, 0x10000, RD | WR, UNKNOWN);  // maybe not necessary?
-  setup_roms_and_tags(battlezone_roms, battlezone_tags);
+  if (setup_roms_and_tags(battlezone_roms, battlezone_tags) == 1)
+      return 1;
 
   /* copy_rom (0x5000, 0x4000, 0x1000); */
   /* copy_rom (0x5000, 0xd000, 0x3000); */
@@ -173,15 +227,21 @@ void setup_game(void) {
 
   g_vctr_vector_mem_offset = 0x2000;
   g_sys_optionreg[0] = (~0xE8) & 0xff;  // Inverted! 0xE8 -> English, bonus 15k&100k, missile @10k, 5 tanks
+
+  return 0;
 }
 
-void bzone() {
+
+
+int bzone() {
   //  InitSD();                 // Initialise SD card
   //  IR_remote_setup();        // Set up IR remote
   add_sounds();
   //  init_dac();
 
-  setup_game();
+  if (setup_game() ==1)
+      return 1;
+
   g_cpu_save_PC = (memrd(0xfffd, 0, 0) << 8) | memrd(0xfffc, 0, 0);
   g_cpu_save_A = 0;
   g_cpu_save_X = 0;
@@ -208,6 +268,11 @@ void bzone() {
   totcycles = g_cpu_save_totcycles;
 
 test_interrupt:
+
+#ifndef VSTCM
+  SDL_SetRenderDrawColor(rend_2D_orig, 0, 0, 0, 255);
+  SDL_RenderPresent(rend_2D_orig);
+#endif
 
 #ifdef WRAP_CYC_COUNT  // I've commented out this definition for the moment just to see what happens (RC)
   if (totcycles > WRAP_CYC_COUNT) {
@@ -236,7 +301,10 @@ test_interrupt:
     }
   }
 
+
+
   while (1) {
+#ifdef VSTCM
     // Update the button objects
     button0.update();
 
@@ -244,7 +312,7 @@ test_interrupt:
       // Quit the game if down button on PCB is pressed
       return;
     }
-
+#endif
 #if 0
     pc_ring[ring_idx++] = PC;
     ring_idx &= 0x3f;
@@ -459,6 +527,7 @@ test_interrupt:
         break;
     }
   }
+  return 0;
 }
 
 // memory and I/O functions for Atari Vector game simulator
@@ -587,8 +656,8 @@ void avg_draw_vector_list(void) {
 
         z = 2 * (secondwd >> 13);
         // secondwd >> 13 can be 0, 1 or 3, so upscale a bit
-        Serial.print(" Z ");
-        Serial.println(secondwd >> 13);
+        //Serial.print(" Z ");
+       // Serial.println(secondwd >> 13);
 
         //  z = (secondwd >> 13)
         //  if (z == 2)
@@ -692,6 +761,7 @@ void vg_reset(uint32_t cyc) {
 }
 
 uint16_t read_gpio() {
+#ifdef VSTCM
   //Serial.println("read gpio");
   int com = 0;  // Command received from IR remote
 
@@ -745,6 +815,8 @@ uint16_t read_gpio() {
   // }
   //  else
   //   return GPIOB->IDR; <- any pressed buttons
+#endif
+
   return 0;
 }
 
@@ -1215,7 +1287,7 @@ void start_sample(uint32_t mask) {
 }
 
 int16_t get_sample() {
-  uint32_t i;
+/*  uint32_t i;
   int16_t worklist[16];
   uint16_t idx = 0;
   int16_t mixer(int16_t * dat, uint16_t factor, uint32_t n);
@@ -1238,9 +1310,10 @@ int16_t get_sample() {
   }
 
   if (idx == 1)
-    return worklist[0];
+      return worklist[0];
   else
-    return mixer(worklist, 32768 / idx, idx << 1);
+      return mixer(worklist, 32768 / idx, idx << 1); */
+      return 0;
 }
 
 /*
@@ -1420,7 +1493,7 @@ void pokey_write(int pokeynum, int reg, uint8_t val, int PC, unsigned long cyc) 
 }
 
 extern int _end;
-
+/*
 caddr_t _sbrk(int incr) {
   static unsigned char *heap = NULL;
   unsigned char *prev_heap;
@@ -1431,4 +1504,4 @@ caddr_t _sbrk(int incr) {
   // Check for out of space here...
   heap += incr;
   return (caddr_t)prev_heap;
-}
+}*/

@@ -6,8 +6,15 @@
    Code to draw on the vector monitor
 
 */
+#include "main.h"
 
+#ifdef VSTCM
 #include <SD.h>
+#else
+#include <corecrt_math.h>
+#include SDL_PATH
+#endif
+
 #include "hershey_font.h"
 #include "drawing.h"
 #include "settings.h"
@@ -30,8 +37,15 @@ uint16_t gamma_red[256];
 uint16_t gamma_green[256];
 uint16_t gamma_blue[256];
 
-extern params_t v_setting[NB_SETTINGS];
+extern params_t v_setting[2][18];
 extern int Spiflag, Spi1flag;  //Keeps track of an active SPI transaction in progress
+extern int gX, gY;  // Last position of beam
+
+#ifdef VSTCM
+
+#else
+extern SDL_Renderer *rend_2D_orig;  // Renderer for original 2D game
+#endif
 
 enum { TOP = 0x1,
        BOTTOM = 0x2,
@@ -108,10 +122,10 @@ void draw_to_xyrgb(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
   _draw_lineto(x, y, line_draw_speed);
 }
 
-void draw_string(const char *s, int x, int y, int size, int brightness) {
+void draw_string(const char *s, int x, int y, int size, int intensity) {
   while (*s) {
     char c = *s++;
-    x += draw_character(c, x, y, size, brightness);
+    x += draw_character(c, x, y, size, intensity);
   }
 }
 
@@ -146,19 +160,24 @@ void draw_moveto(int x1, int y1) {
 
   // hold the current position for a few clocks
   // with the beam off
-  dwell(v_setting[3].pval);
-  _draw_lineto(x1, y1, v_setting[1].pval);
-  dwell(v_setting[4].pval);
+  dwell(v_setting[SETTINGS_MENU][3].pval);
+  _draw_lineto(x1, y1, v_setting[SETTINGS_MENU][1].pval);
+  dwell(v_setting[SETTINGS_MENU][4].pval);
   if (x1 > frame_max_x) frame_max_x = x1;
   else if (x1 < frame_min_x) frame_min_x = x1;
   if (y1 > frame_max_y) frame_max_y = y1;
   else if (y1 < frame_min_y) frame_min_y = y1;
+
+  // Save the start position for drawing
+  gX = x1;
+  gY = y1;
 }
 
 //Trying out using floating point to compute the line
 //Also try to make sure the move has at least a couple of points in it
 //if we are drawing
 void _draw_lineto(const int x1, const int y1, float bright_shift) {
+#ifdef VSTCM
   int dx, dy;
   float dxf, dyf;
   int dxmag, dymag;
@@ -202,6 +221,11 @@ void _draw_lineto(const int x1, const int y1, float bright_shift) {
   }
   goto_xy(x1, y1);
   SPI_flush();
+#else
+    SDL_RenderDrawLine(rend_2D_orig, gX/4, (4096-gY)/4, x1/4, (4096 - y1)/4);
+    gX = x1;
+    gY = y1;
+#endif
 }
 
 //This is a modification of the original drawing routine to use the "bright shift" differently
@@ -288,6 +312,7 @@ void init_gamma() {
 void brightness(uint8_t red, uint8_t green, uint8_t blue) {
   if ((LastColInt.red == red) && (LastColInt.green == green) && (LastColInt.blue == blue)) return;
 
+#ifdef VSTCM
   if (green == blue) {  //We can write all 3 at the same time if green is the same as blue
     LastColInt.red = red;
     LastColInt.green = green;
@@ -312,7 +337,13 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
   //Possibly change where this is depending on if the beam is being turned on or off??
   if (LastColInt.red || LastColInt.green || LastColInt.blue) Beam_on = true;
   else Beam_on = false;
-  dwell(v_setting[2].pval);  //Wait this amount before changing the beam (turning it on or off)
+  dwell(v_setting[SETTINGS_MENU][2].pval);  //Wait this amount before changing the beam (turning it on or off)
+#else
+  LastColInt.red = red;
+  LastColInt.green = green;
+  LastColInt.blue = blue;
+  SDL_SetRenderDrawColor(rend_2D_orig, red, green, blue, 255);
+#endif
 }
 
 void goto_xy(uint16_t x, uint16_t y) {
@@ -330,7 +361,7 @@ void goto_xy(uint16_t x, uint16_t y) {
   x_pos = x;
   y_pos = y;
 
-  if (v_setting[10].pval == true) {
+  if (v_setting[SETTINGS_MENU][10].pval == true) {
     xf = x - 2048;
     yf = y - 2048;
     xcorr = xf * (1.0 - yf * yf * .000000013) + 2048.0;  //These are experimental at this point but seem to do OK on the 6100 monitor
@@ -340,21 +371,24 @@ void goto_xy(uint16_t x, uint16_t y) {
   }
 
   // Swap X & Y axes if defined in settings
-  if (v_setting[6].pval == false) x = 4095 - x;
-  if (v_setting[7].pval == false) y = 4095 - y;
+  if (v_setting[SETTINGS_MENU][6].pval == false) x = 4095 - x;
+  if (v_setting[SETTINGS_MENU][7].pval == false) y = 4095 - y;
   MCP4922_write2(DAC_CHAN_XY, x, y, 0);
 }
 
 void dwell(int count) {
+#ifdef VSTCM
   // can work better or faster without this on some monitors
   SPI_flush();  //Get the dacs set to their latest values before we wait
   for (int i = 0; i < count; i++) {
     delayNanoseconds(500);  //NOTE this used to write the X and Y position but now the dacs won't get updated with repeated values
   }
+#endif
 }
 
 //Write out to the one dac that is by itself
 void MCP4922_write1(int dac, uint16_t value) {
+#ifdef VSTCM
   // uint32_t temp;
 
   //Wait for the last transaction to finish and then set CS high from the last transaction
@@ -400,6 +434,7 @@ void MCP4922_write1(int dac, uint16_t value) {
   //IMXRT_LPSPI4_S.TCR=(mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15);  // turn on 16 bit mode  (this is done above and we keep it on now)
   Spiflag = 1;
   IMXRT_LPSPI4_S.TDR = value;  //Send data to the SPI fifo and start transaction but don't wait for it to be done
+#endif
 }
 
 //Using both SPI and SPI1, write out two or three dacs at once
@@ -407,6 +442,7 @@ void MCP4922_write1(int dac, uint16_t value) {
 //otherwise value is x or red, and value2 is y or green
 
 void MCP4922_write2(int dac, uint16_t value, uint16_t value2, int allchannels) {
+#ifdef VSTCM
   // uint32_t temp;
 
   //Wait for the last transaction to finish and then set CS high from the last transaction
@@ -456,4 +492,5 @@ void MCP4922_write2(int dac, uint16_t value, uint16_t value2, int allchannels) {
 
   Spi1flag = 1;
   IMXRT_LPSPI3_S.TDR = value;  //Send data to the SPI1 fifo and start transaction but don't wait for it to be done
+#endif
 }

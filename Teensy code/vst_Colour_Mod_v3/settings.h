@@ -10,7 +10,12 @@
 #ifndef _settings_h_
 #define _settings_h_
 
+#ifdef VSTCM
+// No specific includes for VSTCM
+#else
+#include <cstdint>
 #include <stdio.h>
+#endif
 
 //#define IR_REMOTE                      // define if IR remote is fitted  TODO:deactivate if the menu is not shown? Has about a 10% reduction of frame rate when active
 
@@ -36,7 +41,7 @@ const int  OFF_DWELL0     =     6;     // Time to wait after changing the beam i
 const int  OFF_DWELL1     =     0;     // Time to sit before starting a transit
 const int  OFF_DWELL2     =     0;     // Time to sit after finishing a transit
 const int  NORMAL_SHIFT   =     3;     // The higher the number, the less flicker and faster draw but more wavy lines
-const bool SHOW_DT       = true;
+const bool SHOW_DT        = true;
 const bool FLIP_X         = false;     // Sometimes the X and Y need to be flipped and/or swapped
 const bool FLIP_Y         = false;
 const bool SWAP_XY        = false;
@@ -50,22 +55,30 @@ const int  AUDIO_PIN        = 10;      // Connect audio output to GND and pin 10
 
 #define IR_RECEIVE_PIN      32 //Put this outside the ifdef so that it doesn't break the menu
 
-// Structure of settings stored on Teensy SD card
+// Structure holding choices of various menus, such as
+// settings stored on Teensy SD card, game choices, etc.
 typedef struct {
-  char ini_label[20];     // Text string of parameter label in vstcm.ini
-  char param[40];         // Parameter label displayed on screen
-  uint32_t pval;          // Parameter value
-  uint32_t min;           // Min value of parameter
-  uint32_t max;           // Max value of parameter
+	char ini_label[20];     // Text string of parameter label in vstcm.ini
+	char param[40];         // Parameter label displayed on screen
+	uint32_t pval;          // Parameter value
+	uint32_t min;           // Min value of parameter
+	uint32_t max;           // Max value of parameter
 } params_t;
+
+typedef struct {
+	int nb_menu_items;
+	params_t *choices;
+} list_t;
 
 #define NB_SETTINGS 16    // Number of items in settings menu
 #define NB_SPLASH_CHOICES 18 // Number of items in splash screen menu
-
+enum { SETTINGS_MENU, SPLASH_MENU, NO_MENU };		// menu screen ID
+//
+// Function prototypes
+//
 void read_vstcm_config();
 void write_vstcm_config();
-void show_vstcm_settings_screen();
-void show_vstcm_splash_screen();
+void show_vstcm_menu_screen(int);
 void make_test_pattern();
 void moveto(int, int, int, int, int, int);
 void draw_test_pattern(int);
