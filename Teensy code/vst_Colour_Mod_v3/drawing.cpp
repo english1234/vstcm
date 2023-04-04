@@ -37,7 +37,7 @@ uint16_t gamma_red[256];
 uint16_t gamma_green[256];
 uint16_t gamma_blue[256];
 
-extern params_t v_setting[2][18];
+extern params_t v_setting[2][NB_SETTINGS];
 extern int Spiflag, Spi1flag;  //Keeps track of an active SPI transaction in progress
 extern int gX, gY;  // Last position of beam
 
@@ -53,7 +53,9 @@ enum { TOP = 0x1,
        LEFT = 0x8 };
 enum { FALSE,
        TRUE };
+
 typedef unsigned int outcode;
+
 outcode compute_outcode(int x, int y, int xmin, int ymin, int xmax, int ymax) {
   outcode oc = 0;
   if (y > ymax)
@@ -312,13 +314,11 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
   // Do nothing if we haven't changed colour since last time
   if ((LastColInt.red == red) && (LastColInt.green == green) && (LastColInt.blue == blue)) return;
 
-  // Mix colours if using monochrome monitor using average value
-  if (v_setting[0][16].pval == 0) {
+  if (v_setting[SETTINGS_MENU][16].pval == 0) {
     // Mix colours if using monochrome monitor using average value
     // uint8_t avg = (red + green + blue) / 3;
-     // Mix colours if using monochrome monitor using average value
-      uint8_t avg = max(red, blue);
-      avg = max(avg, green);
+     // Mix colours if using monochrome monitor using maximum value
+     uint8_t avg = (red > green) ? ((red > blue) ? red : blue) : ((green > blue) ? green : blue);
      red = green = blue = avg;
   }
 
@@ -383,7 +383,11 @@ void goto_xy(uint16_t x, uint16_t y) {
   // Swap X & Y axes if defined in settings
   if (v_setting[SETTINGS_MENU][6].pval == false) x = 4095 - x;
   if (v_setting[SETTINGS_MENU][7].pval == false) y = 4095 - y;
-  MCP4922_write2(DAC_CHAN_XY, x, y, 0);
+
+  if (v_setting[SETTINGS_MENU][8].pval == true)
+     MCP4922_write2(DAC_CHAN_XY, x, y, 0);
+  else
+     MCP4922_write2( DAC_CHAN_XY, y, x, 0 );
 }
 
 void dwell(int count) {

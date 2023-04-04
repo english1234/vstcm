@@ -72,7 +72,7 @@ extern int frame_min_x;
 extern int frame_max_y;
 extern int frame_min_y;
 extern float line_draw_speed;
-extern params_t v_setting[2][18];
+extern params_t v_setting[2][NB_SETTINGS];
 
 #ifndef VSTCM
 SDL_Renderer* rend_2D_orig = NULL;     // Renderer for original 2D game
@@ -147,7 +147,8 @@ void mainloop() {
 
       if (read_data(0) == 1)  // Try to read some incoming data from MAME
         break;
-    } else if ((millis() - loop_start_time) > SERIAL_WAIT_TIME)  //Changed this to check only if serial is not available
+   // } else if ((millis() - loop_start_time) > SERIAL_WAIT_TIME)  //Changed this to check only if serial is not available
+    } else if ((millis() - loop_start_time) > v_setting[SETTINGS_MENU][15].pval)  //Changed this to check only if serial is not available
       show_something = true;                                     // Show splash screen
 
     if (show_something)

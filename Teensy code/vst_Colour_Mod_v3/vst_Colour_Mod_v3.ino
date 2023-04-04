@@ -23,5 +23,4 @@ void setup() {
 void loop() {
   while (!should_quit)
     mainloop();
-
 }

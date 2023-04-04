@@ -31,12 +31,7 @@ static int nb_points[NUMBER_OF_TEST_PATTERNS];
 //
 int sel_setting;  // Currently selected menu choice
 
-// ADD MENU CHOICES
-//
-// B&W vs COLOUR
-// Amplifone / G05 etc.
-
-params_t v_setting[2][18] = {
+params_t v_setting[2][NB_SETTINGS] = {
   {
       { "TEST_PATTERN", "RGB test patterns", 0, 0, 4 },
       { "OFF_SHIFT", "Beam transit speed", OFF_SHIFT, 0, 50 },
@@ -73,7 +68,7 @@ params_t v_setting[2][18] = {
       { "waroftheworlds", "War of the Worlds", 0, 0, 0 },
       { "barrier", "Barrier", 0, 0, 0 },
       { "sundance", "Sundance", 0, 0, 0 },
-      { "qb3", "QB3", 0, 0, 0 },
+    //  { "qb3", "QB3", 0, 0, 0 },
       { "SETTINGS", "Settings menu", 0, 0, 0 },
   }
 };
@@ -168,14 +163,14 @@ void read_vstcm_config() {
               Serial.print(" ");
               Serial.print(pos_pn);
               Serial.print(" characters long, AKA ");
-              Serial.print(v_setting[j].ini_label);
+              Serial.print(v_setting[SETTINGS_MENU][j].ini_label);
               Serial.print(" ");
-              Serial.print(sizeof v_setting[j].ini_label);
+              Serial.print(sizeof v_setting[SETTINGS_MENU][j].ini_label);
               Serial.print(" characters long, changed from ");
-              Serial.print(v_setting[j].pval); */
+              Serial.print(v_setting[SETTINGS_MENU][j].pval); */
             v_setting[SETTINGS_MENU][j].pval = atoi(param_value);
             //  Serial.print(" to ");
-            //  Serial.println(v_setting[j].pval);
+            //  Serial.println(v_setting[SETTINGS_MENU][j].pval);
             bChanged = true;
             break;
           }

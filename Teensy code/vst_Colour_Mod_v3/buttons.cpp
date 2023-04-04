@@ -38,7 +38,7 @@ const uint8_t DEBOUNCE_INTERVAL = 25;  // Measured in ms
 bool has_focus = false;
 
 extern bool should_quit; // already defined in main.cpp
-extern params_t v_setting[2][18];
+extern params_t v_setting[2][NB_SETTINGS];
 extern int sel_setting;  // Currently selected setting
 extern int show_vstcm_settings;
 
@@ -331,12 +331,13 @@ while (SDL_PollEvent(&e) != 0) {
 // when using the physical buttons
 
 void IR_remote_setup() {
+#ifdef VSTCM
 #ifdef IR_REMOTE
 
   // Start the receiver and if not 3. parameter specified,
   // take LED_BUILTIN pin from the internal boards definition as default feedback LED
   IrReceiver.begin(v_setting[11].pval, ENABLE_LED_FEEDBACK);
-
-  // attachInterrupt(digitalPinToInterrupt(IR_RECEIVE_PIN), IR_remote_loop, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(v_setting[SETTINGS_MENU][11].pval), IR_remote_loop, CHANGE);
+#endif
 #endif
 }
