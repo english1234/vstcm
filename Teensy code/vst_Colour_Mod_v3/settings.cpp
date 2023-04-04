@@ -31,6 +31,11 @@ static int nb_points[NUMBER_OF_TEST_PATTERNS];
 //
 int sel_setting;  // Currently selected menu choice
 
+// ADD MENU CHOICES
+//
+// B&W vs COLOUR
+// Amplifone / G05 etc.
+
 params_t v_setting[2][18] = {
   {
       { "TEST_PATTERN", "RGB test patterns", 0, 0, 4 },
@@ -49,6 +54,7 @@ params_t v_setting[2][18] = {
       { "NORMAL1", "Normal text brightness", NORMAL1, 0, 255 },
       { "BRIGHTER", "Highlighted text brightness", BRIGHTER, 0, 255 },
       { "SERIAL_WAIT_TIME", "Test pattern delay", SERIAL_WAIT_TIME, 0, 255 },
+      { "COLOUR_SWITCH", "Colour / Monochrome display", COLOUR_SWITCH, 0, 1 },
   },
   {
       { "BZONE", "Battlezone", 0, 0, 0 },
@@ -100,7 +106,7 @@ void read_vstcm_config() {
 
   if (dataFile) {
     while (dataFile.available()) {
-      for (i = 1; i < NB_SETTINGS; i++) {
+      for (i = 0; i < NB_SETTINGS; i++) {
         pos_pn = 0;
 
         memset(param_name, 0, sizeof param_name);
@@ -243,9 +249,9 @@ void show_vstcm_menu_screen(int which) {
     list_t menu_list[2];
     char buf1[25] = "";
 
-    menu_list[SETTINGS_MENU].nb_menu_items = 15;
+    menu_list[SETTINGS_MENU].nb_menu_items = NB_SETTINGS;
     menu_list[SETTINGS_MENU].choices = &v_setting[0][0];
-    menu_list[SPLASH_MENU].nb_menu_items = 18;
+    menu_list[SPLASH_MENU].nb_menu_items = NB_SPLASH_CHOICES;
     menu_list[SPLASH_MENU].choices = &v_setting[1][0];
 
     intensity = v_setting[SETTINGS_MENU][13].pval;
@@ -289,7 +295,7 @@ void show_vstcm_menu_screen(int which) {
             draw_test_pattern(1);
 
             x = 300;
-            y = 2800;
+            y = 3000;
             line_size = 140;
             char_size = 5;
             x_offset = 3000;
@@ -402,7 +408,7 @@ void make_test_pattern() {
 
   // RGB gradiant scale
 
-  const int height = 3072;
+  const int height = 3200;
   const int mult = 5;
   const int colors[] = { 0, 31, 63, 95, 127, 159, 191, 223, 255 };
 

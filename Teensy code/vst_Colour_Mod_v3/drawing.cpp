@@ -295,9 +295,8 @@ void old_draw_lineto(int x1, int y1, const int bright_shift) {
 }
 
 void make_gammatable(float gamma, uint16_t maxinput, uint16_t maxoutput, uint16_t *table) {
-  for (int i = 0; i < (maxinput + 1); i++) {
+  for (int i = 0; i < (maxinput + 1); i++)
     table[i] = (pow((float)i / (float)maxinput, gamma) * (float)maxoutput);
-  }
 }
 
 void init_gamma() {
@@ -310,7 +309,18 @@ void init_gamma() {
 //Changed this to only go to half scale on the dac to make it go twice as fast (increased gain on output opamp)
 //TODO: Add gamma correction?
 void brightness(uint8_t red, uint8_t green, uint8_t blue) {
+  // Do nothing if we haven't changed colour since last time
   if ((LastColInt.red == red) && (LastColInt.green == green) && (LastColInt.blue == blue)) return;
+
+  // Mix colours if using monochrome monitor using average value
+  if (v_setting[0][16].pval == 0) {
+    // Mix colours if using monochrome monitor using average value
+    // uint8_t avg = (red + green + blue) / 3;
+     // Mix colours if using monochrome monitor using average value
+      uint8_t avg = max(red, blue);
+      avg = max(avg, green);
+     red = green = blue = avg;
+  }
 
 #ifdef VSTCM
   if (green == blue) {  //We can write all 3 at the same time if green is the same as blue
@@ -342,7 +352,7 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
   LastColInt.red = red;
   LastColInt.green = green;
   LastColInt.blue = blue;
-  SDL_SetRenderDrawColor(rend_2D_orig, red, green, blue, 255);
+  SDL_SetRenderDrawColor(rend_2D_orig, gamma_red[red], gamma_green[green], gamma_blue[blue], 255);
 #endif
 }
 

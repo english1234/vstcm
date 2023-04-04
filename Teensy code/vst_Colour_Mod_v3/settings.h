@@ -48,6 +48,7 @@ const bool SWAP_XY        = false;
 const bool PINCUSHION     = false;
 const int  NORMAL1        =   150;     // Brightness of text in parameter list
 const int  BRIGHTER       =   230;
+const int  COLOUR_SWITCH  =     0;		// 0 = Colour display, 1 = monochrome
 // how long in milliseconds to wait for data before displaying a test pattern
 // this can be increased if the test pattern appears during gameplay
 const int  SERIAL_WAIT_TIME = 150;
@@ -70,7 +71,7 @@ typedef struct {
 	params_t *choices;
 } list_t;
 
-#define NB_SETTINGS 16    // Number of items in settings menu
+#define NB_SETTINGS 17    // Number of items in settings menu
 #define NB_SPLASH_CHOICES 18 // Number of items in splash screen menu
 enum { SETTINGS_MENU, SPLASH_MENU, NO_MENU };		// menu screen ID
 //
