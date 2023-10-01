@@ -1,5 +1,5 @@
 # VSTCM - the v.st Colour Mod - a colour vector graphics generator
-The vstcm is a vector signal transceiver PCB which generates colour vector graphics to be displayed on an oscilloscope or vector monitor such as Amplifone, Wells Gardner WG6100 and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc. 
+The vstcm is a vector signal transceiver PCB which generates colour vector graphics to be displayed on an oscilloscope or vector monitor such as Amplifone, Wells Gardner WG6100, Hantarex MTRV and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc. 
 
 When used with a computer (Raspberry Pi, PC, ...) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games, but it can also play certain games all by itself using various emulators.
 
@@ -111,7 +111,7 @@ Press the upload button (or the button on the Teensy if it doesn't upload automa
 
 ## Testing the vstcm
 
-Once the board is built and the Teensy programmed and fitted, it can be connected to your deflection board of choice (it has only been tested on an Amplifone so far, but should work on WG6100 and others, including B&W vectors) and when powered on should show a test screen. It may be necessary to change the size and positions pots on the PCB as well as other controls on the deflection board (such as Z or colour gain).
+Once the board is built and the Teensy programmed and fitted, it can be connected to your deflection board of choice (it has been tested on Amplifone, Wells Gardner WG6100, Electrohome G05 and Hantarex MTRV so far) and when powered on should show a test screen. It may be necessary to change the size and positions pots on the PCB as well as other controls on the deflection board (such as Z or colour gain).
 
 Before connecting to the deflection board, it would probably be a good idea to make sure the vstcm is generating appropriate voltages at its outputs (preferably with an oscilloscope, or failing that with a decent multimeter). 
 
