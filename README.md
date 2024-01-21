@@ -1,11 +1,11 @@
 # VSTCM - the v.st Colour Mod - a colour vector graphics generator
 The vstcm is a vector signal transceiver PCB which generates colour vector graphics to be displayed on an oscilloscope or vector monitor such as Amplifone, Wells Gardner WG6100, Hantarex MTRV and Electrohome G05, as used in Star Wars, Tempest, Gravitar, etc. 
 
-When used with a computer (Raspberry Pi, PC, ...) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games, but it can also play certain games all by itself using various emulators.
+When used with a computer (Raspberry Pi, PC, ...) running AdvanceMAME, it can be used to play classic colour (and monochrome) vector arcade games, but it can also play certain games all by itself using various emulators. If you search for vstcm on a well-known video sharing site you can see the board in action.
 
 (Haven't got a vector monitor or an oscilloscope? Make your own, it's not that hard! - see below).
 
-THE CURRENT VERSION OF THE PCB IS V3. A V2 PCB CAN BE UPGRADED TO V3. NOTE THAT V2 CODE IS NOT COMPATIBLE WITH V3. SOME CODE IN THE V2 ARCHIVE HAS NOT YET BEEN PORTED TO V3.
+For those who built a V2 of this board, a document is provided to convert the wiring to run with V3 software.
 
 ![vstcm pcb](http://robinchampion.com/vstcm/vstcmpcb.jpg)
 
@@ -15,15 +15,15 @@ The original v.st was designed by Trammell Hudson for black & white games. Docum
 
 Compared to the original version, the new vstcm adds:
 - RGB colour with different intensity levels
-- a 6502 emulator which allows it to play games on its own without a Raspberry Pi or MAME
-- an upgrade to the Teensy 4.1 for more power (eg >800Mhz as opposed to 120Mhz for the Teensy 3.2)
+- 6502, Z80 and 6809 emulators which allows it to play games on its own without a Raspberry Pi or MAME
+- A mini version of MAME for playing vector games on the Teensy without a Raspberry Pi
+- An upgrade to the Teensy 4.1 for more power (eg >800Mhz as opposed to 120Mhz for the Teensy 3.2)
 - Asteroids style test patterns in Red, Green & Blue to aid CRT convergence
-- a configuration menu with settings stored on the built in SD card
-- programmable onboard control buttons
-- programmable IR remote control buttons
-- extra pots to control X & Y position (to complement the existing X & Y size pots)
-- several power source options: either USB, or external 5V/9V/12V
-- V3 of the PCB is faster and has a better quality image
+- A configuration menu with settings stored on the built in SD card
+- Programmable onboard control buttons
+- Programmable IR remote control buttons
+- Extra pots to control X & Y position (to complement the existing X & Y size pots)
+- Several power supply options: either USB, or external 5V/9V/12V
 
 ![testscreen1](http://robinchampion.com/vstcm/testscreen2.jpg)
 
@@ -32,8 +32,8 @@ The board was built with simplicity in mind using components that are easy to fi
 ## Programme code
 
 Currently, the board can work in either of two ways:
-- on its own, running a 6502 emulator, and with the original game ROM files stored on the SD card of the Teensy. So far, Battlezone and Asteroids work with this, but it shouldn't be too much trouble to get others working. The code is a rough port of vecsim (https://github.com/morbos/bzone), and currently does not handle sound on the Teensy (please feel free to contribute the necessary mods to the code...). See instructions below for how to get this to work.
 - connected to a Raspberry Pi running MAME. The programme code for this option is a development of that which was provided with the original version of the v.st, with modifications made by "Swapfile" (Github user) to interface with AdvanceMAME, and then further modifications made by myself in order to add the new functionality specific to the vstcm, followed by extensive optimisation by fcawth (cf his fork of this project). There is scope for further improvement (see the wiki for this project in the link above), and it is hoped that the publication on github will encourage contributions to develop this as a relatively cheap and easy solution for the vector arcade / vector graphics community.
+- on its own, running a 6502, Z80 or 6809 emulator, and with the original game ROM files stored on the SD card of the Teensy. So far, Battlezone, Asteroids and Donkey Kong work with this, but it shouldn't be too much trouble to get others working. Sound and external controls have not been properly implemented as yet (please feel free to contribute the necessary mods to the code...). See instructions below for how to get this to work.
 
 ## History of development
 
@@ -59,7 +59,7 @@ The BOM is in a dedicated folder and has Mouser references for many parts at the
 - IC2: You need to choose if you are going to use an external supply or not and if so what voltage to use (5V, 9V or 12V). Recom makes these parts, but so do Traco and there may be other brands. Make sure there is a D (for double) at the end of the model number which generates +/- voltages, rather than the S (single) version. See power options below.
 - The Molex parts are not strictly necessary, you may prefer something different or simply to solder wires directly to the holes in the PCB.
 - U5: See power options below. I have also used a 7805 as a direct replacement with a small heatsink on it, which gets quite warm but hasn't burnt out as yet.
-- optional IR remote: I really recommend this - see "IR remote programmable control buttons" below.
+- optional IR remote: I really recommend this if you are putting the board inside a cabinet - see "IR remote programmable control buttons" below.
  
 I would recommend socketing everything on the board (Teensy, DACs, Op Amps) so that they can be swapped out if better choices are found in the future.
 
@@ -77,12 +77,11 @@ The PCB can be powered in several ways:
 | 4 | External 12V unregulated         | Complete circuit inc Teensy                 | Required | RB-1212D | Present     | Yes              | Yes    |
 | 5 | USB 5V + external 12V regulated  | USB supplies Teensy, external supplies rest | Absent   | Absent   | Absent      | No               | Yes    |
 
-1/ power the whole thing via USB from a Raspberry Pi: I could not get this to work, although I was using a long and cheap USB cable. It may work with a short good quality one. Make sure the Pi has at least a 3A supply.
+1/ power the whole thing via USB from a Raspberry Pi: This requires a short good quality USB cable to work reliably. Make sure the Pi has at least a 3A supply.
 
 2/ power the Teensy via USB from a Raspberry Pi, and use a separate external supply (such as a wall wart) for the DACs and Op Amps. 
 
 3 & 4/ power the whole thing via an external supply which can be 9V or 12V (not 5V): this requires adding a LM2940T-5.0 regulator at U5 along with it's associated caps at C19 & C20, as well as cutting a link on the Teensy to ensure that it doesn't receive conflicting power from both the USB and the external supply. The RB-xx12D needs to be either a 9V or 12V model depending on the voltage of the external supply. A 5V supply won't work as the LM2940 requires over 6V to function according to its datasheet. 
-WARNING: THE V2 OF THE PCB (AS OPPOSED TO V2.1 OR LATER) HAS THE SYMBOL FOR U5 INVERTED. PIN 1 OF THE LM2940 (THE LEFT HAND ONE) NEEDS TO BE AT THE TOP OF THE BOARD, THE SILKSCREEN ON THE PCB AND SCHEMATIC HAVE BEEN CORRECTED FROM V2.1 ONWARDS.
 
 5/ If you already have a perfectly regulated and smooth 12V supply, then you can connect it to J7.
 
