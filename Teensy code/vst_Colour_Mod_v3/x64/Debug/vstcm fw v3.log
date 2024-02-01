@@ -1,0 +1,17 @@
+﻿  advmame.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\advmame.cpp(13,10): error C1083: Cannot open include file: 'SD.h': No such file or directory
+  buttons.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\buttons.cpp(12,10): error C1083: Cannot open include file: 'Bounce2.h': No such file or directory
+  bzone.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\bzone.cpp(34,10): error C1083: Cannot open include file: 'Audio.h': No such file or directory
+  cinemu.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\cinemu.cpp(15,10): error C1083: Cannot open include file: 'arduino.h': No such file or directory
+  drawing.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\drawing.cpp(12,10): error C1083: Cannot open include file: 'SD.h': No such file or directory
+  main.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\main.cpp(14,10): error C1083: Cannot open include file: 'arduino.h': No such file or directory
+  settings.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\settings.cpp(13,10): error C1083: Cannot open include file: 'SD.h': No such file or directory
+  spi_fct.cpp
+C:\Users\robin\Documents\Vector monitor project\Github\vstcm\Teensy code\vst_Colour_Mod_v3\spi_fct.cpp(13,10): error C1083: Cannot open include file: 'SPI.h': No such file or directory
+  Generating Code...

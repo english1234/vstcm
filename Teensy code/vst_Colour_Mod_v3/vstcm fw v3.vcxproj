@@ -26,6 +26,7 @@
     <ClInclude Include="drawing.h" />
     <ClInclude Include="hershey_font.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="spi_fct.h" />
   </ItemGroup>
@@ -41,8 +42,8 @@
     <ClCompile Include="spi_fct.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\..\..\SDL2\VisualC\Win32\Release\SDL2.lib" />
-    <Library Include="..\..\..\SDL2\VisualC\Win32\Release\SDL2main.lib" />
+    <Library Include="..\..\..\..\SDL2\VisualC\Win32\Release\SDL2.lib" />
+    <Library Include="..\..\..\..\SDL2\VisualC\Win32\Release\SDL2main.lib" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

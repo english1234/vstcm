@@ -42,6 +42,9 @@
     <ClInclude Include="main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="hershey_font.c">
@@ -73,10 +76,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\..\..\SDL2\VisualC\Win32\Release\SDL2.lib">
+    <Library Include="..\..\..\..\SDL2\VisualC\Win32\Release\SDL2.lib">
       <Filter>Resource Files</Filter>
     </Library>
-    <Library Include="..\..\..\SDL2\VisualC\Win32\Release\SDL2main.lib">
+    <Library Include="..\..\..\..\SDL2\VisualC\Win32\Release\SDL2main.lib">
       <Filter>Resource Files</Filter>
     </Library>
   </ItemGroup>

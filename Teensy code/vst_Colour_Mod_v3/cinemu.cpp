@@ -21,7 +21,8 @@
 #include <cstring>
 #include <vcruntime_string.h>
 #include <random>
-#include "../../../SDL2/include/SDL_render.h"
+//#include "../../../SDL2/include/SDL_render.h"
+#include "C:\Users\robin\Documents\Vector monitor project\SDL2\include\SDL_render.h"
 #endif
 
 #include "cinemu.h"

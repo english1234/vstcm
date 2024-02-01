@@ -108,6 +108,8 @@ Press the upload button (or the button on the Teensy if it doesn't upload automa
 
 (You can also use PlatformIO if you prefer).
 
+There is a more detailed guide "How to programme the Teensy with the code for the VSTCM PCB.pdf" in the root directory.
+
 ## Testing the vstcm
 
 Once the board is built and the Teensy programmed and fitted, it can be connected to your deflection board of choice (it has been tested on Amplifone, Wells Gardner WG6100, Electrohome G05 and Hantarex MTRV so far) and when powered on should show a test screen. It may be necessary to change the size and positions pots on the PCB as well as other controls on the deflection board (such as Z or colour gain).
