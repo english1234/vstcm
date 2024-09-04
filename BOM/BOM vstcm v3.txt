@@ -25,11 +25,11 @@
 | J8                                     |  1   | Conn_01x01_Male | Conn_01x01_Male          | Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical    |                         | 
 | J9                                     |  1   | Conn_01x02_Male | Conn_01x02_Male          | Generic connector, single row, 01x02Aliexpress                |                         | 
 | TP1, TP3, TP2                          |  3   | Conn_01x01_Male | Conn_01x01_Male          | Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical    |                         | 
-| R11, R13                               |  2   | 5K 1% 1/4W      | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal |                         |
+| R11, R13                               |  2   | 5K 1% 1/4W      | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | 603-CFR25SJT-52-5K      |
 | R4, R5, R25, R14, R3, R26, R9, R6, R10 |      |                 |                          |                                                               |                         |
 | R23, R24, R8, R27, R29, R7, R22, R31   |      |                 |                          |                                                               |                         |
-| R28, R30                               | 19   | 10K 1% 1/4W     | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal |                         | 
-| R12, R15, R16                          |  3   | 15K 1% 1/4W     | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal |                         |
+| R28, R30                               | 19   | 10K 1% 1/4W     | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | 71-RN60E1002F           |
+| R12, R15, R16                          |  3   | 15K 1% 1/4W     | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | 71-CCF5515K0FKE36       |
 | R17, R18, R19, R20, R21                |  5   | 75R 5% 1/4W CARB| R-US_0204/7              | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR-25JB-52-75R         | 
 | R1, R2                                 |  2   | 1K 1/3W 5% CARB | R-US_0204/2V             | Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal | CFR25J1K0               | 
 | RV1, RV2, RV3, RV4                     |  4   | 20K             | R_Potentiometer          | Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical         | 3386P-1-203LF           | 
