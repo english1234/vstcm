@@ -43,4 +43,5 @@
 | Y_SIG1, BL_SIG1, GR_SIG1, X_SIG1       |      |                 |                          |                                                               |                         |
 | GR_GND1,X_GND1                         |  2   | .156 SPOX       | 5 pin male Molex         | Molex connector 09-65-2058 (or use 1x10 pin)                  | 538-09-65-2058          |
 | Teensy 4.1                             |  1   |                 |                          | Attach pin headers to plug into PCB                           | Various sources         |
-| IC sockets                             |  5   |                 |                          | DIP 14                                                        | Various sources         |
+| IC sockets                             |  5   |                 |                          | DIP 14 pitch 2.54mm, row spacing 7.62mm                       | 571-1-2199298-3         |
+| Mounting for Teensy                    |      |                 |                          | Use breakable 40 pin headers and sockets                      | Aliexpress              |
