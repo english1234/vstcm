@@ -77,8 +77,7 @@ void manage_buttons() {
   int com = 0;  // Command received from IR remote
 
 #ifdef IR_REMOTE
-  if (IrReceiver.decode())  // Check if a button has been pressed on the IR remote
-  {
+  if (IrReceiver.decode()) { // Check if a button has been pressed on the IR remote
     IrReceiver.resume();  // Enable receiving of the next value
     /*
        HX1838 Infrared Remote Control Module (£1/$1/1€ on Aliexpress)

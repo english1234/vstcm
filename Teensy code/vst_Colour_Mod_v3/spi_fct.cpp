@@ -19,7 +19,8 @@ volatile int Spiflag, Spi1flag;  //Keeps track of an active SPI transaction in p
 
 void SPI_init() {
 #ifdef VSTCM
-  uint32_t mytcr;  //Keeps track of what the TCR register should be put back to after 16 bit mode - bit of a hack but reads and writes are a bit funny for this register (FIFOs?)
+  uint32_t mytcr;   // Keeps track of what the TCR register should be put back to after 16 bit mode
+                    // - bit of a hack but reads and writes are a bit funny for this register (FIFOs?)
 
   // Set chip select pins going to IC4/IC5 DACs to output
   pinMode(CS_R_G_X_Y, OUTPUT);
@@ -58,10 +59,31 @@ void SPI_init() {
   SPI1.endTransaction();
   SPI.beginTransaction(SPISettings(CLOCKSPEED, MSBFIRST, SPI_MODE0));
   SPI1.beginTransaction(SPISettings(CLOCKSPEED, MSBFIRST, SPI_MODE0));
-  mytcr = IMXRT_LPSPI4_S.TCR;
+
+  // Purpose of Modifying the TCR
+  // 16-Bit Data Transfers: By setting the frame size to 16 bits, the SPI hardware is configured to handle data in 16-bit chunks
+  // rather than the default 8 bits.
+  // Performance Optimization: Disabling the receiver (RXMSK) reduces overhead for applications where received data is not needed,
+  // making the SPI transactions faster and more efficient.
+
+  // Configure Frame Size for LPSPI3 and LPSPI4
+  mytcr = IMXRT_LPSPI4_S.TCR;   // Save the transfer control register for LPSPI4
+  
+  // (mytcr & 0xfffff000) clears the lower 12 bits of the register, which include the frame size and other settings.
+  // LPSPI_TCR_FRAMESZ(15) sets the frame size to 16 bits (15 + 1).
+  // Adding LPSPI_TCR_RXMSK masks the receiver, effectively disabling it. This ensures that no data is received during
+  // SPI transmissions, which can improve performance for certain applications where data reception is unnecessary.
+  // The updated mytcr is written back to the TCR registers of LPSPI4 and LPSPI3
   IMXRT_LPSPI4_S.TCR = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;  //This will break all stock SPI transactions from this point on - disable receiver and go to 16 bit mode
   IMXRT_LPSPI3_S.TCR = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;  //This will break all stock SPI transactions from this point on - disable receiver and go to 16 bit mode
-  mytcr = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;
+ // mytcr = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;
+  
+  /* CFGR0: General SPI configuration register 0.
+     CFGR1: General SPI configuration register 1.
+     DER: Data enable register.
+     IER: Interrupt enable register.
+     TCR: Transfer control register. */
+
   /* Some debugging printfs when testing SPI
     Serial.print("CFGR0=:");
     Serial.println(IMXRT_LPSPI3_S.CFGR0);

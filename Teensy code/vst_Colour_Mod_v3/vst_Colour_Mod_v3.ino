@@ -5,10 +5,9 @@
 
    Based on: https://trmm.net/V.st by Trammell Hudson
    incorporating mods made by "Swapfile" (Github) for Advanced Mame compatibility
+   and performance optimisations by Fred Cawthorne
 
    robin@robinchampion.com 2022
-
-   (This is a modified version by fcawth which attempts to speed things up)
 
 */
 
