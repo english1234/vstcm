@@ -77,7 +77,7 @@ The PCB can be powered in several ways:
 | 4 | External 12V unregulated         | Complete circuit inc Teensy                 | Required | RB-1212D | Present     | Yes              | Yes    |
 | 5 | USB 5V + external 12V regulated  | USB supplies Teensy, external supplies rest | Absent   | Absent   | Absent      | No               | Yes    |
 
-1/ power the whole thing via USB from a Raspberry Pi: This requires a short good quality USB cable to work reliably. Make sure the Pi has at least a 3A supply.
+1/ power the whole thing via USB from a Raspberry Pi: This requires a short good quality USB cable to work reliably. Make sure the Pi has at least a 3A supply. Since U5 is absent, bridge the two outer pins with a jumper wire.
 
 2/ power the Teensy via USB from a Raspberry Pi, and use a separate external supply (such as a wall wart) for the DACs and Op Amps. 
 
