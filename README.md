@@ -114,7 +114,7 @@ Once the board is built and the Teensy programmed and fitted, it can be connecte
 
 Before connecting to the deflection board, it would probably be a good idea to make sure the vstcm is generating appropriate voltages at its outputs (preferably with an oscilloscope, or failing that with a decent multimeter). 
 
-If you want to save changes to settings shown on the onscreen menu, then put a SD card in the Teensy (formatted with FAT32), and put the vstcm.ini file in the root directory.
+If you want to save changes to settings shown on the onscreen menu, then put a SD card in the Teensy (formatted with FAT32). After changing the settings to your requirements and pressing the middle button on the PCB, the vstcm.ini file will be created at the root of the SD card so that they can be reloaded at each boot. 
 
 ![typicalsetup](http://robinchampion.com/vstcm/typicalsetup.jpg)
 
