@@ -12,7 +12,7 @@
 #ifdef VSTCM
 #include <SD.h>
 #else
-#pragma warning(disable : 4996)     // Get rid of annoying compiler warnings in VC++
+#pragma warning(disable : 4996)  // Get rid of annoying compiler warnings in VC++
 #include <cstdint>
 #include <cstring>
 #endif
@@ -81,9 +81,9 @@ int read_data(int init) {
   cmd = cmd << 8 | c;
   frame_offset++;
 
-  if (frame_offset < 4)
-    return 0;
-
+   if (frame_offset < 4)
+   return 0;   // keep waiting for full command
+  
   frame_offset = 0;
 
   uint8_t header = (cmd >> 29) & 0b00000111;
@@ -93,9 +93,9 @@ int read_data(int init) {
     uint32_t y = (cmd >> 0) & 0x3fff;
     uint32_t x = (cmd >> 14) & 0x3fff;
 
-  //  Serial.println(x);
-   // Serial.println(y);
-    
+    //  Serial.println(x);
+    // Serial.println(y);
+
     // As an optimisation there is a blank flag in the XY coord which
     // allows blanking of the beam without updating the RGB color DACs.
 

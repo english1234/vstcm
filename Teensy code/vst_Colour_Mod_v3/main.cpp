@@ -15,6 +15,9 @@
 #include "advmame.h"
 #else
 #include SDL_PATH
+#define _CRT_RAND_S
+#include <stdlib.h>
+
 #endif
 
 #include "settings.h"
@@ -24,8 +27,6 @@
 
 bool should_quit = false;
 
-const int REST_X = 2048;  // Wait in the middle of the screen
-const int REST_Y = 2048;
 
 //For spot killer fix - if the total distance in x or y is less than SPOT_MAX, it will go to the corners to try to stop
 //the spot killer from triggering
@@ -89,18 +90,143 @@ extern void Update_Vector_Screen();
 void emu_printf(char* msg) {
 #ifdef VSTCM
   _emu_printf(msg);
+#else
+  // fprintf( stderr, "The supported games are:\n" );
+  fprintf(stdout, msg);
 #endif
 }
 
-// Wrapper function to enable calling by VSTCM without creating confusion about
-// location of main() function
-void mainloop() {
+uint32_t TickCount() {
 
 #ifdef VSTCM
-  current_time = millis();
+  return millis();
 #else
-  current_time = SDL_GetTicks();
+  return SDL_GetTicks();
 #endif
+}
+
+// Code for a screen saver similar to Mystify
+
+#define NUM_LINES 4  // Number of bouncing lines
+#define Z_MAX 255    // Maximum Z depth value
+#define Z_SPEED 0.1  // Speed of Z oscillation
+
+typedef struct {
+  int x1, y1, x2, y2;      // Line endpoints
+  int dx1, dy1, dx2, dy2;  // Velocities for each endpoint
+  int color;               // RGB565 packed color value
+  int z;                   // Z-depth (0-255)
+  float z_phase;           // Phase for Z oscillation
+} Line;
+
+// Array of bouncing lines
+Line lines[NUM_LINES];
+
+// Function to convert RGB to a 16-bit color (assuming 5-6-5 format)
+uint16_t rgb_to_565(uint8_t r, uint8_t g, uint8_t b) {
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+// Initialize lines with random positions, velocities, colors, and Z-depth
+void init_mystify() {
+  for (int i = 0; i < NUM_LINES; i++) {
+    unsigned int r;
+
+#ifdef VSTCM
+    // Use standard rand() on Teensy
+    lines[i].x1 = (rand() % (4096 - 2)) + 1;
+    lines[i].y1 = (rand() % (4096 - 2)) + 1;
+    lines[i].x2 = (rand() % (4096 - 2)) + 1;
+    lines[i].y2 = (rand() % (4096 - 2)) + 1;
+#else
+    // Use secure rand_s() on Windows
+    rand_s(&r);
+    lines[i].x1 = (r % (4096 - 2)) + 1;
+    rand_s(&r);
+    lines[i].y1 = (r % (4096 - 2)) + 1;
+    rand_s(&r);
+    lines[i].x2 = (r % (4096 - 2)) + 1;
+    rand_s(&r);
+    lines[i].y2 = (r % (4096 - 2)) + 1;
+#endif
+
+    // Random direction (-1 or 1)
+    lines[i].dx1 = (rand() % 2) ? 1 : -1;
+    lines[i].dy1 = (rand() % 2) ? 1 : -1;
+    lines[i].dx2 = (rand() % 2) ? 1 : -1;
+    lines[i].dy2 = (rand() % 2) ? 1 : -1;
+
+    // Random color and Z depth
+#ifdef VSTCM
+    lines[i].color = rand() % 256;  // 256 color range
+    lines[i].z = rand() % 256;      // Z value (0-255)
+#else
+    rand_s(&r);
+    lines[i].color = r % 256;
+    rand_s(&r);
+    lines[i].z = r % 256;
+#endif
+  }
+}
+
+// Update the positions of the lines, their colors, and z-depth
+void update_mystify() {
+  static float t = 0;  // Time variable for smooth Z oscillation
+
+  for (int i = 0; i < NUM_LINES; i++) {
+    // Move each endpoint
+    lines[i].x1 += lines[i].dx1;
+    lines[i].y1 += lines[i].dy1;
+    lines[i].x2 += lines[i].dx2;
+    lines[i].y2 += lines[i].dy2;
+
+    // Bounce off the edges
+    if (lines[i].x1 <= 0 || lines[i].x1 >= 4096) lines[i].dx1 = -lines[i].dx1;
+    if (lines[i].y1 <= 0 || lines[i].y1 >= 4096) lines[i].dy1 = -lines[i].dy1;
+    if (lines[i].x2 <= 0 || lines[i].x2 >= 4096) lines[i].dx2 = -lines[i].dx2;
+    if (lines[i].y2 <= 0 || lines[i].y2 >= 4096) lines[i].dy2 = -lines[i].dy2;
+
+    // Change color smoothly over time
+    uint8_t r = (lines[i].color >> 11) & 0x1F;
+    uint8_t g = (lines[i].color >> 5) & 0x3F;
+    uint8_t b = (lines[i].color) & 0x1F;
+
+    r = (r + 1) % 32;
+    g = (g + 1) % 64;
+    b = (b + 1) % 32;
+
+    lines[i].color = rgb_to_565(r << 3, g << 2, b << 3);
+
+    // Update Z-depth dynamically using a sine wave function
+    lines[i].z = (int)((sinf(t + lines[i].z_phase * 6.28) * 0.5 + 0.5) * Z_MAX);
+  }
+
+  t += Z_SPEED;  // Increment time for Z-depth animation
+}
+
+//extern inline void draw_line( int32_t x1, int32_t y1, int32_t x2, int32_t y2, int color, int z );
+
+// Render the lines on the vector screen with colors and z-depth
+void draw_mystify() {
+  for (int i = 0; i < NUM_LINES; i++) {
+    //draw_line(lines[i].x1, lines[i].y1, lines[i].x2, lines[i].y2, lines[i].color, lines[i].z);
+    draw_moveto(lines[i].x1, lines[i].y1);
+    draw_to_xyrgb(lines[i].x2, lines[i].y2, 128, 128, 128);
+  }
+}
+
+volatile bool overlay_settings = false;
+
+#include <Bounce2.h>
+
+extern Bounce button1;
+extern Bounce button3;
+
+// Wrapper function to enable calling by VSTCM without creating confusion about
+// location of main() function (allows compilation on either Teensy or Visual Studio)
+void mainloop() {
+
+  current_time = TickCount();
 
   dt = current_time - last_time;
 
@@ -115,18 +241,14 @@ void mainloop() {
 
 
   // DO THESE NEED TO BE UPDATED HERE ON EVERY LOOP???
-  
-  
+
+  // This is specific to some code to manage a spot killer - perhaps needs to be an option in the settings
   frame_max_x = 0;
   frame_min_x = 4095;
   frame_max_y = 0;
   frame_min_y = 4095;
 
-#ifdef VSTCM
-  loop_start_time = millis();
-#else
-  loop_start_time = SDL_GetTicks();
-#endif
+  loop_start_time = TickCount();
 
 #ifdef VSTCM
   if (!Serial) {
@@ -143,13 +265,62 @@ void mainloop() {
         serial_flag = 1;
       }
 
-      show_something = false;  // Turn off splash or settings screen
+      if (!overlay_settings)
+        show_something = false;  // Turn off splash or settings screen
 
-      if (read_data(0) == 1)  // Try to read some incoming data from MAME
+      if (read_data(0) == 1) {  // Try to read some incoming data from MAME
+
+#ifdef VSTCM
+        button1.update();
+        button3.update();
+
+        static bool toggle_armed = false;
+
+        if (button1.read() == LOW && button3.read() == LOW && !toggle_armed) {
+          overlay_settings = !overlay_settings;
+          toggle_armed = true;
+        }
+
+        if (button1.read() == HIGH || button3.read() == HIGH) {
+          toggle_armed = false;
+        }
+
+#else
+        static bool left_down = false;
+        static bool right_down = false;
+        static bool toggle_armed = false;
+
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+          if (e.type == SDL_KEYDOWN && e.key.repeat == 0) {
+            if (e.key.keysym.scancode == SDL_SCANCODE_LEFT) left_down = true;
+            if (e.key.keysym.scancode == SDL_SCANCODE_RIGHT) right_down = true;
+
+            if (left_down && right_down && !toggle_armed) {
+              overlay_settings = !overlay_settings;
+              toggle_armed = true;
+
+              if (overlay_settings)
+                printf("Overlay ON\n");
+              else
+                printf("Overlay OFF\n");
+            }
+          }
+          if (e.type == SDL_KEYUP) {
+            if (e.key.keysym.scancode == SDL_SCANCODE_LEFT) left_down = false;
+            if (e.key.keysym.scancode == SDL_SCANCODE_RIGHT) right_down = false;
+
+            if (!left_down || !right_down) {
+              toggle_armed = false;
+            }
+          }
+        }
+#endif
+
         break;
-   // } else if ((millis() - loop_start_time) > SERIAL_WAIT_TIME)  //Changed this to check only if serial is not available
-    } else if ((millis() - loop_start_time) > v_setting[SETTINGS_MENU][15].pval)  //Changed this to check only if serial is not available
-      show_something = true;                                     // Show splash screen
+      }
+    } else if ((millis() - loop_start_time) > v_setting[SETTINGS_MENU][15].pval)
+      show_something = true;  // Show splash screen
 
     if (show_something)
       break;
@@ -164,11 +335,17 @@ void mainloop() {
   SDL_RenderClear(rend_2D_orig);
 #endif
 
-  if (show_something) {
+  if (show_something || overlay_settings) {
     delta_shift = 0;
     line_draw_speed = (float)v_setting[SETTINGS_MENU][5].pval / NORMAL_SHIFT_SCALING + 3.0;  //Make things a little bit faster for the menu
 
-      show_vstcm_menu_screen(show_vstcm_settings);  // Show currently selected menu screen
+    if (overlay_settings)
+      show_vstcm_menu_screen(SETTINGS_MENU);
+    else
+      show_vstcm_menu_screen(show_vstcm_settings);
+
+    update_mystify();
+    draw_mystify();
   } else {
     if (dwell_time < SPEEDUP_THRESHOLD_MS) {
       delta_shift += DELTA_SHIFT_INCREMENT;
@@ -220,15 +397,15 @@ void mainloop() {
 #endif
 
   if (show_something)  // If we are not playing MAME, we need to show one of the menu screens instead
-    manage_buttons();  //Moved here to avoid bright spot on the monitor when doing SD card operations
+    manage_buttons();  // Moved here to avoid bright spot on the monitor when doing SD card operations
 
 #ifdef VSTCM
   fps = 1000000 / waiting;
 
   if (show_something)
-    delay(5);  //The 6100 monitor likes to spend some time in the middle
+    delay(5);  // The 6100 monitor likes to spend some time in the middle
   else
-    delayMicroseconds(100);  //Wait 100 microseconds in the center if displaying a game (tune this?)
+    delayMicroseconds(100);  // Wait 100 microseconds in the center if displaying a game (tune this?)
 #else
   SDL_SetRenderDrawColor(rend_2D_orig, 0, 0, 0, 255);
   SDL_RenderPresent(rend_2D_orig);
@@ -250,12 +427,15 @@ void vstcm_setup() {
   buttons_setup();      // Configure control buttons on vstcm or PC
   SPI_init();           // Set up pins and SPI registers on Teensy
   make_test_pattern();  // Prepare buffer of data to draw test patterns faster
+  init_mystify();
 
   line_draw_speed = (float)v_setting[SETTINGS_MENU][5].pval / NORMAL_SHIFT_SCALING;
   show_something = true;
   show_vstcm_settings = SPLASH_MENU;  // Start off showing the splash screen until serial data received
 
-#ifndef VSTCM
+#ifdef VSTCM
+// Nothing specific needed for VSTCM
+#else
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
     SDL_Log("Unable to initialise SDL: %s", SDL_GetError());
@@ -336,14 +516,11 @@ void vstcm_setup() {
       }
     }
   }
+#endif
 
   // main loop
-  current_time = SDL_GetTicks();
-  last_time = SDL_GetTicks();
-#else  // if VSTCM
-  current_time = millis();
-  last_time = millis();
-#endif
+  current_time = TickCount();
+  last_time = TickCount();
 
 #ifndef VSTCM
   while (!should_quit)

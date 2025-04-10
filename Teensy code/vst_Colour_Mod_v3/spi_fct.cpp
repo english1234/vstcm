@@ -17,10 +17,56 @@ volatile int Spiflag, Spi1flag;  //Keeps track of an active SPI transaction in p
 
 #endif
 
+#ifdef PT8211_SOUND
+
+#include "imxrt.h"  // Required for direct register access
+
+void setup_pt8211() {
+    // Enable clock for SAI1
+    CCM_CCGR5 |= CCM_CCGR5_SAI1(CCM_CCGR_ON);
+
+    // Configure the MCLK output for SAI1
+    IOMUXC_SW_MUX_CTL_PAD_GPIO_B0_03 = 3;  // Set pin to SAI1_MCLK
+    IOMUXC_SW_PAD_CTL_PAD_GPIO_B0_03 = 0x10;  // Slow slew rate, low drive strength
+
+    // Configure TX BCLK, TX SYNC, and TX DATA pins
+    IOMUXC_SW_MUX_CTL_PAD_GPIO_B0_02 = 3;  // SAI1_TX_BCLK
+    IOMUXC_SW_MUX_CTL_PAD_GPIO_B0_01 = 3;  // SAI1_TX_SYNC
+    IOMUXC_SW_MUX_CTL_PAD_GPIO_B0_00 = 3;  // SAI1_TX_DATA0
+
+    // Disable SAI1 transmitter before configuration
+    IMXRT_SAI1.TCSR &= ~I2S_TCSR_TE;
+
+    // Configure TX settings
+    IMXRT_SAI1.TCR2 = I2S_TCR2_SYNC(0) | I2S_TCR2_BCP;
+    IMXRT_SAI1.TCR3 = I2S_TCR3_TCE | (1 << 16);  // Enable transmit channel 0
+    IMXRT_SAI1.TCR4 = I2S_TCR4_FRSZ(1) | I2S_TCR4_SYWD(15) | I2S_TCR4_MF | I2S_TCR4_FSE;
+    IMXRT_SAI1.TCR5 = I2S_TCR5_WNW(15) | I2S_TCR5_W0W(15) | I2S_TCR5_FBT(15);
+
+    // Set FIFO watermark to 1 to reduce latency
+    IMXRT_SAI1.TCR1 = 1;
+
+    // Enable SAI1 transmitter
+    IMXRT_SAI1.TCSR = I2S_TCSR_FRDE | I2S_TCSR_TE | I2S_TCSR_BCE;
+}
+#endif
+
 void SPI_init() {
 #ifdef VSTCM
-  uint32_t mytcr;   // Keeps track of what the TCR register should be put back to after 16 bit mode
-                    // - bit of a hack but reads and writes are a bit funny for this register (FIFOs?)
+  uint32_t mytcr;  // Keeps track of what the TCR register should be put back to after 16 bit mode
+                   // - bit of a hack but reads and writes are a bit funny for this register (FIFOs?)
+
+  // Pins reserved for future version of VSTCM
+  // Uncommenting this stops code running, requires debugging! 
+ /* pinMode(CS_IC4, OUTPUT);
+  digitalWriteFast(CS_IC4, HIGH);
+  delayNanoseconds(100);
+  pinMode(SDI_IC4, OUTPUT);
+  digitalWriteFast(SDI_IC4, HIGH);
+  delayNanoseconds(100);
+  pinMode(SCK_IC4, OUTPUT);
+  digitalWriteFast(SCK_IC4, HIGH);
+  delayNanoseconds(100);*/
 
   // Set chip select pins going to IC4/IC5 DACs to output
   pinMode(CS_R_G_X_Y, OUTPUT);
@@ -67,8 +113,8 @@ void SPI_init() {
   // making the SPI transactions faster and more efficient.
 
   // Configure Frame Size for LPSPI3 and LPSPI4
-  mytcr = IMXRT_LPSPI4_S.TCR;   // Save the transfer control register for LPSPI4
-  
+  mytcr = IMXRT_LPSPI4_S.TCR;  // Save the transfer control register for LPSPI4
+
   // (mytcr & 0xfffff000) clears the lower 12 bits of the register, which include the frame size and other settings.
   // LPSPI_TCR_FRAMESZ(15) sets the frame size to 16 bits (15 + 1).
   // Adding LPSPI_TCR_RXMSK masks the receiver, effectively disabling it. This ensures that no data is received during
@@ -76,8 +122,8 @@ void SPI_init() {
   // The updated mytcr is written back to the TCR registers of LPSPI4 and LPSPI3
   IMXRT_LPSPI4_S.TCR = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;  //This will break all stock SPI transactions from this point on - disable receiver and go to 16 bit mode
   IMXRT_LPSPI3_S.TCR = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;  //This will break all stock SPI transactions from this point on - disable receiver and go to 16 bit mode
- // mytcr = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;
-  
+                                                                                        // mytcr = (mytcr & 0xfffff000) | LPSPI_TCR_FRAMESZ(15) | LPSPI_TCR_RXMSK;
+
   /* CFGR0: General SPI configuration register 0.
      CFGR1: General SPI configuration register 1.
      DER: Data enable register.

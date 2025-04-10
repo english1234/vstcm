@@ -12,7 +12,7 @@
 #ifdef VSTCM
 #include <SD.h>
 #else
-#pragma warning(disable : 4996)     // Get rid of annoying compiler warnings in VC++
+#pragma warning(disable : 4996)  // Get rid of annoying compiler warnings in VC++
 #include <cstring>
 #include <stdlib.h>
 #endif
@@ -20,7 +20,7 @@
 #include "settings.h"
 #include "drawing.h"
 
-char gMsg[50];                        // Optional additional information to show on menu
+char gMsg[50];  // Optional additional information to show on menu
 
 // Cached vectors for test patterns: may be better to generate these dynamically
 // to avoid using memory
@@ -32,46 +32,75 @@ static int nb_points[NUMBER_OF_TEST_PATTERNS];
 int sel_setting;  // Currently selected menu choice
 
 params_t v_setting[2][NB_SETTINGS] = {
-  {
-      { "TEST_PATTERN", "RGB test patterns", 0, 0, 4 },
-      { "OFF_SHIFT", "Beam transit speed", OFF_SHIFT, 0, 50 },
-      { "OFF_DWELL0", "Beam settling delay", OFF_DWELL0, 0, 50 },
-      { "OFF_DWELL1", "Wait before beam transit", OFF_DWELL1, 0, 50 },
-      { "OFF_DWELL2", "Wait after beam transit", OFF_DWELL2, 0, 50 },
-      { "NORMAL_SHIFT", "Drawing speed", NORMAL_SHIFT, 1, 255 },
-      { "FLIP_X", "Flip X axis", FLIP_X, 0, 1 },
-      { "FLIP_Y", "Flip Y axis", FLIP_Y, 0, 1 },
-      { "SWAP_XY", "Swap XY", SWAP_XY, 0, 1 },
-      { "SHOW DT", "Show DT", SHOW_DT, 0, 1 },
-      { "PINCUSHION", "Pincushion adjustment", PINCUSHION, 0, 1 },
-      { "IR_RECEIVE_PIN", "IR receive pin", IR_RECEIVE_PIN, 0, 54 },
-      { "AUDIO_PIN", "Audio pin", AUDIO_PIN, 0, 54 },
-      { "NORMAL1", "Normal text brightness", NORMAL1, 0, 255 },
-      { "BRIGHTER", "Highlighted text brightness", BRIGHTER, 0, 255 },
-      { "SERIAL_WAIT_TIME", "Test pattern delay", SERIAL_WAIT_TIME, 0, 255 },
-      { "COLOUR_SWITCH", "Colour / Monochrome display", COLOUR_SWITCH, 0, 1 },
+  { 
+    { "TEST_PATTERN", "RGB test patterns", 0, 0, 4, 0 },
+    { "OFF_SHIFT", "Beam transit speed", OFF_SHIFT, 0, 50, 0 },
+    { "OFF_DWELL0", "Beam settling delay", OFF_DWELL0, 0, 50, 0 },
+    { "OFF_DWELL1", "Wait before beam transit", OFF_DWELL1, 0, 50, 0 },
+    { "OFF_DWELL2", "Wait after beam transit", OFF_DWELL2, 0, 50, 0 },
+    { "NORMAL_SHIFT", "Drawing speed", NORMAL_SHIFT, 1, 255, 0 },
+    { "FLIP_X", "Flip X axis", FLIP_X, 0, 1, 0 },
+    { "FLIP_Y", "Flip Y axis", FLIP_Y, 0, 1, 0 },
+    { "SWAP_XY", "Swap XY", SWAP_XY, 0, 1, 0 },
+    { "SHOW DT", "Show DT", SHOW_DT, 0, 1, 0 },
+    { "PINCUSHION", "Pincushion adjustment", PINCUSHION, 0, 1, 0 },
+    { "IR_RECEIVE_PIN", "IR receive pin", IR_RECEIVE_PIN, 0, 54, 0 },
+    { "AUDIO_PIN", "Audio pin", AUDIO_PIN, 0, 54, 0 },
+    { "NORMAL1", "Normal text brightness", NORMAL1, 0, 255, 0 },
+    { "BRIGHTER", "Highlighted text brightness", BRIGHTER, 0, 255, 0 },
+    { "SERIAL_WAIT_TIME", "Test pattern delay", SERIAL_WAIT_TIME, 0, 255, 0 },
+    { "COLOUR_SWITCH", "Colour / Monochrome display", COLOUR_SWITCH, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
+    { "UNUSED", "Unused", 0, 0, 1, 0 },
   },
-  {
-      { "BZONE", "Battlezone", 0, 0, 0 },
-      { "tailgunner", "Tail Gunner", 0, 0, 0 },
-      { "warrior", "Warrior", 0, 0, 0 },
-      { "armorattack", "Armor Attack", 0, 0, 0 },
-      { "boxingbugs", "Boxing Bugs", 0, 0, 0 },
-      { "demon", "Demon", 0, 0, 0 },
-      { "ripoff", "Rip Off", 0, 0, 0 },
-      { "spacewars", "Space Wars", 0, 0, 0 },
-      { "starcastle", "Star Castle", 0, 0, 0 },
-      { "starhawk", "Star Hawk", 0, 0, 0 },
-      { "speedfreak", "Speed Freak", 0, 0, 0 },
-      { "solarquest", "Solar Quest", 0, 0, 0 },
-      { "cosmicchasm", "Cosmic Chasm", 0, 0, 0 },
-      { "waroftheworlds", "War of the Worlds", 0, 0, 0 },
-      { "barrier", "Barrier", 0, 0, 0 },
-      { "sundance", "Sundance", 0, 0, 0 },
-    //  { "qb3", "QB3", 0, 0, 0 },
-      { "SETTINGS", "Settings menu", 0, 0, 0 },
+  { 
+    { "SETTINGS", "Settings", 0, 0, 0, settings },
+    { "asteroids", "Asteroids", 0, 0, 0, emu_vecsim },
+    { "deluxe", "Asteroids Deluxe", 0, 0, 0, emu_vecsim },
+    { "blackwidow", "Black Widow", 0, 0, 0, emu_vecsim },
+    { "battlezone", "Battlezone", 0, 0, 0, emu_vecsim },
+    { "gravitar", "Gravitar", 0, 0, 0, emu_vecsim },
+    { "lunar", "Lunar Lander", 0, 0, 0, emu_vecsim },
+    { "majorhavoc", "Major Havoc", 0, 0, 0, emu_vecsim },
+    { "quantum", "Quantum", 0, 0, 0, emu_vecsim },
+    { "redbaron", "Red Baron", 0, 0, 0, emu_vecsim },
+    { "spaceduel", "Space Duel", 0, 0, 0, emu_vecsim },
+    { "starwars", "Star Wars", 0, 0, 0, emu_6809 },
+    { "tempest", "Tempest", 0, 0, 0, emu_vecsim },
+    { "empire", "The Empire Strikes Back", 0, 0, 0, emu_6809 },
+    { "armorattack", "Armor Attack", 0, 0, 0, emu_cinemu },
+    { "barrier", "Barrier", 0, 0, 0, emu_cinemu },
+    { "boxingbugs", "Boxing Bugs", 0, 0, 0, emu_cinemu },
+    { "cosmicchasm", "Cosmic Chasm", 0, 0, 0, emu_68000 },   // requires 68000 emulator
+    { "demon", "Demon", 0, 0, 0, emu_cinemu },
+    { "qb3", "QB3", 0, 0, 0, emu_cinemu },
+    { "ripoff", "Rip Off", 0, 0, 0, emu_cinemu },
+    { "solarquest", "Solar Quest", 0, 0, 0, emu_cinemu },
+    { "spacewars", "Space Wars", 0, 0, 0, emu_cinemu },
+    { "speedfreak", "Speed Freak", 0, 0, 0, emu_cinemu },
+    { "starcastle", "Star Castle", 0, 0, 0, emu_cinemu },
+    { "starhawk", "Star Hawk", 0, 0, 0, emu_cinemu },
+    { "sundance", "Sundance", 0, 0, 0, emu_cinemu },
+    { "tailgunner", "Tail Gunner", 0, 0, 0, emu_cinemu },
+    { "waroftheworlds", "War of the Worlds", 0, 0, 0, emu_cinemu },
+    { "warrior", "Warrior", 0, 0, 0, emu_cinemu }
   }
 };
+
+
+// What about Omega Race?
+// Add a back option at the beginning & end of each menu
 
 extern long fps;
 //#else
@@ -240,98 +269,109 @@ void write_vstcm_config() {
 }
 
 void show_vstcm_menu_screen(int which) {
-    int i, x, y, x_offset = 3000, intensity, line_size = 128, char_size = 5;
-    list_t menu_list[2];
-    char buf1[25] = "";
+  int i, x = 0, y = 0, x_offset = 3000, intensity, line_size = 128, char_size = 5;
+  list_t menu_list[2];
+  char buf1[25] = "";
+  const int MAX_VISIBLE_ITEMS = 18;  // Number of items displayed at once
+  static int menu_offset = 0;        // First item displayed
 
-    menu_list[SETTINGS_MENU].nb_menu_items = NB_SETTINGS;
-    menu_list[SETTINGS_MENU].choices = &v_setting[0][0];
-    menu_list[SPLASH_MENU].nb_menu_items = NB_SPLASH_CHOICES;
-    menu_list[SPLASH_MENU].choices = &v_setting[1][0];
+  menu_list[SETTINGS_MENU].nb_menu_items = NB_SETTINGS;
+  menu_list[SETTINGS_MENU].choices = &v_setting[0][0];
+  menu_list[SPLASH_MENU].nb_menu_items = NB_SPLASH_CHOICES;
+  menu_list[SPLASH_MENU].choices = &v_setting[1][0];
 
-    intensity = v_setting[SETTINGS_MENU][13].pval;
+  intensity = v_setting[SETTINGS_MENU][13].pval;
 
-    if (which == SPLASH_MENU) { // Show splash screen
-        static int logo_x = 1920;
-        static int logo_y = 3500;
-        static int logo_size = 1;
-        static int logo_offset = 1;
-        static int logo_brightness = 10;
+  if (which == SPLASH_MENU) {  // Show splash screen
+    static int logo_x = 1920;
+    static int logo_y = 3500;
+    static int logo_size = 1;
+    static int logo_offset = 1;
+    static int logo_brightness = 10;
 
-        draw_string("VSTCM", logo_x, logo_y, logo_size, logo_brightness);
+    draw_string("VSTCM", logo_x, logo_y, logo_size, logo_brightness);
 
-        // Animate the VSTCM logo: gets bigger and brighter then smaller and darker on each execution of loop()
-        logo_size += logo_offset;
-        logo_x -= (30 * logo_offset);
-        logo_brightness += (4 * logo_offset);
+    // Animate the VSTCM logo
+    logo_size += logo_offset;
+    logo_x -= (30 * logo_offset);
+    logo_brightness += (4 * logo_offset);
 
-        if (logo_size < 1 || logo_size > 25)
-            logo_offset = -logo_offset;
+    if (logo_size < 1 || logo_size > 25)
+      logo_offset = -logo_offset;
 
-        // Show menu choices on splash screen
+    // Show menu choices on splash screen
+    x = 1500;
+    y = 3000;
+    line_size = 128;
+    char_size = 6;
 
-         x = 1500;
-         y = 3000;
-         line_size = 128;
-         char_size = 6;
+    // Show additional message if needed
+    if (strlen(gMsg) > 0)
+      draw_string(gMsg, 200, 600, 6, intensity);
 
-        // Show an additional message if required
-        if (strlen(gMsg) > 0)
-            draw_string(gMsg, 200, 600, 6, intensity );
+    draw_string("CHOOSE A GAME OR CONNECT MAME TO USB", 200, 400, 7, intensity);
+    draw_string("Press DOWN on PCB to exit game", 700, 200, 6, intensity);
+  } else if (which == SETTINGS_MENU) {  // Show settings screen
+    if (v_setting[SETTINGS_MENU][0].pval != 0) {
+      draw_test_pattern(0);
+    } else {
+      draw_string("v.st Colour Mod v3.0", 950, 3800, 10, v_setting[SETTINGS_MENU][14].pval);
+      draw_test_pattern(1);
 
-        draw_string("CHOOSE A GAME OR CONNECT MAME TO USB", 200, 400, 7, intensity );
-        draw_string("Press DOWN on PCB to exit game", 700, 200, 6, intensity );
-    }
-    else if (which == SETTINGS_MENU) {    // Show settings screen
-        if (v_setting[SETTINGS_MENU][0].pval != 0)  // show test pattern instead of settings
-            draw_test_pattern(0);
-        else {
-            draw_string("v.st Colour Mod v3.0", 950, 3800, 10, v_setting[SETTINGS_MENU][14].pval);
-            draw_test_pattern(1);
+      x = 300;
+      y = 3000;
+      line_size = 140;
+      char_size = 5;
+      x_offset = 3000;
 
-            x = 300;
-            y = 3000;
-            line_size = 140;
-            char_size = 5;
-            x_offset = 3000;
-
-            draw_string("PRESS LEFT & RIGHT TO CHANGE VALUES", 800, 550, 5, intensity );
-            draw_string("PRESS CENTRE BUTTON / OK TO SAVE SETTINGS", 550, 400, 5, intensity );
-            draw_string("FPS:", 3000, 150, 6, intensity );
+      draw_string("PRESS LEFT & RIGHT TO CHANGE VALUES", 800, 550, 5, intensity);
+      draw_string("PRESS CENTRE BUTTON / OK TO SAVE SETTINGS", 550, 400, 5, intensity);
+      draw_string("FPS:", 3000, 150, 6, intensity);
 #ifdef VSTCM
-            draw_string(itoa(fps, buf1, 10), 3400, 150, 6, intensity );
+      draw_string(itoa(fps, buf1, 10), 3400, 150, 6, intensity);
 #else
-            draw_string(_itoa(fps, buf1, 10), 3400, 150, 6, intensity );
+      draw_string(_itoa(fps, buf1, 10), 3400, 150, 6, intensity);
 #endif
-        }
     }
+  }
 
-    // Only if we're not showing a test pattern
-    if (v_setting[SETTINGS_MENU][0].pval == 0) {
-     // Display the list of menu choices
-       for (i = 0; i < menu_list[which].nb_menu_items; i++) {
-          if (i == sel_setting) {  // Highlight currently selected parameter
-             intensity = v_setting[SETTINGS_MENU][14].pval;
-             draw_string( menu_list[which].choices[i].param, x, y, char_size + 1, intensity );
-          }
-          else {     // Use standard intensity if not selected
-             intensity = v_setting[SETTINGS_MENU][13].pval;
-             draw_string( menu_list[which].choices[i].param, x, y, char_size, intensity );
-          }
+  // Handle scrolling logic
+  if (sel_setting >= menu_offset + MAX_VISIBLE_ITEMS) {
+    menu_offset++;  // Scroll down when selection reaches the last visible item
+  } else if (sel_setting < menu_offset) {
+    menu_offset--;  // Scroll up when selection reaches the first visible item
+  }
 
-          // On the settings menu, show the value of the setting
-          if (which == SETTINGS_MENU) {
+  // Only show the menu if not displaying a test pattern
+  if (v_setting[SETTINGS_MENU][0].pval == 0) {
+    for (i = 0; i < MAX_VISIBLE_ITEMS; i++) {
+      int item_index = menu_offset + i;
+
+      if (item_index >= menu_list[which].nb_menu_items)
+        break;  // Stop drawing if exceeding available choices
+
+      // Highlight selected item
+      if (item_index == sel_setting) {
+        intensity = v_setting[SETTINGS_MENU][14].pval;
+        draw_string(menu_list[which].choices[item_index].param, x, y, char_size + 1, intensity);
+      } else {
+        intensity = v_setting[SETTINGS_MENU][13].pval;
+        draw_string(menu_list[which].choices[item_index].param, x, y, char_size, intensity);
+      }
+
+      // Show setting values in the settings menu
+      if (which == SETTINGS_MENU) {
 #ifdef VSTCM
-             itoa( v_setting[SETTINGS_MENU][i].pval, buf1, 10 );
+        itoa(v_setting[SETTINGS_MENU][item_index].pval, buf1, 10);
 #else
-             _itoa( v_setting[SETTINGS_MENU][i].pval, buf1, 10 ); // POSIX deprecated blah blah blah
+        _itoa(v_setting[SETTINGS_MENU][item_index].pval, buf1, 10);
 #endif
-             draw_string( buf1, x + x_offset, y, char_size, intensity );
-          }
+        draw_string(buf1, x + x_offset, y, char_size, intensity);
+      }
 
-          y -= line_size;
-       }
+      y -= line_size;  // Move down for the next item
     }
+  }
 }
 
 void make_test_pattern() {
@@ -340,66 +380,18 @@ void make_test_pattern() {
   int offset, i, j;
 
   // Draw Asteroids style test pattern in Red, Green or Blue
-  offset = 0;  
+  offset = 0;
   nb_points[offset] = 0;
-  const int intensity = 150;
 
-  static const uint16_t positions[] = {
-     4095, 4095, 0, 0, 0,
-     4095, 0, intensity, intensity, intensity,
-     0, 0, intensity, intensity, intensity,
-     0, 4095, intensity, intensity, intensity,
-     4095, 4095, intensity, intensity, intensity,
-     0, 0, 0, 0, 0,
-     3071, 4095, intensity, intensity, intensity,
-     4095, 2731, intensity, intensity, intensity,
-     2048, 0, intensity, intensity, intensity,
-     0, 2731, intensity, intensity, intensity,
-     1024, 4095, intensity, intensity, intensity,
-     4095, 0, intensity, intensity, intensity,
-     0, 4095, 0, 0, 0,
-     3071, 0, intensity, intensity, intensity,
-     4095, 1365, intensity, intensity, intensity,
-     2048, 4095, intensity, intensity, intensity,
-     0, 1365, intensity, intensity, intensity,
-     1024, 0, intensity, intensity, intensity,
-     4095, 4095, intensity, intensity, intensity,
-     4095, 4095, 0, 0, 0 };
- 
   for (i = 0; i < 100; i += 5)
-      moveto(offset, positions[i], positions[i+1], positions[i+2], positions[i+3], positions[i+4]);
-  
+    moveto(offset, positions[i], positions[i + 1], positions[i + 2], positions[i + 3], positions[i + 4]);
+
   // Prepare buffer for fixed part of settings screen
   offset = 1;
   nb_points[offset] = 0;
-  const int intensity2 = 128;
-
-  static const uint16_t positions2[] = {
-      // cross
-      4095, 4095, 0, 0, 0,
-      3583, 4095, intensity2, intensity2, intensity2,
-      3583, 3583, intensity2, intensity2, intensity2,
-      4095, 3583, intensity2, intensity2, intensity2,
-      4095, 4095, intensity2, intensity2, intensity2,
-      0, 4095, 0, 0, 0,
-      512, 4095, intensity2, intensity2, intensity2,
-      0, 3583, intensity2, intensity2, intensity2,
-      512, 3583, intensity2, intensity2, intensity2,
-      0, 4095, intensity2, intensity2, intensity2,
-      // Square
-      0, 0, 0, 0, 0,
-      512, 0, intensity2, intensity2, intensity2,
-      512, 512, intensity2, intensity2, intensity2,
-      0, 512, intensity2, intensity2, intensity2,
-      0, 0, intensity2, intensity2, intensity2,
-      // triangle
-      4095, 0, 0, 0, 0,
-      4095 - 512, 0, intensity2, intensity2, intensity2,
-      4095 - 0, 512, intensity2, intensity2, intensity2,
-      4095, 0, intensity2, intensity2, intensity2 };
 
   for (i = 0; i < 95; i += 5)
-      moveto(offset, positions2[i], positions2[i + 1], positions2[i + 2], positions2[i + 3], positions2[i + 4]);
+    moveto(offset, positions2[i], positions2[i + 1], positions2[i + 2], positions2[i + 3], positions2[i + 4]);
 
   // RGB gradiant scale
 
@@ -408,17 +400,17 @@ void make_test_pattern() {
   const int colors[] = { 0, 31, 63, 95, 127, 159, 191, 223, 255 };
 
   for (i = 0, j = 1; j <= 8; ++i, ++j) {
-      int color = colors[j];
-      int yOffset = height + (i << mult);
+    int color = colors[j];
+    int yOffset = height + (i << mult);
 
-      moveto(offset, 1100, yOffset, 0, 0, 0);
-      moveto(offset, 1500, yOffset, color, 0, 0);  // Red
-      moveto(offset, 1600, yOffset, 0, 0, 0);
-      moveto(offset, 2000, yOffset, 0, color, 0);  // Green
-      moveto(offset, 2100, yOffset, 0, 0, 0);
-      moveto(offset, 2500, yOffset, 0, 0, color);  // Blue
-      moveto(offset, 2600, yOffset, 0, 0, 0);
-      moveto(offset, 3000, yOffset, color, color, color);  // all 3 colours combined
+    moveto(offset, 1100, yOffset, 0, 0, 0);
+    moveto(offset, 1500, yOffset, color, 0, 0);  // Red
+    moveto(offset, 1600, yOffset, 0, 0, 0);
+    moveto(offset, 2000, yOffset, 0, color, 0);  // Green
+    moveto(offset, 2100, yOffset, 0, 0, 0);
+    moveto(offset, 2500, yOffset, 0, 0, color);  // Blue
+    moveto(offset, 2600, yOffset, 0, 0, 0);
+    moveto(offset, 3000, yOffset, color, color, color);  // all 3 colours combined
   }
 }
 

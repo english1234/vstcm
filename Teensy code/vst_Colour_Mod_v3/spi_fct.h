@@ -26,6 +26,11 @@ const int CS_B       = 22;                  // Blue CS on IC3
 #define SCK1         27                     // SCK for SPI1 IC5
 #define CS1          38                     // CS for SPI1 - remap to not interfere with buttons (not the physical connection)
 
+// Other pins used on future versions of VSTCM
+#define CS_IC4       31
+#define SDI_IC4      12
+#define SCK_IC4      28
+
 // IMXRT_LPSPIx_S Registers
 // Some additional SPI register bits to possibly work with
 // as part of the Low-Power Serial Peripheral Interface (LPSPI)

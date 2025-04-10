@@ -12,17 +12,20 @@
 #include "main.h"
 
 #ifdef VSTCM
+
 #include <arduino.h>
 #include <Bounce2.h>
 #include <SD.h>
+
 #else
-#pragma warning(disable : 4996)     // Get rid of annoying compiler warnings in VC++
+
+#pragma warning(disable : 4996)  // Get rid of annoying compiler warnings in VC++
 #include <cstdio>
 #include <cstring>
 #include <vcruntime_string.h>
 #include <random>
-//#include "../../../SDL2/include/SDL_render.h"
-#include "C:\Users\robin\Documents\Vector monitor project\SDL2\include\SDL_render.h"
+#include SDL_PATH
+
 #endif
 
 #include "cinemu.h"
@@ -36,12 +39,12 @@ static Bounce button2 = Bounce();
 static Bounce button3 = Bounce();
 static Bounce button4 = Bounce();
 
-DMAMEM UINT8 rom[0x8000];  // TODO: Convert this to a malloc and free it at the end
+extern void SPI_flush();
 #else
-UINT8 rom[0x8000];  // TODO: Convert this to a malloc and free it at the end
-extern SDL_Renderer* rend_2D_orig;  // Renderer for original 2D game
+extern SDL_Renderer *rend_2D_orig;  // Renderer for original 2D game
 #endif
 
+UINT8 *rom;  // Allocated as 0x8000 by a malloc
 extern char gMsg[50];
 
 /* Simple public domain implementation of the standard CRC32 checksum.
@@ -89,26 +92,26 @@ int loadROM(const char *fn, unsigned char *block, const unsigned len) {
   //Serial.print("Error opening file: ");
   //Serial.println(fn);
 #else
-    char rompath[100];
-    strcpy(rompath, MY_ROMPATH);
-    strcat(rompath, fn);
+  char rompath[100];
+  strcpy(rompath, MY_ROMPATH);
+  strcat(rompath, fn);
 
-    FILE* f = fopen(rompath, "rb");
-    if (f == NULL) {
-        strcpy(gMsg, "error: can't open file");
-        fprintf(stderr, "error: can't open file '%s'.\n", rompath);
-        return 1;
-    }
+  FILE *f = fopen(rompath, "rb");
+  if (f == NULL) {
+    strcpy(gMsg, "error: can't open file");
+    fprintf(stderr, "error: can't open file '%s'.\n", rompath);
+    return 1;
+  }
 
-    size_t result = fread(block, sizeof(uint8_t), len, f);
-    if (result != len) {
-        strcpy(gMsg, "error: while reading file");
-        fprintf(stderr, "error: while reading file '%s'\n", rompath);
-        return 1;
-    }
+  size_t result = fread(block, sizeof(uint8_t), len, f);
+  if (result != len) {
+    strcpy(gMsg, "error: while reading file");
+    fprintf(stderr, "error: while reading file '%s'\n", rompath);
+    return 1;
+  }
 
-    fclose(f);
-    return 0;
+  fclose(f);
+  return 0;
 #endif
   return -1;
 }
@@ -669,7 +672,7 @@ ROM_END
 bool loadQB3() {
   unsigned char romLoad[0x8000];
   int r = 0;
- 
+
   r += loadROM("roms/qb3/qb3_le_t7.bin", &romLoad[0x0000], 0x2000);
   r += loadROM("roms/qb3/qb3_lo_p7.bin", &romLoad[0x2000], 0x2000);
   r += loadROM("roms/qb3/qb3_ue_u7.bin", &romLoad[0x4000], 0x2000);
@@ -720,7 +723,7 @@ int useParity = 0;
 static int world_xl = -1800, world_yb = -2400, world_xr = 1800, world_yt = 2400;  // dummy values should never be used
 
 unsigned long isqrt(unsigned long x) {
-  register unsigned long op, res, one;
+  unsigned long op, res, one;
 
   op = x;
   res = 0;
@@ -1247,7 +1250,7 @@ void line(int32_t xl, int32_t yb, int32_t xr, int32_t yt, int col) {
 
     //v_directDraw32Patterned(tx(xl), ty(yb), tx(xr), ty(yt), (col + 1) * 8 - 1, random());
     //  col = (col + 1) * 8 - 1;
-   // col = random(30, 160);
+    // col = random(30, 160);
 
     draw_moveto(tx(xl), ty(yb));
     draw_to_xyrgb(tx(xr), ty(yt), col, col, col);
@@ -1256,7 +1259,7 @@ void line(int32_t xl, int32_t yb, int32_t xr, int32_t yt, int col) {
     // 0x03B2 - 3 lines in the shields have Twinkle values
     // Tailgunner's shields are funny and need fixing.
     //v_directDraw32Patterned(tx(xl), ty(yb), tx(xr), ty(yt), 127, random());  //one way to make sparky shields...
-  //  col = random(30, 160);
+    //  col = random(30, 160);
     draw_moveto(tx(xl), ty(yb));
     draw_to_xyrgb(tx(xr), ty(yt), col, col, col);
     //DEBUG_OUT("line(%d,%d, %d,%d, %02x) at PC=0x%04x;\n", xl,yb, xr,yt, col, RCregister_PC);
@@ -2363,7 +2366,7 @@ void startFrame_warrior(void) {
   // How to start?
   //if (currentButtonState & VEC_BUTTON_1_2) ioInputs &= ~WA_IO_P1_START;
   //if (currentButtonState & VEC_BUTTON_2_2) ioInputs &= ~WA_IO_P2_START;
-   #ifdef VSTCM
+#ifdef VSTCM
   // Update the button objects
   button2.update();
   // middle button on PCB starts game
@@ -3132,7 +3135,7 @@ void startFrame(void) {
       return;
     default:
       // fprintf(stderr, "Game %d not defined!\n", Game);
-        strcpy(gMsg, "Game not defined!");
+      strcpy(gMsg, "Game not defined!");
       return;  // added this just to get it to compile
   }
 }
@@ -3199,14 +3202,14 @@ void cineSetMonitor(UINT8 m) {
   ccpu_monitor = m;
   // DEBUG_OUT("cineSetMonitor(%u);\n", m);
 }
-
+/*
 UINT32 cineGetElapsedTicks(UINT32 dwClearIt) {
   UINT32 dwTemp;
   dwTemp = dwElapsedTicks;
   if (dwClearIt) dwElapsedTicks = 0;
   return (dwTemp);
 }
-
+*/
 void cineReleaseTimeslice(void) {
   bBailOut = true;
 }
@@ -8551,6 +8554,10 @@ bool cinemu_setup(const char *sel_game) {
   int JMI = 0;
   //   char *RomImages[8];
 
+  // Allocate memory for the ROM
+
+  rom = (UINT8 *)malloc(0x8000 * sizeof(UINT8));  // Dynamically allocated 32 KB array
+
   //Serial.println("initialization done.");
 
   Game = 0;
@@ -8824,9 +8831,9 @@ DIP_END
     fprintf(stderr, "The supported games are:\n");
     fprintf(stderr, "  armorattack  boxingbugs   demon  ripoff      spacewars   starcastle  sundance    waroftheworlds\n");
     fprintf(stderr, "  barrier      cosmicchasm  qb3    solarquest  speedfreak  starhawk    tailgunner  warrior\n");
-    fprintf(stderr, "\n"); 
+    fprintf(stderr, "\n");
 #endif
-      return true;
+    return true;
   }
 
   cineSetGame(sel_game, Game);
@@ -8879,7 +8886,10 @@ DIP_END
         startFrame();
     }
 
-#ifndef VSTCM
+#ifdef VSTCM
+    goto_xy(REST_X, REST_Y);  // Put the gun back to the centre of the screen (prevents spot killer activating)
+    SPI_flush();
+#else
     SDL_SetRenderDrawColor(rend_2D_orig, 0, 0, 0, 255);
     SDL_RenderPresent(rend_2D_orig);
 #endif
@@ -8891,10 +8901,21 @@ DIP_END
 
     if (button0.fell()) {
       // Quit the game if down button on PCB is pressed
-      return;
+      break;
     }
+#else
+    // Quit the game if escape key is pressed in Windows
+    SDL_Event e;
+
+    if (SDL_PollEvent(&e) != 0)
+      if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+        break;
+
 #endif
-  }
+  }  // end of for loop
+
+  free(rom);
+  rom = NULL;
 
   return false;
 }

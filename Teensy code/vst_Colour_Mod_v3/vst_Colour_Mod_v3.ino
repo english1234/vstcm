@@ -15,6 +15,10 @@
 
 extern bool should_quit;
 
+void _emu_printf(char *msg) {
+  Serial.println(msg);
+}
+
 void setup() {
   vstcm_setup();
 }

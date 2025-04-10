@@ -38,13 +38,12 @@ uint16_t gamma_green[256];
 uint16_t gamma_blue[256];
 
 extern params_t v_setting[2][NB_SETTINGS];
-extern int Spiflag, Spi1flag;  //Keeps track of an active SPI transaction in progress
-extern int gX, gY;  // Last position of beam
 
 #ifdef VSTCM
-
+extern int Spiflag, Spi1flag;  //Keeps track of an active SPI transaction in progress
 #else
-extern SDL_Renderer *rend_2D_orig;  // Renderer for original 2D game
+extern SDL_Renderer* rend_2D_orig;  // Renderer for original 2D game
+extern int gX, gY;                  // Last position of beam
 #endif
 
 enum { TOP = 0x1,
@@ -56,7 +55,7 @@ enum { FALSE,
 
 typedef unsigned int outcode;
 
-outcode compute_outcode(int x, int y, int xmin, int ymin, int xmax, int ymax) {
+inline outcode compute_outcode(int x, int y, int xmin, int ymin, int xmax, int ymax) {
   outcode oc = 0;
   if (y > ymax)
     oc |= TOP;
@@ -69,8 +68,54 @@ outcode compute_outcode(int x, int y, int xmin, int ymin, int xmax, int ymax) {
   return oc;
 }
 
+void cohen_sutherlandCustom(int32_t* x1, int32_t* y1, int32_t* x2, int32_t* y2, int xmin, int ymin, int xmax, int ymax) {
+  outcode outcode1 = compute_outcode(*x1, *y1, xmin, ymin, xmax, ymax);
+  outcode outcode2 = compute_outcode(*x2, *y2, xmin, ymin, xmax, ymax);
+
+  while (true) {
+    if (!(outcode1 | outcode2)) {  // Bitwise OR is 0 -> both points inside
+      return;
+    }
+    if (outcode1 & outcode2) {  // Bitwise AND is non-zero -> both points outside on the same side
+      *x1 = 1000000;            // Reject line
+      return;
+    }
+
+    // Pick the point outside
+    outcode outcode_ex = outcode1 ? outcode1 : outcode2;
+    int x, y;
+
+    // Compute intersection
+    if (outcode_ex & TOP) {
+      x = *x1 + (*x2 - *x1) * (ymax - *y1) / (*y2 - *y1);
+      y = ymax;
+    } else if (outcode_ex & BOTTOM) {
+      x = *x1 + (*x2 - *x1) * (ymin - *y1) / (*y2 - *y1);
+      y = ymin;
+    } else if (outcode_ex & RIGHT) {
+      y = *y1 + (*y2 - *y1) * (xmax - *x1) / (*x2 - *x1);
+      x = xmax;
+    } else {  // LEFT
+      y = *y1 + (*y2 - *y1) * (xmin - *x1) / (*x2 - *x1);
+      x = xmin;
+    }
+
+    // Replace the outside point and recompute its outcode
+    if (outcode_ex == outcode1) {
+      *x1 = x;
+      *y1 = y;
+      outcode1 = compute_outcode(*x1, *y1, xmin, ymin, xmax, ymax);
+    } else {
+      *x2 = x;
+      *y2 = y;
+      outcode2 = compute_outcode(*x2, *y2, xmin, ymin, xmax, ymax);
+    }
+  }
+}
+
 // returns x1 = 1000000 on complete outside!
-void cohen_sutherlandCustom(int32_t *x1, int32_t *y1, int32_t *x2, int32_t *y2, int xmin, int ymin, int xmax, int ymax) {
+/*
+void old_cohen_sutherlandCustom(int32_t *x1, int32_t *y1, int32_t *x2, int32_t *y2, int xmin, int ymin, int xmax, int ymax) {
   int accept;
   int done;
   outcode outcode1, outcode2;
@@ -118,13 +163,13 @@ void cohen_sutherlandCustom(int32_t *x1, int32_t *y1, int32_t *x2, int32_t *y2, 
   *x1 = 1000000;
   return;
 }
-
+*/
 void draw_to_xyrgb(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
   brightness(red, green, blue);  // Set RGB intensity levels from 0 to 255
   _draw_lineto(x, y, line_draw_speed);
 }
 
-void draw_string(const char *s, int x, int y, int size, int intensity) {
+void draw_string(const char* s, int x, int y, int size, int intensity) {
   while (*s) {
     char c = *s++;
     x += draw_character(c, x, y, size, intensity);
@@ -132,7 +177,7 @@ void draw_string(const char *s, int x, int y, int size, int intensity) {
 }
 
 int draw_character(char c, int x, int y, int size, int brightness) {
-  const hershey_char_t *const f = &hershey_simplex[c - ' '];
+  const hershey_char_t* const f = &hershey_simplex[c - ' '];
   int next_moveto = 1;
 
   for (int i = 0; i < f->count; i++) {
@@ -165,14 +210,19 @@ void draw_moveto(int x1, int y1) {
   dwell(v_setting[SETTINGS_MENU][3].pval);
   _draw_lineto(x1, y1, v_setting[SETTINGS_MENU][1].pval);
   dwell(v_setting[SETTINGS_MENU][4].pval);
-  if (x1 > frame_max_x) frame_max_x = x1;
-  else if (x1 < frame_min_x) frame_min_x = x1;
-  if (y1 > frame_max_y) frame_max_y = y1;
-  else if (y1 < frame_min_y) frame_min_y = y1;
 
-  // Save the start position for drawing
+  // This is only needed to handle dwell times on some real vector monitors
+  frame_max_x = max(frame_max_x, x1);  
+  frame_min_x = min(frame_min_x, x1);
+  frame_max_y = max(frame_max_y, y1);
+  frame_min_y = min(frame_min_y, y1);
+
+// Save the start position for drawing
+#ifdef VSTCM
+#else // only needed for SDL
   gX = x1;
   gY = y1;
+#endif
 }
 
 //Trying out using floating point to compute the line
@@ -190,10 +240,11 @@ void _draw_lineto(const int x1, const int y1, float bright_shift) {
   float xcur, ycur;
   int i;
 
-  if (x1 > frame_max_x) frame_max_x = x1;
-  else if (x1 < frame_min_x) frame_min_x = x1;
-  if (y1 > frame_max_y) frame_max_y = y1;
-  else if (y1 < frame_min_y) frame_min_y = y1;
+  // This is only needed to handle dwell times on some real vector monitors
+  frame_max_x = max(frame_max_x, x1);
+  frame_min_x = min(frame_min_x, x1);
+  frame_max_y = max(frame_max_y, y1);
+  frame_min_y = min(frame_min_y, y1);
 
   x0 = x_pos;
   y0 = y_pos;
@@ -204,6 +255,7 @@ void _draw_lineto(const int x1, const int y1, float bright_shift) {
 
   xcur = x0;
   ycur = y0;
+
   if (dxmag > dymag) max_dist = dxmag;
   else max_dist = dymag;
 
@@ -224,9 +276,9 @@ void _draw_lineto(const int x1, const int y1, float bright_shift) {
   goto_xy(x1, y1);
   SPI_flush();
 #else
-    SDL_RenderDrawLine(rend_2D_orig, gX/4, (4096-gY)/4, x1/4, (4096 - y1)/4);
-    gX = x1;
-    gY = y1;
+  SDL_RenderDrawLine(rend_2D_orig, gX / 4, (4096 - gY) / 4, x1 / 4, (4096 - y1) / 4);
+  gX = x1;
+  gY = y1;
 #endif
 }
 
@@ -237,6 +289,7 @@ void _draw_lineto(const int x1, const int y1, float bright_shift) {
 //they are points along a line instead of separate x and y steps.  Also there is much more resolution
 //for tuning the speeds this way since you aren't changing by powers of two like before.  The Teensy goes so fast that this seems
 //to work well but it could probably still be fixed up to use a different line drawing algorithm
+/*
 void old_draw_lineto(int x1, int y1, const int bright_shift) {
   int dx, dy, sx, sy;
   int flag;
@@ -295,8 +348,9 @@ void old_draw_lineto(int x1, int y1, const int bright_shift) {
   goto_xy(x1_orig, y1_orig);
   // SPI_flush();
 }
+*/
 
-void make_gammatable(float gamma, uint16_t maxinput, uint16_t maxoutput, uint16_t *table) {
+void make_gammatable(float gamma, uint16_t maxinput, uint16_t maxoutput, uint16_t* table) {
   for (int i = 0; i < (maxinput + 1); i++)
     table[i] = (pow((float)i / (float)maxinput, gamma) * (float)maxoutput);
 }
@@ -317,9 +371,9 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
   if (v_setting[SETTINGS_MENU][16].pval == 0) {
     // Mix colours if using monochrome monitor using average value
     // uint8_t avg = (red + green + blue) / 3;
-     // Mix colours if using monochrome monitor using maximum value
-     uint8_t avg = (red > green) ? ((red > blue) ? red : blue) : ((green > blue) ? green : blue);
-     red = green = blue = avg;
+    // Mix colours if using monochrome monitor using maximum value
+    uint8_t avg = (red > green) ? ((red > blue) ? red : blue) : ((green > blue) ? green : blue);
+    red = green = blue = avg;
   }
 
 #ifdef VSTCM
@@ -345,8 +399,15 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
 
   //Dwell moved here since it takes about 4us to fully turn on or off the beam
   //Possibly change where this is depending on if the beam is being turned on or off??
-  if (LastColInt.red || LastColInt.green || LastColInt.blue) Beam_on = true;
-  else Beam_on = false;
+  /*
+  if (LastColInt.red || LastColInt.green || LastColInt.blue) 
+     Beam_on = true;
+  else 
+     Beam_on = false;
+  */
+
+  Beam_on = (red || green || blue);  // Should be faster than if ...
+
   dwell(v_setting[SETTINGS_MENU][2].pval);  //Wait this amount before changing the beam (turning it on or off)
 #else
   LastColInt.red = red;
@@ -356,14 +417,20 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
 #endif
 }
 
-void goto_xy(uint16_t x, uint16_t y) {
+static inline void goto_xy(uint16_t x, uint16_t y) {
+
+   // THIS FUNCTION NEEDS OPTIMISATION FOR SPEED 
+
+
+
+
   float xf, yf;
   float xcorr, ycorr;
 
   if ((x_pos == x) && (y_pos == y)) return;
 
   // Prevent drawing off the screen with hard clipping
- /* if (x<1) return;
+  /* if (x<1) return;
   if (x>4095) return;
   if (y<1) return;
   if (y>4095) return;*/
@@ -371,7 +438,7 @@ void goto_xy(uint16_t x, uint16_t y) {
   x_pos = x;
   y_pos = y;
 
-  if (v_setting[SETTINGS_MENU][10].pval == true) {
+  if (v_setting[SETTINGS_MENU][10].pval == 1) {
     xf = x - 2048;
     yf = y - 2048;
     xcorr = xf * (1.0 - yf * yf * .000000013) + 2048.0;  //These are experimental at this point but seem to do OK on the 6100 monitor
@@ -380,23 +447,38 @@ void goto_xy(uint16_t x, uint16_t y) {
     y = ycorr;
   }
 
+  // THIS NEEDS TO BE OPTIMISED TO AVOID THE TWO IF STATEMENTS
+  // 
+  // 
   // Swap X & Y axes if defined in settings
-  if (v_setting[SETTINGS_MENU][6].pval == false) x = 4095 - x;
-  if (v_setting[SETTINGS_MENU][7].pval == false) y = 4095 - y;
+  if (v_setting[SETTINGS_MENU][6].pval == 0) x = 4095 - x;
+  if (v_setting[SETTINGS_MENU][7].pval == 0) y = 4095 - y;
+
+  // Prevent drawing off the screen with hard clipping
+/*  if (x<1) return;
+  if (x>4095) return;
+  if (y<1) return;
+  if (y>4095) return;*/
 
   if (v_setting[SETTINGS_MENU][8].pval == true)
-     MCP4922_write2(DAC_CHAN_XY, x, y, 0);
+    MCP4922_write2(DAC_CHAN_XY, x, y, 0);
   else
-     MCP4922_write2( DAC_CHAN_XY, y, x, 0 );
+    MCP4922_write2(DAC_CHAN_XY, y, x, 0);
 }
 
-void dwell(int count) {
+// Doing it this way is meant to force the compiler to not create an empty function which is called many times needlessly on PC
+// but it doesn't work yet
+
+void dwell( int count ) {
 #ifdef VSTCM
-  // can work better or faster without this on some monitors
-  SPI_flush();  //Get the dacs set to their latest values before we wait
-  for (int i = 0; i < count; i++) {
-    delayNanoseconds(500);  //NOTE this used to write the X and Y position but now the dacs won't get updated with repeated values
-  }
+   SPI_flush();  // Get the DACs set to their latest values before we wait
+   for (int i = 0; i < count; i++) {
+      delayNanoseconds( 500 );
+   }
+
+#else
+	(void)count;  // Expands to nothing, removing overhead on PC
+
 #endif
 }
 

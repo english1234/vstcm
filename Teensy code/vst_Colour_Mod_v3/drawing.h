@@ -10,9 +10,11 @@
 #ifndef _drawing_h_
 #define _drawing_h_
 
-#ifndef VSTCM
-#include <cstdint>
-#endif
+#include <stdint.h>
+
+// Define a max macro for integers
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
 
 #define DAC_CHAN_RGB 1
 #define DAC_CHAN_XY 0
