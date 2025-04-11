@@ -136,7 +136,7 @@ If you have a IR remote then you can control the game in a rather basic manner f
 ## Testing games with AdvanceMAME
 
 A Raspberry Pi 4 or 400 is recommended (I have also tested with a Pi 3 Model B+ 2017 and an Orange Pi 3 LTS which seem to work ok too). If you are running the vstcm from the Raspberry/Orange Pi then a 3A supply would be preferable.
-Other options (which I have not yet tested) are PC (either Windows or a Linux VM under Windows, or native Linux) or Mac. 
+Other options are Windows, a Linux VM under Windows, native Linux or Mac (the latter of which I have not yet tested). 
 I followed the instructions here to download and compile AdvanceMAME: https://www.arcade-projects.com/threads/almost-pixel-perfect-arcade-emulation-on-raspberry-pi-with-advancemame.7777/
 
 ![orangepi](http://robinchampion.com/vstcm/orangepi.jpg)
@@ -168,6 +168,8 @@ If you're not getting output over the USB cable to the vstcm, then check the adv
 ![gravitar](http://robinchampion.com/vstcm/gravitar.jpg)![tempest](http://robinchampion.com/vstcm/tempest.jpg)
 
 The AdvanceMAME protocol for the USB DVG is here: https://github.com/amadvance/advancemame/blob/master/advance/osd/dvg.c 
+
+You can change the settings on the VSTCM during a game by pressing the left and right buttons on the PCB simultaneously to display the menu as an overlay.
 
 ## IR remote programmable control buttons
 
