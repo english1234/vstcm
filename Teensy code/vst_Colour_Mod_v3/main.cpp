@@ -341,11 +341,11 @@ void mainloop() {
 
     if (overlay_settings)
       show_vstcm_menu_screen(SETTINGS_MENU);
-    else
+    else {
       show_vstcm_menu_screen(show_vstcm_settings);
-
-    update_mystify();
-    draw_mystify();
+      update_mystify();
+      draw_mystify();
+    }
   } else {
     if (dwell_time < SPEEDUP_THRESHOLD_MS) {
       delta_shift += DELTA_SHIFT_INCREMENT;
@@ -396,8 +396,8 @@ void mainloop() {
   SPI_flush();
 #endif
 
-  if (show_something)  // If we are not playing MAME, we need to show one of the menu screens instead
-    manage_buttons();  // Moved here to avoid bright spot on the monitor when doing SD card operations
+  if (show_something || overlay_settings)  // If we are not playing MAME, we need to show one of the menu screens instead
+    manage_buttons();                      // Moved here to avoid bright spot on the monitor when doing SD card operations
 
 #ifdef VSTCM
   fps = 1000000 / waiting;

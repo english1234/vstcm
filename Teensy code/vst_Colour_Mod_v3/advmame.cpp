@@ -81,9 +81,9 @@ int read_data(int init) {
   cmd = cmd << 8 | c;
   frame_offset++;
 
-   if (frame_offset < 4)
-   return 0;   // keep waiting for full command
-  
+  if (frame_offset < 4)
+    return 0;  // keep waiting for full command
+
   frame_offset = 0;
 
   uint8_t header = (cmd >> 29) & 0b00000111;
@@ -103,8 +103,10 @@ int read_data(int init) {
       draw_moveto(x, y);
     else {
       brightness(gl_red, gl_green, gl_blue);  // Set RGB intensity levels
-      if (gl_red == 0 && gl_green == 0 && gl_blue == 0) draw_moveto(x, y);
-      else _draw_lineto(x, y, line_draw_speed);
+      if (gl_red == 0 && gl_green == 0 && gl_blue == 0)
+        draw_moveto(x, y);
+      else
+        _draw_lineto(x, y, line_draw_speed);
     }
   } else if (header == FLAG_RGB) {
     // encode brightness for R, G and B

@@ -212,14 +212,73 @@ void draw_moveto(int x1, int y1) {
   dwell(v_setting[SETTINGS_MENU][4].pval);
 
   // This is only needed to handle dwell times on some real vector monitors
-  frame_max_x = max(frame_max_x, x1);  
+  frame_max_x = max(frame_max_x, x1);
   frame_min_x = min(frame_min_x, x1);
   frame_max_y = max(frame_max_y, y1);
   frame_min_y = min(frame_min_y, y1);
 
 // Save the start position for drawing
 #ifdef VSTCM
-#else // only needed for SDL
+#else  // only needed for SDL
+  gX = x1;
+  gY = y1;
+#endif
+}
+
+// Optimised float-based _draw_lineto() for Teensy 4.x
+// needs testing and comparing to other draw_lineto function
+void _proto_draw_lineto(const int x1, const int y1, float bright_shift) {
+#ifdef VSTCM
+  int dx, dy;
+  int dxmag, dymag;
+  int max_dist;
+  int x0, y0;
+  int numsteps;
+  float numstepsf;
+  float xcur, ycur;
+  float dxf, dyf;
+
+  // Update frame extents for spot killer logic
+  frame_max_x = max(frame_max_x, x1);
+  frame_min_x = min(frame_min_x, x1);
+  frame_max_y = max(frame_max_y, y1);
+  frame_min_y = min(frame_min_y, y1);
+
+  x0 = x_pos;
+  y0 = y_pos;
+  dx = x1 - x0;
+  dy = y1 - y0;
+  dxmag = abs(dx);
+  dymag = abs(dy);
+
+  max_dist = (dxmag > dymag) ? dxmag : dymag;
+
+  if (Beam_on && (max_dist * 2 < bright_shift)) {  // Force at least 2 points
+    bright_shift = max_dist >> 1;
+    if (bright_shift < 1) bright_shift = 1;
+  }
+
+  // Integer ceil replacement
+  numsteps = (max_dist + bright_shift - 1) / bright_shift;
+  if (numsteps < 1) numsteps = 1;
+
+  numstepsf = (float)numsteps;
+  dxf = (float)dx / numstepsf;
+  dyf = (float)dy / numstepsf;
+
+  xcur = (float)x0;
+  ycur = (float)y0;
+
+  for (int i = 0; i < numsteps; i++) {
+    xcur += dxf;
+    ycur += dyf;
+    goto_xy((int)(xcur + 0.5f), (int)(ycur + 0.5f));
+  }
+
+  goto_xy(x1, y1);
+  SPI_flush();
+#else
+  SDL_RenderDrawLine(rend_2D_orig, gX / 4, (4096 - gY) / 4, x1 / 4, (4096 - y1) / 4);
   gX = x1;
   gY = y1;
 #endif
@@ -256,8 +315,10 @@ void _draw_lineto(const int x1, const int y1, float bright_shift) {
   xcur = x0;
   ycur = y0;
 
-  if (dxmag > dymag) max_dist = dxmag;
-  else max_dist = dymag;
+  if (dxmag > dymag)
+    max_dist = dxmag;
+  else
+    max_dist = dymag;
 
   if (Beam_on && (max_dist * 2 < bright_shift)) {  //Force at least 2 points in each line segment (cleans up text at high rates)
     bright_shift = max_dist >> 1;
@@ -419,7 +480,7 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
 
 static inline void goto_xy(uint16_t x, uint16_t y) {
 
-   // THIS FUNCTION NEEDS OPTIMISATION FOR SPEED 
+  // THIS FUNCTION NEEDS OPTIMISATION FOR SPEED
 
 
 
@@ -448,14 +509,14 @@ static inline void goto_xy(uint16_t x, uint16_t y) {
   }
 
   // THIS NEEDS TO BE OPTIMISED TO AVOID THE TWO IF STATEMENTS
-  // 
-  // 
+  //
+  //
   // Swap X & Y axes if defined in settings
   if (v_setting[SETTINGS_MENU][6].pval == 0) x = 4095 - x;
   if (v_setting[SETTINGS_MENU][7].pval == 0) y = 4095 - y;
 
   // Prevent drawing off the screen with hard clipping
-/*  if (x<1) return;
+  /*  if (x<1) return;
   if (x>4095) return;
   if (y<1) return;
   if (y>4095) return;*/
@@ -469,15 +530,15 @@ static inline void goto_xy(uint16_t x, uint16_t y) {
 // Doing it this way is meant to force the compiler to not create an empty function which is called many times needlessly on PC
 // but it doesn't work yet
 
-void dwell( int count ) {
+void dwell(int count) {
 #ifdef VSTCM
-   SPI_flush();  // Get the DACs set to their latest values before we wait
-   for (int i = 0; i < count; i++) {
-      delayNanoseconds( 500 );
-   }
+  SPI_flush();  // Get the DACs set to their latest values before we wait
+  for (int i = 0; i < count; i++) {
+    delayNanoseconds(500);
+  }
 
 #else
-	(void)count;  // Expands to nothing, removing overhead on PC
+  (void)count;  // Expands to nothing, removing overhead on PC
 
 #endif
 }
