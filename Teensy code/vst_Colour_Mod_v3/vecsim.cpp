@@ -253,12 +253,82 @@ int check_switch_decr(int32_t *sw) {
   return ((*sw) != 0);
 }
 
+#define OP0 (m_op & 1)
+#define OP1 (m_op & 2)
+#define OP2 (m_op & 4)
+#define OP3 (m_op & 8)
+
+#define ST3 (m_state_latch & 8)
+
+
+#define u8 unsigned char
+#define u16 unsigned short int
+#define s32 signed int
+
+u16 m_pc;
+u8 m_sp;
+u16 m_dvx;
+u16 m_dvy;
+u8 m_dvy12;
+u16 m_timer;
+u16 m_stack[4];
+u16 m_data;
+
+u8 m_state_latch;
+u8 m_int_latch;
+u8 m_scale;
+u8 m_bin_scale;
+u8 m_intensity;
+u8 m_color;
+u8 m_enspkl;
+u8 m_spkl_shift;
+u8 m_map;
+
+u16 m_hst;
+u16 m_lst;
+u16 m_izblank;
+
+u8 m_op;
+u8 m_halt;
+u8 m_sync_halt;
+
+u16 m_xdac_xor;
+u16 m_ydac_xor;
+
+s32 m_xpos;
+s32 m_ypos;
+
+s32 m_clipx_min;
+s32 m_clipy_min;
+s32 m_clipx_max;
+s32 m_clipy_max;
+
+int m_xmin, m_xmax, m_ymin, m_ymax;
+int m_xcenter, m_ycenter;
+
+
+u16 m_vectorram_offset;
+u16 m_colorram_offset;
+u8 *m_prom;
+u8 avg_prom[256];
+
+
+int avg_done(unsigned long cyc) {
+
+  return m_halt ? 1 : 0;
+  //    return m_sync_halt ? 1 : 0;
+}
+
 int vg_done(unsigned long cyc) {
+  if (game == TEMPEST)
+    return avg_done(cyc);
+
   if (vg_busy && (cyc > vg_done_cyc))
     vg_busy = 0;
 
   return (!vg_busy);
 }
+
 
 uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
   // byte MEMRD( unsigned addr, int PC, unsigned long cyc ) {
@@ -290,13 +360,20 @@ uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
     case MEMORY:
       result = mem[addr].cell;
       break;
+    case TEMPEST_PROTECTTION_0:
+      // always read 0, than nothing bad can happen :-)
+      result = 0;
+      break;
+    case COLORRAM:
+      result = mem[addr].cell;
+      break;
     case COININ:
       result =
         ((!check_switch_decr(&cslot_right))) | ((!check_switch_decr(&cslot_left)) << 1) | ((!check_switch_decr(&cslot_util)) << 2) | ((!check_switch_decr(&slam)) << 3) | ((!self_test) << 4) | (1 << 5) | /* signature analysis */
         (vg_done(cyc) << 6) |
         /* clock toggles at 3 KHz */
         ((cyc >> 1) & 0x80);
-      result = iSW2;  // Using player 2 start button as coin up
+      //result = iSW2;  // Using player 2 start button as coin up TEMPORARILY COMMENTED OUT WHILE TESTING TEMPEST
       break;
     case EAROMRD:
       result = 0;
@@ -369,10 +446,20 @@ uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
       result = mem[addr & 0xff].cell;
       break;
     case LUNAR_SW1:
-      result = 0x80 |                /* DIAG STEP */
-               ((cyc >> 2) & 0x40) | /* 3 KHz */
-               ((!check_switch_decr(&slam)) << 2) | ((!self_test) << 1) | vg_done(cyc);
-      break;
+#ifdef ORIGINAL_VERSION
+       result = 0x80 | /* DIAG STEP */
+          ((cyc >> 2) & 0x40) | /* 3 KHz */
+          ((!check_switch_decr( &slam )) << 2) |
+          ((!self_test) << 1) |
+          vg_done( cyc ) + 0x20 + 0x10 + 0x08;   /* gcc warns here about precedence of '|' and '+' and suggests adding brackets ...*/
+#else
+       result = 0x80 | /* DIAG STEP */
+          ((cyc >> 2) & 0x40) | /* 3 KHz */
+          ((!check_switch_decr( &slam )) << 2) |
+          ((!self_test) << 1) |
+          vg_done( cyc )
+          | 0x20 | 0x10 | 0x08;
+#endif
     case LUNAR_SW2:
       switch (addr & 0x07) {
         case 0:
@@ -540,68 +627,20 @@ uint8_t memrd_debug(uint16_t addr, uint16_t PC, uint32_t cycles) {
 
 void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc);
 
-/*
-// Process queued sound commands
-void processSounds() {
-  if (soundQueueStart != soundQueueEnd) {
-    uint8_t cmd = soundQueue[soundQueueStart];
-    soundQueueStart = (soundQueueStart + 1) % MAX_SOUND_QUEUE;
 
-    switch (cmd) {
-      case 0x01:  // Ship Fire
-        waveform1.begin(WAVEFORM_SQUARE);
-        waveform1.frequency(1000);
-        waveform1.amplitude(0.8);
-        delay(50);
-        waveform1.amplitude(0);
-        break;
+// DISPLAY.C AVG FUNCTIONS
 
-      case 0x02:  // Explosion
-        waveform1.begin(WAVEFORM_SQUARE);
-        // waveform1.begin( WAVEFORM_NOISE );
-        waveform1.frequency(500);
-        waveform1.amplitude(1.0);
-        delay(300);
-        waveform1.amplitude(0);
-        break;
 
-      case 0x03:  // UFO Sound
-        waveform1.begin(WAVEFORM_SAWTOOTH);
-        waveform1.frequency(200);
-        waveform1.amplitude(0.5);
-        delay(500);
-        waveform1.amplitude(0);
-        break;
 
-      case 0x04:  // UFO Fire
-        waveform1.begin(WAVEFORM_SQUARE);
-        waveform1.frequency(1500);
-        waveform1.amplitude(0.7);
-        delay(50);
-        waveform1.amplitude(0);
-        break;
+#define rdColor(c) memrd((c) + m_colorram_offset, 0, 0)
+#define rdVram(r) memrd((r) + m_vectorram_offset, 0, 0)
+#define rdProm(p) avg_prom[(p)]
 
-      case 0x05:  // Thump Sound
-        waveform1.begin(WAVEFORM_SQUARE);
-        waveform1.frequency(50);  // Low thump frequency
-        waveform1.amplitude(0.6);
-        delay(thumpSpeed);  // Control tempo
-        waveform1.amplitude(0);
 
-        // Speed up as asteroids decrease
-        if (asteroidCount > 1) {
-          thumpSpeed = max(200, 1000 - (asteroidCount * 80));  // Faster thumps
-        }
-        break;
-      default:
-        break;
-    }
-  }
-}
-*/
-/*
- * display.c: Atari DVG and AVG simulators
- */
+
+int old_x = 0;
+int old_y = 0;
+//extern void draw_line2(int FromX, int FromY, int ToX, int ToY, int Colour15, int z);  // z is 0:12 in lunar, colour is always 7
 
 static inline void draw_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, int color, int z) {
   /*
@@ -676,12 +715,541 @@ y = -1017 to 1826
   //  draw_moveto(x2, 4096 - y2);
 }
 
-#define VEC_SHIFT 16 /* fixed for the moment */
+void vg_add_point_buf(int x, int y, int color, int intensity) {
+#define SHIFT_T 10
+  // printf("draw_line: %i,%i,%i,%i,%i,%i\n", (old_x>>SHIFT_T), -(old_y>>SHIFT_T), (x>>SHIFT_T), -(y>>SHIFT_T), color, intensity>>4);
+  //  draw_line2 ((old_x>>SHIFT_T), -(old_y>>SHIFT_T), (x>>SHIFT_T), -(y>>SHIFT_T), color, intensity>>4);
+  //draw_line2((old_y >> SHIFT_T), -(old_x >> SHIFT_T), (y >> SHIFT_T), -(x >> SHIFT_T), color, intensity >> 4);
+  draw_line((old_y >> SHIFT_T), -(old_x >> SHIFT_T), (y >> SHIFT_T), -(x >> SHIFT_T), color, intensity >> 4);
+  old_x = x;
+  old_y = y;
+}
 
-static void vector_timer(long deltax, long deltay) {
+
+/********************************************************************
+ *
+ *  AVG handler functions
+ *
+ *  AVG is in many ways different from DVG. The only thing they have
+ *  in common is the state machine approach. There are small
+ *  differences among the AVGs, mostly related to color and vector
+ *  clipping.
+ *
+ *******************************************************************/
+void avg_init(u16 vram, u16 cram) {
+  /* AVG PROM */
+  //	ROM_REGION( 0x100, "avg:prom", 0 )
+  //	ROM_LOAD( "136002-125.d7",   0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
+  m_prom = avg_prom;
+
+  //    2000-2FFF  R/W   D  D  D  D  D  D  D  D   Vector Ram (4K)
+  //    3000-3FFF   R    D  D  D  D  D  D  D  D   Vector Rom (4K)
+  m_vectorram_offset = vram;
+
+
+  //    0800-080F   W                D  D  D  D   Colour ram
+  m_colorram_offset = cram;
+
+  m_pc = 0;
+  m_sp = 0;
+  m_dvx = 0;
+  m_dvy = 0;
+  m_dvy12 = 0;
+  m_timer = 0;
+  m_stack[0] = 0;
+  m_stack[1] = 0;
+  m_stack[2] = 0;
+  m_stack[3] = 0;
+  m_data = 0;
+
+  m_state_latch = 0;
+  m_int_latch = 0;
+  m_scale = 0;
+  m_bin_scale = 0;
+  m_intensity = 0;
+  m_color = 0;
+  m_enspkl = 0;
+  m_spkl_shift = 0;
+  m_map = 0;
+
+  m_hst = 0;
+  m_lst = 0;
+  m_izblank = 0;
+
+  m_op = 0;
+  m_halt = 0;
+  m_sync_halt = 0;
+
+  m_xdac_xor = 0;
+  m_ydac_xor = 0;
+
+  m_xpos = 0;
+  m_ypos = 0;
+
+
+  m_xcenter = 0;
+  m_ycenter = 0;
+  old_x = 0;
+  old_y = 0;
+
+
+  //    m_xcenter = ((m_xmax - m_xmin) / 2) << 15;
+  //    m_ycenter = ((m_ymax - m_ymin) / 2) << 15;
+
+
+  /*
+     * The x and y DACs use 10 bit of the counter values which are in
+     * two's complement representation. The DAC input is xored with
+     * 0x200 to convert the value to unsigned.
+     */
+  m_xdac_xor = 0x200;
+  m_ydac_xor = 0x200;
+}
+
+
+u8 state_addr()  // avg_state_addr
+{
+  return (((m_state_latch >> 4) ^ 1) << 7)
+         | (m_op << 4)
+         | (m_state_latch & 0xf);
+}
+
+
+void update_databus()  // avg_data
+{
+  m_data = rdVram((m_pc & 0x1fff) ^ 1);  // 0x2000 being the vectorram+rom length - this should not go out of bounds!
+}
+
+void vggo()  // avg_vggo
+{
+  m_pc = 0;
+  m_sp = 0;
+}
+
+
+void vgrst()  // avg_vgrst
+{
+  m_state_latch = 0;
+  m_bin_scale = 0;
+  m_scale = 0;
+  m_color = 0;
+}
+
+int handler_0()  // avg_latch0
+{
+  m_dvy = (m_dvy & 0x1f00) | m_data;
+  m_pc++;
+
+  return 0;
+}
+
+int handler_1()  // avg_latch1
+{
+  m_dvy12 = (m_data >> 4) & 1;
+  m_op = m_data >> 5;
+
+  m_int_latch = 0;
+  m_dvy = (m_dvy12 << 12) | ((m_data & 0xf) << 8);
+  m_dvx = 0;
+  m_pc++;
+
+  return 0;
+}
+
+int handler_2()  // avg_latch2
+{
+  m_dvx = (m_dvx & 0x1f00) | m_data;
+  m_pc++;
+
+  return 0;
+}
+
+int handler_3()  // avg_latch3
+{
+  m_int_latch = m_data >> 4;
+  m_dvx = ((m_int_latch & 1) << 12) | ((m_data & 0xf) << 8) | (m_dvx & 0xff);
+  m_pc++;
+
+  return 0;
+}
+
+int handler_4()  // avg_strobe0
+{
+  if (OP0) {
+    m_stack[m_sp & 3] = m_pc;
+  } else {
+    /*
+		 * Normalization is done to get roughly constant deflection
+		 * speeds. See Jed's essay why this is important. In addition
+		 * to the intensity and overall time saving issues it is also
+		 * needed to avoid accumulation of DAC errors. The X/Y DACs
+		 * only use bits 3-12. The normalization ensures that the
+		 * first three bits hold no important information.
+		 *
+		 * The circuit doesn't check for dvx=dvy=0. In this case
+		 * shifting goes on as long as VCTR, SCALE and CNTR are
+		 * low. We cut off after 16 shifts.
+		 */
+    int i = 0;
+    while ((((m_dvy ^ (m_dvy << 1)) & 0x1000) == 0)
+           && (((m_dvx ^ (m_dvx << 1)) & 0x1000) == 0)
+           && (i++ < 16)) {
+      m_dvy = (m_dvy & 0x1000) | ((m_dvy << 1) & 0x1fff);
+      m_dvx = (m_dvx & 0x1000) | ((m_dvx << 1) & 0x1fff);
+      m_timer >>= 1;
+      m_timer |= 0x4000 | (OP1 << 6);
+    }
+
+    if (OP1)
+      m_timer &= 0xff;
+  }
+
+  return 0;
+}
+
+
+int avg_common_strobe1() {
+  if (OP2) {
+    if (OP1)
+      m_sp = (m_sp - 1) & 0xf;
+    else
+      m_sp = (m_sp + 1) & 0xf;
+  }
+  return 0;
+}
+
+int handler_5()  // avg_strobe1
+{
+  if (OP2 == 0) {
+    for (int i = m_bin_scale; i > 0; i--) {
+      m_timer >>= 1;
+      m_timer |= 0x4000 | (OP1 << 6);
+    }
+    if (OP1)
+      m_timer &= 0xff;
+  }
+
+  return avg_common_strobe1();
+}
+
+
+int avg_common_strobe2() {
+  if (OP2) {
+    if (OP0) {
+      m_pc = m_dvy << 1;
+
+      if (m_dvy == 0) {
+        /*
+				 * Tempest and Quantum keep the AVG in an endless
+				 * loop. I.e. at one point the AVG jumps to address 0
+				 * and starts over again. The main CPU updates vector
+				 * RAM while AVG is running. The hardware takes care
+				 * that the AVG doesn't read vector RAM while the CPU
+				 * writes to it. Usually we wait until the AVG stops
+				 * (halt flag) and then draw all vectors at once. This
+				 * doesn't work for Tempest and Quantum so we wait for
+				 * the jump to zero and draw vectors then.
+				 *
+				 * Note that this has nothing to do with the real hardware
+				 * because for a vector monitor it is perfectly okay to
+				 * have the AVG drawing all the time. In the emulation we
+				 * somehow have to divide the stream of vectors into
+				 * 'frames'.
+				 */
+      }
+    } else {
+      m_pc = m_stack[m_sp & 3];
+    }
+  } else {
+    if (m_dvy12) {
+      m_scale = m_dvy & 0xff;
+      m_bin_scale = (m_dvy >> 8) & 7;
+    }
+  }
+
+  return 0;
+}
+
+int handler_6()  // avg_strobe2
+{
+  if ((OP2 == 0) && (m_dvy12 == 0)) {
+    m_color = m_dvy & 0x7;
+    m_intensity = (m_dvy >> 4) & 0xf;
+  }
+
+  return avg_common_strobe2();
+}
+
+int avg_common_strobe3() {
+  int cycles = 0;
+
+  m_halt = OP0;
+
+  if ((m_op & 5) == 0) {
+    if (OP1) {
+      cycles = 0x100 - (m_timer & 0xff);
+    } else {
+      cycles = 0x8000 - m_timer;
+    }
+    m_timer = 0;
+
+    m_xpos += ((((m_dvx >> 3) ^ m_xdac_xor) - 0x200) * cycles * (m_scale ^ 0xff)) >> 4;
+    m_ypos -= ((((m_dvy >> 3) ^ m_ydac_xor) - 0x200) * cycles * (m_scale ^ 0xff)) >> 4;
+  }
+  if (OP2) {
+    cycles = 0x8000 - m_timer;
+    m_timer = 0;
+    m_xpos = m_xcenter;
+    m_ypos = m_ycenter;
+    vg_add_point_buf(m_xpos, m_ypos, 0, 0);
+  }
+
+  return cycles;
+}
+
+int handler_7()  // avg_strobe3
+{
+  const int cycles = avg_common_strobe3();
+
+  if ((m_op & 5) == 0) {
+    vg_add_point_buf(m_xpos, m_ypos, m_color, (((m_int_latch >> 1) == 1) ? m_intensity : m_int_latch & 0xe) << 4);
+  }
+
+  return cycles;
+}
+
+/*************************************
+ *
+ *  Tempest handler functions
+ *
+ *************************************/
+
+int tempest_handler_6()  // tempest_strobe2
+{
+  if ((OP2 == 0) && (m_dvy12 == 0)) {
+    /* Contrary to previous documentation in MAME,
+		Tempest does not have the m_enspkl bit. */
+    if (m_dvy & 0x800)
+      m_color = m_dvy & 0xf;
+    else
+      m_intensity = (m_dvy >> 4) & 0xf;
+  }
+
+  return avg_common_strobe2();
+}
+
+int rgb_t(u8 r, u8 g, u8 b) {
+  return ((r + g + b) / 3) / 32;
+}
+int tempest_handler_7()  // tempest_strobe3
+{
+  const int cycles = avg_common_strobe3();
+
+  if ((m_op & 5) == 0) {
+    const u8 data = rdColor(m_color);
+    const u8 bit3 = (~data >> 3) & 1;
+    const u8 bit2 = (~data >> 2) & 1;
+    const u8 bit1 = (~data >> 1) & 1;
+    const u8 bit0 = (~data >> 0) & 1;
+
+    const u8 r = bit1 * 0xf3 + bit0 * 0x0c;
+    const u8 g = bit3 * 0xf3;
+    const u8 b = bit2 * 0xf3;
+
+    int x = m_xpos;
+    int y = m_ypos;
+
+    vg_add_point_buf(y - m_ycenter + m_xcenter,
+                     x - m_xcenter + m_ycenter, rgb_t(r, g, b),
+                     (((m_int_latch >> 1) == 1) ? m_intensity : m_int_latch & 0xe) << 4);
+  }
+
+  return cycles;
+}
+
+/*************************************
+ *
+ *  halt functions
+ *
+ *************************************/
+
+void avg_halt(int dummy) {
+  m_halt = dummy;
+  m_sync_halt = dummy;
+}
+
+/********************************************************************
+ *
+ * State Machine
+ *
+ * The state machine is a 256x4 bit PROM connected to a latch. The
+ * address of the next state is generated from the latched previous
+ * state, an op code and the halt flag. Op codes come from vector
+ * RAM/ROM. The state machine is clocked with 1.5 MHz. Three bits of
+ * the state are decoded and used to trigger various parts of the
+ * hardware.
+ *
+ *******************************************************************/
+
+void avg_draw_vector_list_t() {
+  int cycles = 0;
+  int oldHalt = 0;
+  //int round=0;
+  //open_page (0);
+  if (!m_halt) {
+    do {
+      /* Get next state */
+      m_state_latch = (m_state_latch & 0x10) | (rdProm(state_addr()) & 0xf);
+
+      if (ST3) {
+        /* Read vector RAM/ROM */
+        // "reading" after the last AVG mem
+        // 0xffff
+        // after handler 0 + handler 1
+        // this generates a "Unknown rd addr 4001 data 00 tag 03"
+        // break...
+        //
+        update_databus();
+
+        /* Decode state and call the corresponding handler */
+        switch (m_state_latch & 7) {
+          case 0: cycles += handler_0(); break;
+          case 1: cycles += handler_1(); break;
+          case 2: cycles += handler_2(); break;
+          case 3: cycles += handler_3(); break;
+          case 4: cycles += handler_4(); break;
+          case 5: cycles += handler_5(); break;
+          case 6: cycles += tempest_handler_6() /*handler_6()*/; break;
+          case 7: cycles += tempest_handler_7() /*handler_7()*/; break;
+        }
+      }
+
+      /* If halt flag was set, let CPU catch up before we make halt visible */
+      //		if (m_halt && !(m_state_latch & 0x10))
+      //			m_vg_halt_timer->adjust(attotime::from_hz(MASTER_CLOCK) * cycles, 1);
+
+      if ((m_halt) && (oldHalt == 0)) {
+        oldHalt = 1;
+      }
+      m_state_latch = (m_halt << 4) | (m_state_latch & 0xf);
+      cycles += 8;
+    } while ((m_pc != 0) && (!m_halt));
+  }
+  //    printf("vg did run for: %i\n", cycles);
+  //close_page ();
+}
+
+
+/*************************************
+ *
+ *  VG halt/vggo
+ *
+ ************************************/
+
+
+
+void avg_go(unsigned long cyc) {
+  vggo();
+  /*
+	if (m_sync_halt && (m_nvect > 10))
+	{
+		/ *
+		 * This is a good time to start a new frame. Major Havoc
+		 * sometimes sets VGGO after a very short vector list. That's
+		 * why we ignore frames with less than 10 vectors.
+		 * /
+		 
+		 // non tempest
+	}
+*/
+
+  avg_halt(0);
+  avg_draw_vector_list_t();
+}
+
+/*************************************
+ *
+ *  Reset
+ *
+ ************************************/
+
+void avg_reset(unsigned long cyc) {
+  vgrst();
+  avg_halt(1);
+}
+// END DISPLAY.C AVG FUNCTIONS
+
+
+
+/*
+// Process queued sound commands
+void processSounds() {
+  if (soundQueueStart != soundQueueEnd) {
+    uint8_t cmd = soundQueue[soundQueueStart];
+    soundQueueStart = (soundQueueStart + 1) % MAX_SOUND_QUEUE;
+
+    switch (cmd) {
+      case 0x01:  // Ship Fire
+        waveform1.begin(WAVEFORM_SQUARE);
+        waveform1.frequency(1000);
+        waveform1.amplitude(0.8);
+        delay(50);
+        waveform1.amplitude(0);
+        break;
+
+      case 0x02:  // Explosion
+        waveform1.begin(WAVEFORM_SQUARE);
+        // waveform1.begin( WAVEFORM_NOISE );
+        waveform1.frequency(500);
+        waveform1.amplitude(1.0);
+        delay(300);
+        waveform1.amplitude(0);
+        break;
+
+      case 0x03:  // UFO Sound
+        waveform1.begin(WAVEFORM_SAWTOOTH);
+        waveform1.frequency(200);
+        waveform1.amplitude(0.5);
+        delay(500);
+        waveform1.amplitude(0);
+        break;
+
+      case 0x04:  // UFO Fire
+        waveform1.begin(WAVEFORM_SQUARE);
+        waveform1.frequency(1500);
+        waveform1.amplitude(0.7);
+        delay(50);
+        waveform1.amplitude(0);
+        break;
+
+      case 0x05:  // Thump Sound
+        waveform1.begin(WAVEFORM_SQUARE);
+        waveform1.frequency(50);  // Low thump frequency
+        waveform1.amplitude(0.6);
+        delay(thumpSpeed);  // Control tempo
+        waveform1.amplitude(0);
+
+        // Speed up as asteroids decrease
+        if (asteroidCount > 1) {
+          thumpSpeed = max(200, 1000 - (asteroidCount * 80));  // Faster thumps
+        }
+        break;
+      default:
+        break;
+    }
+  }
+}
+*/
+/*
+ * display.c: Atari DVG and AVG simulators
+ */
+
+
+
+static int vector_timer(long deltax, long deltay) {
   deltax = labs(deltax);
   deltay = labs(deltay);
-  vg_done_cyc += max(deltax, deltay) >> VEC_SHIFT;  // was =17 in version before VEC_SHIFT was defined
+  return max(deltax, deltay) >> 17;
 }
 
 static void dvg_vector_timer(int scale) {
@@ -810,7 +1378,7 @@ static void dvg_draw_vector_list(void) {
         currentx += deltax;
         currenty -= deltay;
         dvg_vector_timer(temp);
-        draw_line(oldx, oldy, currentx, currenty, 7, z);
+        draw_line(oldx, oldy, currentx, currenty, 7, z);    // 7 = always same colour... needs to be improved
         break;
 
       case DLABS:
@@ -920,7 +1488,8 @@ static void dvg_draw_vector_list(void) {
 #endif
         currentx += deltax;
         currenty -= deltay;
-        dvg_vector_timer(temp);
+        //   dvg_vector_timer(temp);   // commented out in pitrex code
+        vg_done_cyc += ((4 << temp) * 4) / 8;
         draw_line(oldx, oldy, currentx, currenty, 7, z);
         break;
 
@@ -1053,7 +1622,7 @@ static void avg_draw_vector_list(void) {
 
         currentx += deltax;
         currenty -= deltay;
-        vector_timer(deltax, deltay);
+        vg_done_cyc += vector_timer(deltax, deltay);
 
         draw_line(oldx >> 13, oldy >> 13, currentx >> 13, currenty >> 13, color, z);
         break;
@@ -1091,7 +1660,7 @@ static void avg_draw_vector_list(void) {
         //  deltay = y * scale;
         currentx += deltax;
         currenty -= deltay;
-        vector_timer(labs(deltax), labs(deltay));
+        vg_done_cyc += vector_timer(labs(deltax), labs(deltay));
         draw_line(oldx >> 13, oldy >> 13, currentx >> 13, currenty >> 13, color, z);
         break;
 
@@ -1247,10 +1816,14 @@ void vg_go(uint32_t cyc) {
 
   if (--df == 0) {
     df = (drop_frames > 0) ? drop_frames : 1;
-    if (dvg)
+    if (dvg) {
       dvg_draw_vector_list();
-    else
-      avg_draw_vector_list();
+    } else {
+      if (game == TEMPEST) {
+        avg_go(cyc);
+      } else
+        avg_draw_vector_list();
+    }
   }
 }
 
@@ -1361,7 +1934,7 @@ tag_info black_widow_tags[] = {
 
   { 0, 0, 0, 0 }
 };
-
+/*
 rom_info gravitar_roms[] = {
   { "roms/Gravitar/136010.201", 0x9000, 0x1000, 0 },
   { "roms/Gravitar/136010.202", 0xa000, 0x1000, 0 },
@@ -1376,6 +1949,22 @@ rom_info gravitar_roms[] = {
   { "roms/Gravitar/136010.209", 0x5000, 0x1000, 0 },
 
   { NULL, 0, 0, 0 }
+};
+*/
+rom_info gravitar_roms[] =
+{
+  { "roms/gravitar/136010-301.d1", 0x9000, 0x1000, 0 },
+  { "roms/gravitar/136010-302.ef1", 0xa000, 0x1000, 0 },
+  { "roms/gravitar/136010-303.h1", 0xb000, 0x1000, 0 },
+  { "roms/gravitar/136010-304.j1", 0xc000, 0x1000, 0 },
+  { "roms/gravitar/136010-305.kl1", 0xd000, 0x1000, 0 },
+  { "roms/gravitar/136010-306.m1", 0xe000, 0x1000, 0 },
+  { "roms/gravitar/136010-210.l7", 0x2800, 0x0800, 0 },
+  { "roms/gravitar/136010-207.mn7", 0x3000, 0x1000, 0 },
+  { "roms/gravitar/136010-208.np7", 0x4000, 0x1000, 0 },
+  { "roms/gravitar/136010-309.r7", 0x5000, 0x1000, 0 },
+
+  { NULL,   0,      0,      0 }
 };
 
 tag_info gravitar_tags[] = {
@@ -1447,12 +2036,22 @@ tag_info space_duel_tags[] = {
 };
 
 rom_info tempest_roms[] = {
+  { "roms/Tempest/136002-133.d1", 0x9000, 0x1000, 0 },
+  { "roms/Tempest/136002-134.f1", 0xa000, 0x1000, 0 },
+  { "roms/Tempest/136002-235.j1", 0xb000, 0x1000, 0 },  // or .235
+  { "roms/Tempest/136002-136.lm1", 0xc000, 0x1000, 0 },
+  { "roms/Tempest/136002-237.p1", 0xd000, 0x1000, 0 },  // or .237
+  { "roms/Tempest/136002-138.np3", 0x3000, 0x1000, 0 },
+  { NULL, 0, 0, 0 }
+};
+/*
+rom_info tempest_roms[] = {
 #if 0
   { "roms/Tempest/136002.133", 0x9000, 0x1000, 0 },
   { "roms/Tempest/136002.134", 0xa000, 0x1000, 0 },
-  { "roms/Tempest/136002.135", 0xb000, 0x1000, 0 },  /* or .235 */
+  { "roms/Tempest/136002.135", 0xb000, 0x1000, 0 },  // or .235
   { "roms/Tempest/136002.136", 0xc000, 0x1000, 0 },
-  { "roms/Tempest/136002.137", 0xd000, 0x1000, 0 },  /* or .237 */
+  { "roms/Tempest/136002.137", 0xd000, 0x1000, 0 },  // or .237
 
   { "roms/Tempest/136002.138", 0x3000, 0x1000, 0 },
 #else
@@ -1460,18 +2059,19 @@ rom_info tempest_roms[] = {
   { "roms/Tempest/136002.114", 0x9800, 0x0800, 0 },
   { "roms/Tempest/136002.115", 0xa000, 0x0800, 0 },
   { "roms/Tempest/136002.116", 0xa800, 0x0800, 0 },
-  { "roms/Tempest/136002.117", 0xb000, 0x0800, 0 }, /* or .217 */
+  { "roms/Tempest/136002.117", 0xb000, 0x0800, 0 }, // or .217
   { "roms/Tempest/136002.118", 0xb800, 0x0800, 0 },
   { "roms/Tempest/136002.119", 0xc000, 0x0800, 0 },
   { "roms/Tempest/136002.120", 0xc800, 0x0800, 0 },
   { "roms/Tempest/136002.121", 0xd000, 0x0800, 0 },
-  { "roms/Tempest/136002.122", 0xd800, 0x0800, 0 }, /* or .222 */
+  { "roms/Tempest/136002.122", 0xd800, 0x0800, 0 }, // or .222 
 
   { "roms/Tempest/136002.123", 0x3000, 0x0800, 0 },
   { "roms/Tempest/136002.124", 0x3800, 0x0800, 0 },
 #endif
   { NULL, 0, 0, 0 }
 };
+*/
 
 tag_info tempest_tags[] = {
   { 0x0000, 0x0800, RD | WR, MEMORY }, /* RAM */
@@ -1506,6 +2106,20 @@ tag_info tempest_tags[] = {
 };
 
 rom_info battlezone_roms[] = {
+  { "roms/bzone/036414-02.e1", 0x5000, 0x0800, 0 },
+  { "roms/bzone/036413-01.h1", 0x5800, 0x0800, 0 },
+  { "roms/bzone/036412-01.j1", 0x6000, 0x0800, 0 },
+  { "roms/bzone/036411-01.k1", 0x6800, 0x0800, 0 },
+  { "roms/bzone/036410-01.lm1", 0x7000, 0x0800, 0 },
+  { "roms/bzone/036409-01.n1", 0x7800, 0x0800, 0 },
+  { "roms/bzone/036422-01.bc3", 0x3000, 0x0800, 0 },
+  { "roms/bzone/036421-01.a3", 0x3800, 0x0800, 0 },
+  { NULL, 0, 0, 0 }
+};
+
+
+/*
+rom_info battlezone_roms[] = {
   { "roms/Battlezone/036414a.01", 0x5000, 0x0800, 0 },
   { "roms/Battlezone/036413.01", 0x5800, 0x0800, 0 },
   { "roms/Battlezone/036412.01", 0x6000, 0x0800, 0 },
@@ -1518,7 +2132,7 @@ rom_info battlezone_roms[] = {
 
   { NULL, 0, 0, 0 }
 };
-
+*/
 tag_info battlezone_tags[] = {
   { 0x0000, 0x0400, RD | WR, MEMORY }, /* RAM */
 
@@ -1577,7 +2191,6 @@ rom_info red_baron_roms[] = {
   { "roms/redbaron/036995-01.n1", 0x7800, 0x0800, 0 },
   { "roms/redbaron/037006-01.bc3", 0x3000, 0x0800, 0 },
   { "roms/redbaron/037007-01.a3", 0x3800, 0x0800, 0 },
-
   { NULL, 0, 0, 0 }
 };
 
@@ -1614,20 +2227,29 @@ tag_info red_baron_tags[] = {
   { 0, 0, 0, 0 }
 };
 
-
 rom_info lunar_lander_roms[] = {
-  { "roms/LunarLander/034572.02", 0x6000, 0x0800, 0 },
-  { "roms/LunarLander/034571.02", 0x6800, 0x0800, 0 },
-  { "roms/LunarLander/034570.02", 0x7000, 0x0800, 0 },
-  { "roms/LunarLander/034569.02", 0x7800, 0x0800, 0 },
-
-  { "roms/LunarLander/034599.01", 0x4800, 0x0800, 0 },
-  { "roms/LunarLander/034598.01", 0x5000, 0x0800, 0 },
-  { "roms/LunarLander/034597.01", 0x5800, 0x0800, 0 },
-
+  { "roms/llanderx/034572-02.f1", 0x6000, 0x0800, 0 },
+  { "roms/llanderx/034571-02.de1", 0x6800, 0x0800, 0 },
+  { "roms/llanderx/034570-01.c1", 0x7000, 0x0800, 0 },
+  { "roms/llanderx/034569-02.b1", 0x7800, 0x0800, 0 },
+  { "roms/llanderx/034599-01.r3", 0x4800, 0x0800, 0 },
+  { "roms/llanderx/034598-01.np3", 0x5000, 0x0800, 0 },
+  { "roms/llanderx/034597-01.m3", 0x5800, 0x0800, 0 },
   { NULL, 0, 0, 0 }
 };
 
+/*
+rom_info lunar_lander_roms[] = {
+  { "roms/Lunar/034572.02", 0x6000, 0x0800, 0 },
+  { "roms/Lunar/034571.02", 0x6800, 0x0800, 0 },
+  { "roms/Lunar/034570.02", 0x7000, 0x0800, 0 },
+  { "roms/Lunar/034569.02", 0x7800, 0x0800, 0 },
+  { "roms/Lunar/034599.01", 0x4800, 0x0800, 0 },
+  { "roms/Lunar/034598.01", 0x5000, 0x0800, 0 },
+  { "roms/Lunar/034597.01", 0x5800, 0x0800, 0 },
+  { NULL, 0, 0, 0 }
+};
+*/
 tag_info lunar_lander_tags[] = {
   { 0x0000, 0x0100, RD | WR, MEMORY },    /* RAM */
   { 0x0100, 0x0100, RD | WR, LUNAR_MEM }, /* copy of ZP for stack */
@@ -1654,6 +2276,15 @@ tag_info lunar_lander_tags[] = {
 };
 
 rom_info asteroids_roms[] = {
+  { "roms/Asteroid2/035145-02.ef2", 0x6800, 0x0800, 0 },
+  { "roms/Asteroid2/035144-02.h2", 0x7000, 0x0800, 0 },
+  { "roms/Asteroid2/035143-02.j2", 0x7800, 0x0800, 0 },
+  { "roms/Asteroid2/035127-02.np3", 0x5000, 0x0800, 0 },
+  { NULL, 0, 0, 0 }
+};
+
+/*
+rom_info asteroids_roms[] = {
   { "roms/Asteroids/035145.02", 0x6800, 0x0800, 0 },
   { "roms/Asteroids/035144.02", 0x7000, 0x0800, 0 },
   { "roms/Asteroids/035143.02", 0x7800, 0x0800, 0 },
@@ -1662,7 +2293,7 @@ rom_info asteroids_roms[] = {
 
   { NULL, 0, 0, 0 }
 };
-
+*/
 tag_info asteroids_tags[] = {
   { 0x0000, 0x0400, RD | WR, MEMORY }, /* RAM */
 
@@ -1733,12 +2364,30 @@ tag_info asteroidsdx_tags[] = {
   { 0, 0, 0, 0 }
 };
 
-rom_info major_havoc_roms[] = {
+rom_info major_havoc_roms[] =
+{
   /* this is copied from Gravitar and hasn't yet been updated! */
+  { "roms/MajorHavoc/136025.104", 0x9000, 0x4000, 0 },
+  { "roms/MajorHavoc/136025.103", 0xa000, 0x4000, 0 },
+  { "roms/MajorHavoc/136025.109", 0xb000, 0x4000, 0 },
+  { "roms/MajorHavoc/136025.101", 0xc000, 0x4000, 0 },
+  { "roms/MajorHavoc/136025.106", 0xd000, 0x4000, 0 },
+  { "roms/MajorHavoc/136025.107", 0xe000, 0x4000, 0 },
+  { "roms/MajorHavoc/136025.108", 0x3000, 0x4000, 0 },
+
+  /* vector generator */
+  { "roms/MajorHavoc/136025.110", 0x2000, 0x2000, 0 },
+
+  { NULL,   0,      0,      0 }
+};
+
+/*
+rom_info major_havoc_roms[] = {
+ 
   // updated from mame 0.36 (RC)
 
 
-  /* Alpha Processor ROMs */
+  // Alpha Processor ROMs 
   // ROM_REGION( 0x21000, REGION_CPU1 )
 
   // vector generator
@@ -1758,13 +2407,13 @@ rom_info major_havoc_roms[] = {
   // Gamma Processor ROM
   { "roms/MajorHavoc/136010.108", 0x08000, 0x4000, 0 },
 
-  //  ROM_REGION( 0x10000, REGION_CPU2 )	/* 16k for code */
+  //  ROM_REGION( 0x10000, REGION_CPU2 )	// 16k for code 
 
-  // ROM_RELOAD( 0x0c000, 0x4000 ) /* reset+interrupt vectors */
+  // ROM_RELOAD( 0x0c000, 0x4000 ) // reset+interrupt vectors 
 
   { NULL, 0, 0, 0 }
 };
-
+*/
 tag_info major_havoc_tags[] = {
   /* this is copied from Gravitar and hasn't yet been updated! */
   { 0x0000, 0x0800, RD | WR, MEMORY }, /* RAM */
@@ -1808,6 +2457,67 @@ void tag_area(uint16_t addr, uint32_t len, int32_t dir, int32_t tag) {
       mem[addr].tagw = tag;
     addr++;
   }
+}
+
+int read_rom_image_avg( const char* fn, unsigned char *faddr, unsigned len, unsigned off_set ) {
+   unsigned j;
+
+#ifdef VSTCM
+  // open the file on the sd card
+   File dataFile = SD.open( fn, FILE_READ );
+
+   if (dataFile) {
+      Serial.println( fn );
+
+      for (j = 0; j < len; j++) {
+         faddr[j]= dataFile.read();
+      }
+
+      // close the file:
+      dataFile.close();
+   }
+   else {
+  // if the file didn't open, print an error:
+      char msg[100];
+      sprintf( msg, "error: can't open file '%s'.\n", fn );
+      Serial.println( msg );
+      return 1;
+   }
+#else
+   char rompath[200];
+   char rom[4096];  // Black Widow ROMS are 4K
+
+   strcpy( rompath, MY_ROMPATH );
+   strcat( rompath, fn );
+
+   FILE* f = fopen( rompath, "rb" );
+   if (f == NULL) {
+     // strcpy(gMsg, "error: can't open file");
+
+      printf( "error: can't open file '%s'.\n", rompath );
+      return 1;
+   }
+   else
+      printf( "loading '%s'.\n", rompath );
+
+   size_t result = fread( rom, sizeof( uint8_t ), len, f );
+   if (result != len) {
+     // strcpy(gMsg, "error: while reading file");
+      fprintf( stderr, "error: while reading file '%s'\n", rompath );
+      return 1;
+   }
+   else
+
+      printf( "loaded '%s'.\n", rompath );
+
+   for (j = 0; j < len; j++) {
+      faddr[j] = rom[j];
+     
+   }
+
+   fclose( f );
+#endif
+   return 0;
 }
 
 int read_rom_image(const char *fn, unsigned faddr, unsigned len, unsigned off_set) {
@@ -1925,6 +2635,88 @@ void copy_rom(uint16_t source, uint16_t dest, uint16_t len) {
   }
 }
 
+unsigned char m_rom_data[64];  // not persisting!
+//static int SIZE_DATA = 0x40;
+static unsigned char CK = 0x01;
+static unsigned char C1 = 0x02;
+static unsigned char C2 = 0x04;
+static unsigned char CS1 = 0x08;
+static unsigned char CS2 = 0x10;
+
+// internal state
+unsigned char m_control_state;
+unsigned char m_address;
+static unsigned char m_data2;
+
+void init_earom() {
+  for (int ii = 0; ii < 64; ii++)
+    m_rom_data[ii] = 0xff;
+}
+
+
+void update_state() {
+  switch (m_control_state & (C1 | C2)) {
+    // write mode; erasing is required, so we perform an AND against previous
+    // data to simulate incorrect behavior if erasing was not done
+    case 0:
+      m_rom_data[m_address] &= m_data2;
+      //            LOG("Write %02X = %02X\n", m_address, m_data);
+      break;
+
+    // erase mode
+    case 0x10:  //C2:
+      m_rom_data[m_address] = 0xff;
+      //            LOG("Erase %02X\n", m_address);
+      break;
+  }
+}
+
+void earom_set_control(unsigned char cs1, unsigned char cs2, unsigned char c1, unsigned char c2) {
+  // create a new composite control state
+  unsigned char oldstate = m_control_state;
+  m_control_state = oldstate & CK;
+  m_control_state |= (c1 != 0) ? C1 : 0;
+  m_control_state |= (c2 != 0) ? C2 : 0;
+  m_control_state |= (cs1 != 0) ? CS1 : 0;
+  m_control_state |= (cs2 != 0) ? CS2 : 0;
+
+  // if not selected, or if change from previous, we're done
+  if ((m_control_state & (CS1 | CS2)) != (CS1 | CS2) || m_control_state == oldstate)
+    return;
+
+  update_state();
+}
+
+void earom_set_clk(unsigned char state) {
+  unsigned char oldstate = m_control_state;
+  if (state)
+    m_control_state |= CK;
+  else
+    m_control_state &= ~CK;
+
+  // updates occur on falling edge when chip is selected
+  if ((m_control_state & (CS1 | CS2)) == (CS1 | CS2) && (m_control_state != oldstate) && !state) {
+    // read mode (C2 is "Don't Care")
+    if ((m_control_state & C1) == C1) {
+      m_data2 = m_rom_data[m_address];
+      //            LOG("Read %02X = %02X\n", m_address, m_data);
+    }
+
+    update_state();
+  }
+}
+
+unsigned char earom_read() {
+  return m_data2;
+}
+
+void earom_write(unsigned char offset, unsigned char data) {
+  m_address = offset & 0x3f;
+  m_data2 = data;
+}
+
+
+
 void setup_game(void) {
   tag_area(0x0000, 0x10000, RD | WR, UNKNOWN);
 
@@ -1997,21 +2789,105 @@ void setup_game(void) {
       break;
 
     case TEMPEST:
+      init_earom();
       setup_roms_and_tags(tempest_roms, tempest_tags);
+
+      mem[0x11b].tagr = TEMPEST_PROTECTTION_0;
+      mem[0x455].tagr = TEMPEST_PROTECTTION_0;
+      mem[0x11f].tagr = TEMPEST_PROTECTTION_0;
+      mem[0x720].tagr = TEMPEST_PROTECTTION_0;
+      /*      
+00011B  1  xx           copyr_vid_cksum1
+000455  1  xx           copyr_vid_cksum2
+
+00011F  1  xx           pokey_piracy_detected
+000720  1  xx           pokey_piracy_detected2
+*/
+// read_rom_image(const char *fn, unsigned faddr, unsigned len, unsigned off_set)
+//  read_rom_image(rom_list->name, rom_list->addr, rom_list->len, rom_list->offset);
+    //  read_rom_image_avg("roms/tempest/136002-125.d7", &avg_prom, 256, 0 );  // NOT SURE THIS IS RIGHT, CHECK IN PITREX
+        // Modify the function call to pass the correct type for the second argument.  
+        // Use the array name without the address-of operator (&) to pass a pointer to the first element.  
+        read_rom_image_avg("roms/tempest/136002-125.d7", avg_prom, 256, 0);
+      vector_mem_offset = 0x2000;
+      avg_init(vector_mem_offset, 0x800);
+
 
       /* copy_rom (0xc000, 0xe000, 0x2000); */
       copy_rom(0xdffa, 0xfffa, 6);
 
-      // This function is in pitrex but missing here, maybe necessary for the game to run
-      //avg_init(vector_mem_offset, 0x800);
-      vector_mem_offset = 0x2000;
 
 #ifdef MAGIC_PC
       mem[0xc7a7].magic = 1;
 #endif
 
-      optionreg[0] = 0xff;
-      optionreg[1] = 0xff;
+      optionreg[0] = 0x02;  //N13 INVERTED and backwards
+      optionreg[1] = 0x00;  //L12 INVERTED and backwards
+
+      /*
+   
+    GAME OPTIONS:
+    (8-position switch at N13 on Analog Vector-Generator PCB)
+
+    1   2   3   4   5   6   7   8   Meaning
+    -------------------------------------------------------------------------
+    Off Off                         2 lives per game
+    On  On                          3 lives per game
+    On  Off                         4 lives per game
+    Off On                          5 lives per game
+            On  On  Off             Bonus life every 10000 pts
+            On  On  On              Bonus life every 20000 pts
+            On  Off On              Bonus life every 30000 pts
+            On  Off Off             Bonus life every 40000 pts
+            Off On  On              Bonus life every 50000 pts
+            Off On  Off             Bonus life every 60000 pts
+            Off Off On              Bonus life every 70000 pts
+            Off Off Off             No bonus lives
+                        On  On      English
+                        On  Off     French
+                        Off On      German
+                        Off Off     Spanish
+                                On  1-credit minimum
+                                Off 2-credit minimum
+
+ PRICING OPTIONS:
+    (8-position switch at L12 on Analog Vector-Generator PCB)
+    1   2   3   4   5   6   7   8   Meaning
+    -------------------------------------------------------------------------
+    On  On  On                      No bonus coins
+    On  On  Off                     For every 2 coins, game adds 1 more coin
+    On  Off On                      For every 4 coins, game adds 1 more coin
+    On  Off Off                     For every 4 coins, game adds 2 more coins
+    Off On  On                      For every 5 coins, game adds 1 more coin
+    Off On  Off                     For every 3 coins, game adds 1 more coin
+    On  Off                 Off On  Demonstration Mode (see notes)
+    Off Off                 Off On  Demonstration-Freeze Mode (see notes)
+                On                  Left coin mech * 1
+                Off                 Left coin mech * 2
+                    On  On          Right coin mech * 1
+                    On  Off         Right coin mech * 4
+                    Off On          Right coin mech * 5
+                    Off Off         Right coin mech * 6
+                            Off On  Free Play
+                            Off Off 1 coin 2 plays
+                            On  On  1 coin 1 play
+                            On  Off 2 coins 1 play * 
+ * 
+    GAME OPTIONS:
+    (4-position switch at D/E2 on Math Box PCB)
+
+    1   2   3   4                   Meaning
+    -------------------------------------------------------------------------
+        Off                         Minimum rating range: 1, 3, 5, 7, 9
+        On                          Minimum rating range tied to high score
+            Off Off                 Medium difficulty (see notes)
+            Off On                  Easy difficulty (see notes)
+            On  Off                 Hard difficulty (see notes)
+            On  On                  Medium difficulty (see notes)
+
+
+
+*/
 
       portrait = 1;
 
@@ -2737,9 +3613,9 @@ void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc) {
   uint8_t temp;
   uint32_t currentMillis = 0;
 
-  /* if (addr == VGO) {
+   if (addr == VGO) {
     printf("MEMWR: VGO write detected! PC=%04X, Value=%02X, Cycle=%lu\n", PC, val, cyc);
-  }*/
+  }
   /*
 #ifdef VSTCM
   Serial.printf( "MEMWR: addr=%04X val=%02X PC=%04X cyc=%lu tagw=%02X\n",
@@ -2791,6 +3667,10 @@ void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc) {
         break;
       case WDCLR:
       case EAROMCON:
+#define BIT(x, n) (((x) >> (n)) & 1)
+        earom_set_control(BIT(val, 3), 1, !BIT(val, 2), BIT(val, 1));
+        earom_set_clk(BIT(val, 0));
+        break;
       case EAROMWR:
         /* none of these are implemented yet, but they're OK. */
         break;
@@ -2831,6 +3711,7 @@ void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc) {
         mb_go(addr & 0x1f, val);
         break;
       case COLORRAM:
+        mem[addr].cell = val;
         break;
       case TEMP_OUTPUTS:
         break;
@@ -3087,6 +3968,7 @@ void log_z_change(uint16_t PC, uint8_t new_flags) {
 }
 
 uint8_t last_A = 0;  // Store last known value of A
+int nextDraw = 30000;
 
 void sim_6502(void) {
   uint16_t PC;
@@ -3099,7 +3981,7 @@ void sim_6502(void) {
   DECLARE_CC;          // Not sure exactly why this is needed, but it is
   uint32_t totcycles;  // Changed from unsigned long to uint32_t
 
-  SP = 0xFE;  // This was missing, and caused SP to be 0 on PC, and FE on Teensy (trying to get them to execute identically)
+ // SP = 0xFE;  // This was missing, and caused SP to be 0 on PC, and FE on Teensy (trying to get them to execute identically)
 
 #ifdef COUNT_INTERRUPTS
   int int_count = 0;
@@ -3125,25 +4007,22 @@ void sim_6502(void) {
   uint32_t loopcount = 0;
 #endif
 
-test_interrupt:  // There is a goto later on coming back here
+  while (1)
+  {
+
+     if (game == TEMPEST)
+     {
+        if (nextDraw < totcycles)
+        {
+           avg_draw_vector_list_t();
+           nextDraw = totcycles + 30000;
+        }
+     }
 
   handle_input();  // Check for input from the user: maybe not necessary to call on each loop iteration
                    // this needs to be executed at the beginning in order to put a value in iSWx
 
-#ifdef WRAP_CYC_COUNT
-  if (totcycles > WRAP_CYC_COUNT) {
-    if (irq_cycle >= (totcycles - WRAP_CYC_COUNT))
-      irq_cycle -= WRAP_CYC_COUNT;
-    if (vg_done_cyc >= (totcycles - WRAP_CYC_COUNT))
-      vg_done_cyc -= WRAP_CYC_COUNT;
-#ifdef VG_DEBUG
-    if (last_vgo_cyc >= (totcycles - WRAP_CYC_COUNT))
-      last_vgo_cyc -= WRAP_CYC_COUNT;
-#endif
-    totcycles -= WRAP_CYC_COUNT;
-    cyc_wraps++;
-  }
-#endif
+
 
   if (totcycles > irq_cycle) {
     if (use_nmi) {
@@ -3165,7 +4044,7 @@ test_interrupt:  // There is a goto later on coming back here
         SET_I;
         PC = memrdwd(0xfffa, PC, totcycles);
         totcycles += 7;
-        irq_cycle += 6144;  // <<<<<< hkjr 03/30/14. NMI in an MMI occasionally with a # like this...
+     //   irq_cycle += 6144;  // <<<<<< hkjr 03/30/14. NMI in an MMI occasionally with a # like this...
 
         //   handle_input();
       }
@@ -3182,22 +4061,17 @@ test_interrupt:  // There is a goto later on coming back here
         if ((int_quit) && (int_count >= int_quit))
           exit(0);
 #endif
-        dopush(PC >> 8, PC);
-        dopush(PC & 0xff, PC);
-        dopush(flags_to_byte, PC);
+        dopush( PC >> 8, PC );
+        dopush( PC & 0xff, PC );
+        dopush( flags_to_byte, PC );
         SET_I;
-        PC = memrdwd(0xfffe, PC, totcycles);
+        PC = memrdwd( 0xfffe, PC, totcycles );
         totcycles += 7;
-        if (game == TEMPEST)
-          irq_cycle += 6144;
-        else
-          irq_cycle = ~(1L);
-        //#if 0
-        //     fprintf (stderr, "irq_cycle = %lu\n", irq_cycle);
-        //#endif
-        //    handle_input();
+//		  irq_cycle = 0x7fffffff;
+//		  handle_input ();
       }
     }
+    irq_cycle += 6144;
   }
 
 #ifdef WATCHDOG_HACK
@@ -3216,7 +4090,7 @@ test_interrupt:  // There is a goto later on coming back here
   fflush( trace_file );
 #endif
 */
-  while (1) {
+  
 
 
     /*    if (PC < 0x8000) { // Ignore ROM fetches
@@ -3260,12 +4134,13 @@ test_interrupt:  // There is a goto later on coming back here
 */
 
     //#if 1
-    opcode = mem[PC++].cell;
+  //  opcode = mem[PC++].cell;
     //#else
     //   opcode = memrd(PC, PC, totcycles);
     //   PC++;
     //#endif
 
+    opcode = memrd( PC, PC, totcycles ); PC++;
 
     /*
 #ifdef VSTCM
@@ -3280,286 +4155,201 @@ test_interrupt:  // There is a goto later on coming back here
 
     //sound_update(p);
 
-    last_A = A;  // Store previous value of A
+   // last_A = A;  // Store previous value of A
 
 
-    switch (opcode) /* execute opcode */
+    switch (opcode) 			/* execute opcode */
     {
-      case 0x69: /* ADC */ EA_IMM DO_ADC C(2) break;
-      case 0x6d: /* ADC */ EA_ABS DO_ADC C(3) break;
-      case 0x65: /* ADC */ EA_ZP DO_ADC C(4) break;
-      case 0x61: /* ADC */ EA_IND_X DO_ADC C(6) break;
-      case 0x71: /* ADC */ EA_IND_Y DO_ADC C(5) break;
-      case 0x75: /* ADC */ EA_ZP_X DO_ADC C(4) break;
-      case 0x7d: /* ADC */ EA_ABS_X DO_ADC C(4) break;
-      case 0x79: /* ADC */ EA_ABS_Y DO_ADC C(4) break;
+    case 0x69:  /* ADC */  EA_IMM;    DO_ADC;   C( 2 );  break;
+    case 0x65:  /* ADC */  EA_ZP;     DO_ADC;   C( 3 );  break;
+    case 0x75:  /* ADC */  EA_ZP_X;   DO_ADC;   C( 4 );  break;
+    case 0x6d:  /* ADC */  EA_ABS;    DO_ADC;   C( 4 );  break;
+    case 0x7d:  /* ADC */  EA_ABS_X_C;  DO_ADC;   C( 4 );  break;
+    case 0x79:  /* ADC */  EA_ABS_Y_C;  DO_ADC;   C( 4 );  break;
+    case 0x61:  /* ADC */  EA_IND_X;  DO_ADC;   C( 6 );  break;
+    case 0x71:  /* ADC */  EA_IND_Y_C;  DO_ADC;   C( 5 );  break;
 
-      case 0x29: /* AND */ EA_IMM DO_AND C(2) break;
-      case 0x2d: /* AND */ EA_ABS DO_AND C(4) break;
-      case 0x25: /* AND */ EA_ZP DO_AND C(3) break;
-      case 0x21: /* AND */ EA_IND_X DO_AND C(6) break;
-      case 0x31: /* AND */ EA_IND_Y DO_AND C(5) break;
-      case 0x35: /* AND */ EA_ZP_X DO_AND C(4) break;
-      case 0x39: /* AND */ EA_ABS_Y DO_AND C(4) break;
-      case 0x3d: /* AND */ EA_ABS_X DO_AND C(4) break;
+    case 0x29:  /* AND */  EA_IMM;    DO_AND;   C( 2 );  break;
+    case 0x25:  /* AND */  EA_ZP;     DO_AND;   C( 3 );  break;
+    case 0x35:  /* AND */  EA_ZP_X;   DO_AND;   C( 4 );  break;
+    case 0x2d:  /* AND */  EA_ABS;    DO_AND;   C( 4 );  break;
+    case 0x3d:  /* AND */  EA_ABS_X_C;  DO_AND;   C( 4 );  break;
+    case 0x39:  /* AND */  EA_ABS_Y_C;  DO_AND;   C( 4 );  break;
+    case 0x21:  /* AND */  EA_IND_X;  DO_AND;   C( 6 );  break;
+    case 0x31:  /* AND */  EA_IND_Y_C;  DO_AND;   C( 5 );  break;
 
-      case 0x0e: /* ASL */
+    case 0x0a:  /* ASL */            DO_ASLA;  C( 2 );  break;
+    case 0x06:  /* ASL */  EA_ZP;     DO_ASL;   C( 5 );  break;
+    case 0x16:  /* ASL */  EA_ZP_X;   DO_ASL;   C( 6 );  break;
+    case 0x0e:  /* ASL */  EA_ABS;    DO_ASL;   C( 6 );  break;
+    case 0x1e:  /* ASL */  EA_ABS_X;  DO_ASL;   C( 7 );  break;
 
-        EA_ABS DO_ASL C(6)
+    case 0x90:  /* BCC */		 DO_BCC;   C( 2 );  continue;
+    case 0xb0:  /* BCS */		 DO_BCS;   C( 2 );  continue;
+    case 0xf0:  /* BEQ */		 DO_BEQ;   C( 2 );  continue;
+    case 0x30:  /* BMI */		 DO_BMI;   C( 2 );  continue;
+    case 0xd0:  /* BNE */		 DO_BNE;   C( 2 );  continue;
+    case 0x10:  /* BPL */		 DO_BPL;   C( 2 );  continue;
+    case 0x50:  /* BVC */		 DO_BVC;   C( 2 );  continue;
+    case 0x70:  /* BVS */		 DO_BVS;   C( 2 );  continue;
 
-
-          break;
-      case 0x06: /* ASL */
-
-
-        EA_ZP DO_ASL C(5)
-
-
-          break;
-      case 0x0a: /* ASL */
-
-
-        DO_ASLA C(2)
-
-
-          break;
-      case 0x16: /* ASL */
-
-
-        EA_ZP_X DO_ASL C(6)
-
-
-          break;
-      case 0x1e: /* ASL */
-
-
-        EA_ABS_X DO_ASL C(7)
-
-          break;
-
-      case 0x90: /* BCC */ DO_BCC C(2) goto test_interrupt;
-      case 0xb0: /* BCS */ DO_BCS C(2) goto test_interrupt;
-      case 0xf0: /* BEQ */ DO_BEQ C(2) goto test_interrupt;
-      case 0x30: /* BMI */ DO_BMI C(2) goto test_interrupt;
-      case 0xd0: /* BNE */
-
-        //  log_stack(PC, SP, mem);
-
-        DO_BNE C(2) goto test_interrupt;
-      case 0x10: /* BPL */ DO_BPL C(2) goto test_interrupt;
-      case 0x50: /* BVC */ DO_BVC C(2) goto test_interrupt;
-      case 0x70: /* BVS */ DO_BVS C(2) goto test_interrupt;
-
-      case 0x2c: /* BIT */ EA_ABS DO_BIT C(4) break;
-      case 0x24: /* BIT */ EA_ZP DO_BIT C(3) break;
+    case 0x24:  /* BIT */  EA_ZP;     DO_BIT;   C( 3 );  break;
+    case 0x2c:  /* BIT */  EA_ABS;    DO_BIT;   C( 4 );  break;
 
 #if 0
-	case 0x00:  /* BRK */            DO_BRK   C( 7)  break;
+    case 0x00:  /* BRK */            DO_BRK;   C( 7 );  break;
 #endif
 
-      case 0x18: /* CLC */ DO_CLC C(2) break;
-      case 0xd8: /* CLD */ DO_CLD C(2) break;
-      case 0x58: /* CLI */ DO_CLI C(2) goto test_interrupt;
-      case 0xb8: /* CLV */ DO_CLV C(2) break;
+    case 0x18:  /* CLC */            DO_CLC;   C( 2 );  break;
+    case 0xd8:  /* CLD */            DO_CLD;   C( 2 );  break;
+    case 0x58:  /* CLI */            DO_CLI;   C( 2 );  break;
+    case 0xb8:  /* CLV */            DO_CLV;   C( 2 );  break;
 
-      case 0xC9: /* CMP Immediate */
-        {
-          //  uint8_t old_flags = flags_to_byte;  // Store previous flag state
-          EA_IMM DO_CMP C(2);  // Execute CMP instruction
+    case 0xc9:  /* CMP */  EA_IMM;    DO_CMP;   C( 2 );  break;
+    case 0xc5:  /* CMP */  EA_ZP;     DO_CMP;   C( 3 );  break;
+    case 0xd5:  /* CMP */  EA_ZP_X;   DO_CMP;   C( 4 );  break;
+    case 0xcd:  /* CMP */  EA_ABS;    DO_CMP;   C( 4 );  break;
+    case 0xdd:  /* CMP */  EA_ABS_X_C;  DO_CMP;   C( 4 );  break;
+    case 0xd9:  /* CMP */  EA_ABS_Y_C;  DO_CMP;   C( 4 );  break;
+    case 0xc1:  /* CMP */  EA_IND_X;  DO_CMP;   C( 6 );  break;
+    case 0xd1:  /* CMP */  EA_IND_Y_C;  DO_CMP;   C( 5 );  break;
 
-          // Check if Z flag changed
-          /*   if ((old_flags & Z_BIT) != (flags_to_byte & Z_BIT)) {
-            log_z_change(PC, flags_to_byte);  // Log change for Teensy/PC debugging
-          }*/
-          break;
-        }
+    case 0xe0:  /* CPX */  EA_IMM;    DO_CPX;   C( 2 );  break;
+    case 0xe4:  /* CPX */  EA_ZP;     DO_CPX;   C( 3 );  break;
+    case 0xec:  /* CPX */  EA_ABS;    DO_CPX;   C( 4 );  break;
 
-      case 0xcd: /* CMP */ EA_ABS DO_CMP C(4) break;
-      case 0xc5: /* CMP */ EA_ZP DO_CMP C(3) break;
-      case 0xc1: /* CMP */ EA_IND_X DO_CMP C(6) break;
-      case 0xd1: /* CMP */ EA_IND_Y DO_CMP C(5) break;
-      case 0xd5: /* CMP */ EA_ZP_X DO_CMP C(4) break;
-      case 0xd9: /* CMP */ EA_ABS_Y DO_CMP C(4) break;
-      case 0xdd: /* CMP */ EA_ABS_X DO_CMP C(4) break;
+    case 0xc0:  /* CPY */  EA_IMM;    DO_CPY;   C( 2 );  break;
+    case 0xc4:  /* CPY */  EA_ZP;     DO_CPY;   C( 3 );  break;
+    case 0xcc:  /* CPY */  EA_ABS;    DO_CPY;   C( 4 );  break;
 
-      case 0xe0: /* CPX */ EA_IMM DO_CPX C(2) break;
-      case 0xec: /* CPX */ EA_ABS DO_CPX C(4) break;
-      case 0xe4: /* CPX */ EA_ZP DO_CPX C(3) break;
+    case 0xc6:  /* DEC */  EA_ZP;     DO_DEC;   C( 5 );  break;
+    case 0xd6:  /* DEC */  EA_ZP_X;   DO_DEC;   C( 6 );  break;
+    case 0xce:  /* DEC */  EA_ABS;    DO_DEC;   C( 6 );  break;
+    case 0xde:  /* DEC */  EA_ABS_X;  DO_DEC;   C( 7 );  break;
 
-      case 0xc0: /* CPY */ EA_IMM DO_CPY C(2) break;
-      case 0xcc: /* CPY */ EA_ABS DO_CPY C(4) break;
-      case 0xc4: /* CPY */ EA_ZP DO_CPY C(3) break;
+    case 0xca:  /* DEX */            DO_DEX;   C( 2 );  break;
+    case 0x88:  /* DEY */            DO_DEY;   C( 2 );  break;
 
-      case 0xce: /* DEC */ EA_ABS DO_DEC C(6) break;
-      case 0xc6: /* DEC */ EA_ZP DO_DEC C(5) break;
-      case 0xd6: /* DEC */ EA_ZP_X DO_DEC C(6) break;
-      case 0xde: /* DEC */ EA_ABS_X DO_DEC C(7) break;
+    case 0x49:  /* EOR */  EA_IMM;    DO_EOR;   C( 2 );  break;
+    case 0x45:  /* EOR */  EA_ZP;     DO_EOR;   C( 3 );  break;
+    case 0x55:  /* EOR */  EA_ZP_X;   DO_EOR;   C( 4 );  break;
+    case 0x4d:  /* EOR */  EA_ABS;    DO_EOR;   C( 4 );  break;
+    case 0x5d:  /* EOR */  EA_ABS_X_C;  DO_EOR;   C( 4 );  break;
+    case 0x59:  /* EOR */  EA_ABS_Y_C;  DO_EOR;   C( 4 );  break;
+    case 0x41:  /* EOR */  EA_IND_X;  DO_EOR;   C( 6 );  break;
+    case 0x51:  /* EOR */  EA_IND_Y_C;  DO_EOR;   C( 5 );  break;
 
-      case 0xca: /* DEX */ DO_DEX C(2) break;
-      case 0x88: /* DEY */ DO_DEY C(2) break;
+    case 0xe6:  /* INC */  EA_ZP;     DO_INC;   C( 5 );  break;
+    case 0xf6:  /* INC */  EA_ZP_X;   DO_INC;   C( 6 );  break;
+    case 0xee:  /* INC */  EA_ABS;    DO_INC;   C( 6 );  break;
+    case 0xfe:  /* INC */  EA_ABS_X;  DO_INC;   C( 7 );  break;
 
-      case 0x49: /* EOR */ EA_IMM DO_EOR C(2) break;
-      case 0x4d: /* EOR */ EA_ABS DO_EOR C(4) break;
-      case 0x45: /* EOR */ EA_ZP DO_EOR C(3) break;
-      case 0x41: /* EOR */ EA_IND_X DO_EOR C(6) break;
-      case 0x51: /* EOR */ EA_IND_Y DO_EOR C(5) break;
-      case 0x55: /* EOR */ EA_ZP_X DO_EOR C(4) break;
-      case 0x59: /* EOR */ EA_ABS_Y DO_EOR C(4) break;
-      case 0x5d: /* EOR */ EA_ABS_X DO_EOR C(4) break;
+    case 0xe8:  /* INX */            DO_INX;   C( 2 );  break;
+    case 0xc8:  /* INY */            DO_INY;   C( 2 );  break;
 
-      case 0xee: /* INC */ EA_ABS DO_INC C(6) break;
-      case 0xe6: /* INC */ EA_ZP DO_INC C(5) break;
-      case 0xf6: /* INC */ EA_ZP_X DO_INC C(6) break;
-      case 0xfe: /* INC */ EA_ABS_X DO_INC C(7) break;
+    case 0x4c:  /* JMP */  EA_ABS;    DO_JMP;   C( 3 );  continue;
+    case 0x6c:  /* JMP */  EA_IND;    DO_JMP;   C( 5 );  continue;
 
-      case 0xe8: /* INX */ DO_INX C(2) break;
-      case 0xc8: /* INY */ DO_INY C(2) break;
+    case 0x20:  /* JSR */  EA_ABS;    DO_JSR;   C( 6 );  continue;
 
-      case 0x4c: /* JMP */ EA_ABS DO_JMP C(3) goto test_interrupt;
-      case 0x6c: /* JMP */ EA_IND DO_JMP C(5) goto test_interrupt;
+    case 0xa9:  /* LDA */  EA_IMM;    DO_LDA;   C( 2 );  break;
+    case 0xa5:  /* LDA */  EA_ZP;     DO_LDA;   C( 3 );  break;
+    case 0xb5:  /* LDA */  EA_ZP_X;   DO_LDA;   C( 4 );  break;
+    case 0xad:  /* LDA */  EA_ABS;    DO_LDA;   C( 4 );  break;
+    case 0xbd:  /* LDA */  EA_ABS_X_C;  DO_LDA;   C( 4 );  break;
+    case 0xb9:  /* LDA */  EA_ABS_Y_C;  DO_LDA;   C( 4 );  break;
+    case 0xa1:  /* LDA */  EA_IND_X;  DO_LDA;   C( 6 );  break;
+    case 0xb1:  /* LDA */  EA_IND_Y_C;  DO_LDA;   C( 5 );  break;
 
-      case 0x20: /* JSR */ EA_ABS DO_JSR C(6) goto test_interrupt;
+    case 0xa2:  /* LDX */  EA_IMM;    DO_LDX;   C( 2 );  break;
+    case 0xa6:  /* LDX */  EA_ZP;     DO_LDX;   C( 3 );  break;
+    case 0xb6:  /* LDX */  EA_ZP_Y;   DO_LDX;   C( 4 );  break;
+    case 0xae:  /* LDX */  EA_ABS;    DO_LDX;   C( 4 );  break;
+    case 0xbe:  /* LDX */  EA_ABS_Y_C;  DO_LDX;   C( 4 );  break;
 
-      case 0xa9: /* LDA */ EA_IMM DO_LDA C(2) break;
-      case 0xad: /* LDA */ EA_ABS DO_LDA C(4) break;
-      case 0xa5: /* LDA */ EA_ZP DO_LDA C(3) break;
-      case 0xa1: /* LDA */ EA_IND_X DO_LDA C(6) break;
-      case 0xb1: /* LDA */ EA_IND_Y DO_LDA C(5) break;
-      case 0xb5: /* LDA */ EA_ZP_X DO_LDA C(4) break;
-      case 0xb9: /* LDA */ EA_ABS_Y DO_LDA C(4) break;
-      case 0xbd: /* LDA */ EA_ABS_X DO_LDA C(4) break;
+    case 0xa0:  /* LDY */  EA_IMM;    DO_LDY;   C( 2 );  break;
+    case 0xa4:  /* LDY */  EA_ZP;     DO_LDY;   C( 3 );  break;
+    case 0xb4:  /* LDY */  EA_ZP_X;   DO_LDY;   C( 4 );  break;
+    case 0xac:  /* LDY */  EA_ABS;    DO_LDY;   C( 4 );  break;
+    case 0xbc:  /* LDY */  EA_ABS_X_C;  DO_LDY;   C( 4 );  break;
 
-      case 0xa2: /* LDX */
+    case 0x4a:  /* LSR */            DO_LSRA;  C( 2 );  break;
+    case 0x46:  /* LSR */  EA_ZP;     DO_LSR;   C( 5 );  break;
+    case 0x56:  /* LSR */  EA_ZP_X;   DO_LSR;   C( 6 );  break;
+    case 0x4e:  /* LSR */  EA_ABS;    DO_LSR;   C( 6 );  break;
+    case 0x5e:  /* LSR */  EA_ABS_X;  DO_LSR;   C( 7 );  break;
 
-        EA_IMM DO_LDX C(2) break;
-      case 0xae: /* LDX */
+    case 0xea:  /* NOP */                     C( 2 );  break;
 
-        EA_ABS DO_LDX C(4) break;
-      case 0xa6: /* LDX */
+    case 0x09:  /* ORA */  EA_IMM;    DO_ORA;   C( 2 );  break;
+    case 0x05:  /* ORA */  EA_ZP;     DO_ORA;   C( 3 );  break;
+    case 0x15:  /* ORA */  EA_ZP_X;   DO_ORA;   C( 4 );  break;
+    case 0x0d:  /* ORA */  EA_ABS;    DO_ORA;   C( 4 );  break;
+    case 0x1d:  /* ORA */  EA_ABS_X_C;  DO_ORA;   C( 4 );  break;
+    case 0x19:  /* ORA */  EA_ABS_Y_C;  DO_ORA;   C( 4 );  break;
+    case 0x01:  /* ORA */  EA_IND_X;  DO_ORA;   C( 6 );  break;
+    case 0x11:  /* ORA */  EA_IND_Y_C;  DO_ORA;   C( 5 );  break;
 
-        EA_ZP DO_LDX C(3) break;
-      case 0xbe: /* LDX */
+    case 0x48:  /* PHA */            DO_PHA;   C( 3 );  break;
+    case 0x08:  /* PHP */            DO_PHP;   C( 3 );  break;
+    case 0x68:  /* PLA */            DO_PLA;   C( 4 );  break;
+    case 0x28:  /* PLP */            DO_PLP;   C( 4 );  break;
 
-        EA_ABS_Y DO_LDX C(4) break;
-      case 0xb6: /* LDX */
+    case 0x2a:  /* ROL */            DO_ROLA;  C( 2 );  break;
+    case 0x26:  /* ROL */  EA_ZP;     DO_ROL;   C( 5 );  break;
+    case 0x36:  /* ROL */  EA_ZP_X;   DO_ROL;   C( 6 );  break;
+    case 0x2e:  /* ROL */  EA_ABS;    DO_ROL;   C( 6 );  break;
+    case 0x3e:  /* ROL */  EA_ABS_X;  DO_ROL;   C( 7 );  break;
 
-        EA_ZP_Y DO_LDX C(4) break;
+    case 0x6a:  /* ROR */            DO_RORA;  C( 2 );  break;
+    case 0x66:  /* ROR */  EA_ZP;     DO_ROR;   C( 5 );  break;
+    case 0x76:  /* ROR */  EA_ZP_X;   DO_ROR;   C( 6 );  break;
+    case 0x6e:  /* ROR */  EA_ABS;    DO_ROR;   C( 6 );  break;
+    case 0x7e:  /* ROR */  EA_ABS_X;  DO_ROR;   C( 7 );  break;
 
-      case 0xa0: /* LDY */ EA_IMM DO_LDY C(2) break;
-      case 0xac: /* LDY */ EA_ABS DO_LDY C(4) break;
-      case 0xa4: /* LDY */ EA_ZP DO_LDY C(3) break;
-      case 0xb4: /* LDY */ EA_ZP_X DO_LDY C(4) break;
-      case 0xbc: /* LDY */ EA_ABS_X DO_LDY C(4) break;
+    case 0x40:  /* RTI */            DO_RTI;   C( 6 );  continue;
+    case 0x60:  /* RTS */            DO_RTS;   C( 6 );  continue;
 
-      case 0x4e: /* LSR */ EA_ABS DO_LSR C(6) break;
-      case 0x46: /* LSR */ EA_ZP DO_LSR C(5) break;
-      case 0x4a: /* LSR */ DO_LSRA C(2) break;
-      case 0x56: /* LSR */ EA_ZP_X DO_LSR C(6) break;
-      case 0x5e: /* LSR */ EA_ABS_X DO_LSR C(7) break;
+    case 0xe9:  /* SBC */  EA_IMM;    DO_SBC;   C( 2 );  break;
+    case 0xe5:  /* SBC */  EA_ZP;     DO_SBC;   C( 3 );  break;
+    case 0xf5:  /* SBC */  EA_ZP_X;   DO_SBC;   C( 4 );  break;
+    case 0xed:  /* SBC */  EA_ABS;    DO_SBC;   C( 4 );  break;
+    case 0xfd:  /* SBC */  EA_ABS_X_C;  DO_SBC;   C( 4 );  break;
+    case 0xf9:  /* SBC */  EA_ABS_Y_C;  DO_SBC;   C( 4 );  break;
+    case 0xe1:  /* SBC */  EA_IND_X;  DO_SBC;   C( 6 );  break;
+    case 0xf1:  /* SBC */  EA_IND_Y_C;  DO_SBC;   C( 5 );  break;
 
-      case 0xea: /* NOP */
-        C(2)
-        break;
+    case 0x38:  /* SEC */            DO_SEC;   C( 2 );  break;
+    case 0xf8:  /* SED */            DO_SED;   C( 2 );  break;
+    case 0x78:  /* SEI */            DO_SEI;   C( 2 );  break;
 
-      case 0x09: /* ORA */ EA_IMM DO_ORA C(2) break;
-      case 0x0d: /* ORA */ EA_ABS DO_ORA C(4) break;
-      case 0x05: /* ORA */ EA_ZP DO_ORA C(3) break;
-      case 0x01: /* ORA */ EA_IND_X DO_ORA C(6) break;
-      case 0x11: /* ORA */ EA_IND_Y DO_ORA C(5) break;
-      case 0x15: /* ORA */ EA_ZP_X DO_ORA C(4) break;
-      case 0x19: /* ORA */ EA_ABS_Y DO_ORA C(4) break;
-      case 0x1d: /* ORA */ EA_ABS_X DO_ORA C(4) break;
+    case 0x85:  /* STA */  EA_ZP;     DO_STA;   C( 3 );  break;
+    case 0x95:  /* STA */  EA_ZP_X;   DO_STA;   C( 4 );  break;
+    case 0x8d:  /* STA */  EA_ABS;    DO_STA;   C( 4 );  break;
+    case 0x9d:  /* STA */  EA_ABS_X;  DO_STA;   C( 5 );  break;
+    case 0x99:  /* STA */  EA_ABS_Y;  DO_STA;   C( 5 );  break;
+    case 0x81:  /* STA */  EA_IND_X;  DO_STA;   C( 6 );  break;
+    case 0x91:  /* STA */  EA_IND_Y;  DO_STA;   C( 6 );  break;
 
-      case 0x48: /* PHA */ DO_PHA C(3) break;
-      case 0x08: /* PHP */ DO_PHP C(3) break;
-      case 0x68: /* PLA */ DO_PLA C(4) break;
-      case 0x28: /* PLP */ DO_PLP C(4) goto test_interrupt;
+    case 0x86:  /* STX */  EA_ZP;     DO_STX;   C( 3 );  break;
+    case 0x96:  /* STX */  EA_ZP_Y;   DO_STX;   C( 4 );  break;
+    case 0x8e:  /* STX */  EA_ABS;    DO_STX;   C( 4 );  break;
 
-      case 0x2e: /* ROL */ EA_ABS DO_ROL C(6) break;
-      case 0x26: /* ROL */ EA_ZP DO_ROL C(5) break;
-      case 0x2a: /* ROL */ DO_ROLA C(2) break;
-      case 0x36: /* ROL */ EA_ZP_X DO_ROL C(6) break;
-      case 0x3e: /* ROL */ EA_ABS_X DO_ROL C(7) break;
+    case 0x84:  /* STY */  EA_ZP;     DO_STY;   C( 3 );  break;
+    case 0x94:  /* STY */  EA_ZP_X;   DO_STY;   C( 4 );  break;
+    case 0x8c:  /* STY */  EA_ABS;    DO_STY;   C( 4 );  break;
 
-      case 0x6e: /* ROR */ EA_ABS DO_ROR C(6) break;
-      case 0x66: /* ROR */ EA_ZP DO_ROR C(5) break;
-      case 0x6a: /* ROR */ DO_RORA C(2) break;
-      case 0x76: /* ROR */ EA_ZP_X DO_ROR C(6) break;
-      case 0x7e: /* ROR */ EA_ABS_X DO_ROR C(7) break;
+    case 0xaa:  /* TAX */            DO_TAX;   C( 2 );  break;
+    case 0xa8:  /* TAY */            DO_TAY;   C( 2 );  break;
+    case 0x98:  /* TYA */            DO_TYA;   C( 2 );  break;
+    case 0xba:  /* TSX */            DO_TSX;   C( 2 );  break;
+    case 0x8a:  /* TXA */            DO_TXA;   C( 2 );  break;
+    case 0x9a:  /* TXS */            DO_TXS;   C( 2 );  break;
 
-      case 0x40: /* RTI */ DO_RTI C(6) goto test_interrupt;
-      case 0x60: /* RTS */ DO_RTS C(6) goto test_interrupt;
-
-      case 0xe9: /* SBC */ EA_IMM DO_SBC C(2) break;
-      case 0xed: /* SBC */ EA_ABS DO_SBC C(4) break;
-      case 0xe5: /* SBC */ EA_ZP DO_SBC C(3) break;
-      case 0xe1: /* SBC */ EA_IND_X DO_SBC C(6) break;
-      case 0xf1: /* SBC */ EA_IND_Y DO_SBC C(5) break;
-      case 0xf5: /* SBC */ EA_ZP_X DO_SBC C(4) break;
-      case 0xf9: /* SBC */ EA_ABS_Y DO_SBC C(4) break;
-      case 0xfd: /* SBC */ EA_ABS_X DO_SBC C(4) break;
-
-      case 0x38: /* SEC */ DO_SEC C(2) break;
-      case 0xf8: /* SED */ DO_SED C(2) break;
-      case 0x78: /* SEI */ DO_SEI C(2) break;
-
-      case 0x8d: /* STA */
-                 /*  if (addr == VGO) /
-            
-#ifdef VSTCM
-            Serial.printf( "STA VGO: PC=%04X A=%02X SP=%02X CYC=%d\n", PC, A, SP, totcycles );
-            Serial.flush();
-#else
-            fprintf( trace_file, "STA VGO: PC=%04X A=%02X SP=%02X CYC=%d\n", PC, A, SP, totcycles );
-            fflush( trace_file );
-#endif
-         }
-         */
-        EA_ABS DO_STA C(4) break;
-      case 0x85: /* STA */
-
-
-        EA_ZP DO_STA C(3) break;
-      case 0x81: /* STA */
-
-
-        EA_IND_X DO_STA C(6) break;
-      case 0x91: /* STA */
-
-
-        EA_IND_Y DO_STA C(6) break;
-      case 0x95: /* STA */
-
-
-        EA_ZP_X DO_STA C(4) break;
-      case 0x99: /* STA */
-
-
-        EA_ABS_Y DO_STA C(5) break;
-      case 0x9d: /* STA */
-
-
-        EA_ABS_X DO_STA C(5) break;
-
-      case 0x8e: /* STX */ EA_ABS DO_STX C(4) break;
-      case 0x86: /* STX */ EA_ZP DO_STX C(3) break;
-      case 0x96: /* STX */ EA_ZP_Y DO_STX C(4) break;
-
-      case 0x8c: /* STY */ EA_ABS DO_STY C(4) break;
-      case 0x84: /* STY */ EA_ZP DO_STY C(3) break;
-      case 0x94: /* STY */ EA_ZP_X DO_STY C(4) break;
-
-      case 0xaa: /* TAX */ DO_TAX C(2) break;
-      case 0xa8: /* TAY */ DO_TAY C(2) break;
-      case 0x98: /* TYA */ DO_TYA C(2) break;
-      case 0xba: /* TSX */ DO_TSX C(2) break;
-      case 0x8a: /* TXA */ DO_TXA C(2) break;
-      case 0x9a: /* TXS */ DO_TXS C(2) break;
-
-      default:
-        printf("@%x Illegal opcode %2x\n", PC, opcode);
-        breakflag = 1;
-        break;
+    default:
+       printf( "@%x Illegal opcode %2x\r\n", PC, opcode );
+       breakflag = 1;
+       break;
     }  // end switch opcode
 
 #ifdef VSTCM
