@@ -48,7 +48,7 @@ const bool SWAP_XY = false;
 const bool PINCUSHION = false;
 const int NORMAL1 = 150;  // Brightness of text in parameter list
 const int BRIGHTER = 230;
-const int COLOUR_SWITCH = 0;  // 0 = Colour display, 1 = monochrome
+const int COLOUR_SWITCH = 1;  // 1 = Colour display, 0 = monochrome
 // how long in milliseconds to wait for data before displaying a test pattern
 // this can be increased if the test pattern appears during gameplay
 const int SERIAL_WAIT_TIME = 150;

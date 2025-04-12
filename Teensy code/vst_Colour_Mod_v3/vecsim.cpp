@@ -636,6 +636,7 @@ void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc);
 #define rdVram(r) memrd((r) + m_vectorram_offset, 0, 0)
 #define rdProm(p) avg_prom[(p)]
 
+static int colorram[16]; /* colorram entries */
 
 
 int old_x = 0;
@@ -657,11 +658,20 @@ static inline void draw_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, int
 #endif
   */
 
+  // if (game == ASTEROIDS || game == ASTEROIDS_DX) {
   // Asteroids x = -32 to 1055, y = -31 to 800
-  x1 = 1 + (((x1 + 32) * 243000) >> 16);
-  x2 = 1 + (((x2 + 32) * 243000) >> 16);
-  y1 = 1 + (((y1 + 31) * 310000) >> 16);
-  y2 = 1 + (((y2 + 31) * 310000) >> 16);
+      x1 = 1 + (((x1 + 32) * 243000) >> 16);
+      x2 = 1 + (((x2 + 32) * 243000) >> 16);
+      y1 = 1 + (((y1 + 31) * 310000) >> 16);
+      y2 = 1 + (((y2 + 31) * 310000) >> 16);
+  // }
+
+	/*	if (game == GRAVITAR || game == SPACE_DUEL) {
+			x1 += 512;
+			x2 += 512;
+			y1 -= 512;
+			y2 -= 512;
+		}*/
 
   if (x1 < 0 || x1 > 4095 || y1 < 0 || y1 > 4095 || x2 < 0 || x2 > 4095 || y2 < 0 || y2 > 4095)
     return;  // don't bother drawing it if it's out of bounds
@@ -720,7 +730,8 @@ void vg_add_point_buf(int x, int y, int color, int intensity) {
   // printf("draw_line: %i,%i,%i,%i,%i,%i\n", (old_x>>SHIFT_T), -(old_y>>SHIFT_T), (x>>SHIFT_T), -(y>>SHIFT_T), color, intensity>>4);
   //  draw_line2 ((old_x>>SHIFT_T), -(old_y>>SHIFT_T), (x>>SHIFT_T), -(y>>SHIFT_T), color, intensity>>4);
   //draw_line2((old_y >> SHIFT_T), -(old_x >> SHIFT_T), (y >> SHIFT_T), -(x >> SHIFT_T), color, intensity >> 4);
-  draw_line((old_y >> SHIFT_T), -(old_x >> SHIFT_T), (y >> SHIFT_T), -(x >> SHIFT_T), color, intensity >> 4);
+ // draw_line((old_y >> SHIFT_T), -(old_x >> SHIFT_T), (y >> SHIFT_T), -(x >> SHIFT_T), color, intensity >> 4);
+  draw_line( old_y, old_x, x, y, color, intensity );
   old_x = x;
   old_y = y;
 }
@@ -972,7 +983,7 @@ int avg_common_strobe2() {
 
 int handler_6()  // avg_strobe2
 {
-  if ((OP2 == 0) && (m_dvy12 == 0)) {
+  if (!OP2 && !m_dvy12 ) {
     m_color = m_dvy & 0x7;
     m_intensity = (m_dvy >> 4) & 0xf;
   }
@@ -985,7 +996,8 @@ int avg_common_strobe3() {
 
   m_halt = OP0;
 
-  if ((m_op & 5) == 0) {
+ // if ((m_op & 5) == 0) {
+  if (!OP0 && !OP2) { // RC 12/04/2025: updated to same as latest version of MAME
     if (OP1) {
       cycles = 0x100 - (m_timer & 0xff);
     } else {
@@ -996,12 +1008,13 @@ int avg_common_strobe3() {
     m_xpos += ((((m_dvx >> 3) ^ m_xdac_xor) - 0x200) * cycles * (m_scale ^ 0xff)) >> 4;
     m_ypos -= ((((m_dvy >> 3) ^ m_ydac_xor) - 0x200) * cycles * (m_scale ^ 0xff)) >> 4;
   }
+
   if (OP2) {
     cycles = 0x8000 - m_timer;
     m_timer = 0;
     m_xpos = m_xcenter;
     m_ypos = m_ycenter;
-    vg_add_point_buf(m_xpos, m_ypos, 0, 0);
+    vg_add_point_buf(m_xpos, m_ypos, 0, 0);  
   }
 
   return cycles;
@@ -1011,7 +1024,8 @@ int handler_7()  // avg_strobe3
 {
   const int cycles = avg_common_strobe3();
 
-  if ((m_op & 5) == 0) {
+  //if ((m_op & 5) == 0) {
+  if (!OP0 && !OP2) { // RC 12/04/2025: updated to same as latest version of MAME
     vg_add_point_buf(m_xpos, m_ypos, m_color, (((m_int_latch >> 1) == 1) ? m_intensity : m_int_latch & 0xe) << 4);
   }
 
@@ -1026,9 +1040,9 @@ int handler_7()  // avg_strobe3
 
 int tempest_handler_6()  // tempest_strobe2
 {
-  if ((OP2 == 0) && (m_dvy12 == 0)) {
-    /* Contrary to previous documentation in MAME,
-		Tempest does not have the m_enspkl bit. */
+  if (!OP2 && !m_dvy12) {
+    // Contrary to previous documentation in MAME,
+		// Tempest does not have the m_enspkl bit. 
     if (m_dvy & 0x800)
       m_color = m_dvy & 0xf;
     else
@@ -1041,11 +1055,13 @@ int tempest_handler_6()  // tempest_strobe2
 int rgb_t(u8 r, u8 g, u8 b) {
   return ((r + g + b) / 3) / 32;
 }
+
 int tempest_handler_7()  // tempest_strobe3
 {
   const int cycles = avg_common_strobe3();
 
-  if ((m_op & 5) == 0) {
+  if (!OP0 && !OP2) { // RC 12/04/2025: updated to same as latest version of MAME
+ // if ((m_op & 5) == 0) {
     const u8 data = rdColor(m_color);
     const u8 bit3 = (~data >> 3) & 1;
     const u8 bit2 = (~data >> 2) & 1;
@@ -1058,7 +1074,7 @@ int tempest_handler_7()  // tempest_strobe3
 
     int x = m_xpos;
     int y = m_ypos;
-
+    
     vg_add_point_buf(y - m_ycenter + m_xcenter,
                      x - m_xcenter + m_ycenter, rgb_t(r, g, b),
                      (((m_int_latch >> 1) == 1) ? m_intensity : m_int_latch & 0xe) << 4);
@@ -1078,6 +1094,9 @@ void avg_halt(int dummy) {
   m_sync_halt = dummy;
 }
 
+// NB Lastest version of MAME in avgdvg.cpp has different functions to handle Major Havoc, Quantum, Tempest,
+// Battle Zone and Star Wars which need to be replicated here
+
 /********************************************************************
  *
  * State Machine
@@ -1091,6 +1110,9 @@ void avg_halt(int dummy) {
  *
  *******************************************************************/
 
+// This code can be found in TIMER_CALLBACK_MEMBER(avgdvg_device_base::run_state_machine)
+// in the latest version of MAME  
+
 void avg_draw_vector_list_t() {
   int cycles = 0;
   int oldHalt = 0;
@@ -1098,20 +1120,19 @@ void avg_draw_vector_list_t() {
   //open_page (0);
   if (!m_halt) {
     do {
-      /* Get next state */
+      // Get next state 
       m_state_latch = (m_state_latch & 0x10) | (rdProm(state_addr()) & 0xf);
 
       if (ST3) {
-        /* Read vector RAM/ROM */
+        // Read vector RAM/ROM 
         // "reading" after the last AVG mem
         // 0xffff
         // after handler 0 + handler 1
         // this generates a "Unknown rd addr 4001 data 00 tag 03"
         // break...
-        //
         update_databus();
 
-        /* Decode state and call the corresponding handler */
+        // Decode state and call the corresponding handler 
         switch (m_state_latch & 7) {
           case 0: cycles += handler_0(); break;
           case 1: cycles += handler_1(); break;
@@ -1119,6 +1140,8 @@ void avg_draw_vector_list_t() {
           case 3: cycles += handler_3(); break;
           case 4: cycles += handler_4(); break;
           case 5: cycles += handler_5(); break;
+
+				 // Following 2 lines are generic in MAME to handle games other than Tempest
           case 6: cycles += tempest_handler_6() /*handler_6()*/; break;
           case 7: cycles += tempest_handler_7() /*handler_7()*/; break;
         }
@@ -1128,9 +1151,9 @@ void avg_draw_vector_list_t() {
       //		if (m_halt && !(m_state_latch & 0x10))
       //			m_vg_halt_timer->adjust(attotime::from_hz(MASTER_CLOCK) * cycles, 1);
 
-      if ((m_halt) && (oldHalt == 0)) {
+      if (m_halt && !oldHalt)
         oldHalt = 1;
-      }
+
       m_state_latch = (m_halt << 4) | (m_state_latch & 0xf);
       cycles += 8;
     } while ((m_pc != 0) && (!m_halt));
@@ -1147,7 +1170,7 @@ void avg_draw_vector_list_t() {
  ************************************/
 
 
-
+// go_w in MAME
 void avg_go(unsigned long cyc) {
   vggo();
   /*
@@ -1175,6 +1198,7 @@ void avg_go(unsigned long cyc) {
 
 void avg_reset(unsigned long cyc) {
   vgrst();
+  // vg_set_halt in MAME
   avg_halt(1);
 }
 // END DISPLAY.C AVG FUNCTIONS
@@ -1255,6 +1279,7 @@ static int vector_timer(long deltax, long deltay) {
 static void dvg_vector_timer(int scale) {
   vg_done_cyc += 4 << scale;
 }
+
 
 static void dvg_draw_vector_list(void) {
   static int32_t pc;
@@ -1378,7 +1403,10 @@ static void dvg_draw_vector_list(void) {
         currentx += deltax;
         currenty -= deltay;
         dvg_vector_timer(temp);
-        draw_line(oldx, oldy, currentx, currenty, 7, z);    // 7 = always same colour... needs to be improved
+
+		  // See VIDEO_AVGDVG.C for more sophisticated code for adding vectors to a buffer, colour handling, etc.
+        
+        draw_line(oldx, oldy, currentx, currenty, 7, z);    // 7 = always same colour... needs to be improved as Bzone needs Green & Red
         break;
 
       case DLABS:
@@ -1392,6 +1420,7 @@ static void dvg_draw_vector_list(void) {
 	  if (firstwd & 0x0800)
 	    y = y - 0x1000;
 */
+		  // This scaling is handled better in video_avgdvg.c, improve this
         scale = secondwd >> 12;
         currentx = x;
         currenty = (896 - y);  // This prevents wraparound of the Y axis with the scores at the bottom of the screen
@@ -1488,7 +1517,7 @@ static void dvg_draw_vector_list(void) {
 #endif
         currentx += deltax;
         currenty -= deltay;
-        //   dvg_vector_timer(temp);   // commented out in pitrex code
+        //   dvg_vector_timer(temp);   // commented out in pitrex code but present in TeensyMAME
         vg_done_cyc += ((4 << temp) * 4) / 8;
         draw_line(oldx, oldy, currentx, currenty, 7, z);
         break;
@@ -1590,6 +1619,21 @@ static void avg_draw_vector_list(void) {
 
     switch (opcode) {
       case VCTR:
+			/* From TeensyMAME code:
+         if (vectorEngine == USE_AVG_QUANTUM)
+         {
+            x = twos_comp_val( secondwd, 12 );
+            y = twos_comp_val( firstwd, 12 );
+         }
+         else
+         {
+           // These work for all other games. 
+            x = twos_comp_val( secondwd, 13 );
+            y = twos_comp_val( firstwd, 13 );
+         }
+         z = (secondwd >> 12) & ~0x01;
+         */
+
         x = twos_comp_val(secondwd, 13);
         y = twos_comp_val(firstwd, 13);
         z = 2 * (secondwd >> 13);
@@ -1624,10 +1668,12 @@ static void avg_draw_vector_list(void) {
         currenty -= deltay;
         vg_done_cyc += vector_timer(deltax, deltay);
 
-        draw_line(oldx >> 13, oldy >> 13, currentx >> 13, currenty >> 13, color, z);
+       // draw_line(oldx >> 13, oldy >> 13, currentx >> 13, currenty >> 13, color, z);
+        // Gravitar uses this line of code, so colour needs to be correct, not 7! however using color in place of 7 doesn't draw line currently
+        draw_line( oldx >> 13, oldy >> 13, currentx >> 13, currenty >> 13, color, z );
         break;
 
-      case SVEC:
+      case SVEC:     // Draw a short vector
         x = twos_comp_val(firstwd, 5) << 1;
         y = twos_comp_val(firstwd >> 8, 5) << 1;
         z = 2 * ((firstwd >> 5) & 7);
@@ -1665,6 +1711,8 @@ static void avg_draw_vector_list(void) {
         break;
 
       case STAT:
+         // These lines are a bit different for Star Wars, see lib retro source for details
+         // also Tempest needs a sparkle bit
         color = firstwd & 0x0f;
         statz = (firstwd >> 4) & 0x0f;
 #ifdef VG_DEBUG
@@ -1730,6 +1778,11 @@ static void avg_draw_vector_list(void) {
           currentx = HSIZE;
           currenty = VSIZE;
         }
+
+        // Maybe should move to the centre like in other versions of MAME?
+       /* currentx = xcenter;  // ASG 080497 .ac JAN2498 
+        currenty = ycenter;  
+        vector_add_point( currentx, currenty, 0, 0 ); */
 
         break;
 
@@ -3161,6 +3214,10 @@ void MacInitColors(void) {
         } else
           gColorValue[color][z] = gColorValue[color][z + 1];
       }
+
+   /* initialize the colorram */
+  for (int i = 0; i < 16; i++)
+     colorram[i] = i & 0x07;
 }
 
 
