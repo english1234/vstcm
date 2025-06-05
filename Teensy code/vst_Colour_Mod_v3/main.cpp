@@ -13,6 +13,7 @@
 #ifdef VSTCM
 #include <arduino.h>  // Prevents compiler warnings on Teensy
 #include "advmame.h"
+#include <Bounce2.h>
 #else
 #include SDL_PATH
 #define _CRT_RAND_S
@@ -27,6 +28,12 @@
 
 bool should_quit = false;
 
+volatile bool overlay_settings = false;
+
+#ifdef VSTCM
+extern Bounce button1;
+extern Bounce button3;
+#endif
 
 //For spot killer fix - if the total distance in x or y is less than SPOT_MAX, it will go to the corners to try to stop
 //the spot killer from triggering
@@ -214,13 +221,6 @@ void draw_mystify() {
     draw_to_xyrgb(lines[i].x2, lines[i].y2, 128, 128, 128);
   }
 }
-
-volatile bool overlay_settings = false;
-
-#include <Bounce2.h>
-
-extern Bounce button1;
-extern Bounce button3;
 
 // Wrapper function to enable calling by VSTCM without creating confusion about
 // location of main() function (allows compilation on either Teensy or Visual Studio)

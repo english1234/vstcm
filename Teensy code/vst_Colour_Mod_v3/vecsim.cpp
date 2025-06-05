@@ -42,7 +42,6 @@ extern char gMsg[50];  // Optional additional information to show on menu
 #include <ctype.h>
 #include SDL_PATH
 
-
 #endif
 
 #include "vecsim.h"
@@ -62,20 +61,6 @@ extern SDL_Renderer *rend_2D_orig;  // Renderer for original 2D game
 #endif
 
 #define MAX_ARGS 16
-/*
-struct hdr {
-  unsigned short pc;
-  unsigned short a;
-  unsigned short x;
-  unsigned short y;
-  unsigned short sp;
-  unsigned short flags;
-  unsigned long totcycles;
-  unsigned long cyc_wraps;
-  unsigned long irq_cycle;
-  unsigned long icount;
-};
-*/
 
 typedef struct _elem {
   uint8_t cell;
@@ -167,9 +152,6 @@ RGBColor black = { 0, 0, 0 };
 RGBColor white = { 0xFFFF, 0xFFFF, 0xFFFF };
 RGBColor green = { 0, 0xFFFF, 0 };
 
-//static int32_t x1min = 1, x1max = 1, y1min = 1, y1max = 1;
-//static int32_t x2min = 1, x2max = 1, y2min = 1, y2max = 1;
-
 extern bool should_quit;
 extern bool has_focus;
 
@@ -189,7 +171,6 @@ static int iSW5 = 0;
 uint8_t optionreg[MAX_OPT_REG] = { 0xff, 0xff, 0xff };
 
 /* math box scratch registers */
-//s16 mb_reg[16];
 uint16_t mb_reg[16];  // at one point a value of 0xFFFF is assigned to REGF, so it should be unsigned 16 bits to avoid overflow
 
 /* math box result */
@@ -232,7 +213,6 @@ const uint32_t VSIZE = (1024 * 8192);
 volatile int16_t soundBuffer[BUFFER_SIZE];  // Audio sample buffer
 volatile uint16_t bufferIndex = 0;          // Playback index
 volatile uint8_t isPlaying = 0;             // Flag to track playback
-
 
 // Thump variables
 int thumpSpeed = 1000;   // Initial speed in ms
@@ -306,12 +286,10 @@ s32 m_clipy_max;
 int m_xmin, m_xmax, m_ymin, m_ymax;
 int m_xcenter, m_ycenter;
 
-
 u16 m_vectorram_offset;
 u16 m_colorram_offset;
 u8 *m_prom;
 u8 avg_prom[256];
-
 
 int avg_done(unsigned long cyc) {
 
@@ -328,7 +306,6 @@ int vg_done(unsigned long cyc) {
 
   return (!vg_busy);
 }
-
 
 uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
   // byte MEMRD( unsigned addr, int PC, unsigned long cyc ) {
@@ -594,7 +571,6 @@ uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
   return (result);
 }
 
-
 uint8_t memrd_debug(uint16_t addr, uint16_t PC, uint32_t cycles) {
 #ifdef VSTCM
   Serial.printf("memrd_debug before if: PC=%04X Addr=2401 Value=%02X tagr=%02X CYC=%d\n", PC, mem[addr].cell, mem[addr].tagr, cycles);
@@ -627,17 +603,13 @@ uint8_t memrd_debug(uint16_t addr, uint16_t PC, uint32_t cycles) {
 
 void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc);
 
-
 // DISPLAY.C AVG FUNCTIONS
-
-
 
 #define rdColor(c) memrd((c) + m_colorram_offset, 0, 0)
 #define rdVram(r) memrd((r) + m_vectorram_offset, 0, 0)
 #define rdProm(p) avg_prom[(p)]
 
 static int colorram[16]; /* colorram entries */
-
 
 int old_x = 0;
 int old_y = 0;
@@ -736,7 +708,6 @@ void vg_add_point_buf(int x, int y, int color, int intensity) {
   old_y = y;
 }
 
-
 /********************************************************************
  *
  *  AVG handler functions
@@ -817,14 +788,12 @@ void avg_init(u16 vram, u16 cram) {
   m_ydac_xor = 0x200;
 }
 
-
 u8 state_addr()  // avg_state_addr
 {
   return (((m_state_latch >> 4) ^ 1) << 7)
          | (m_op << 4)
          | (m_state_latch & 0xf);
 }
-
 
 void update_databus()  // avg_data
 {
@@ -836,7 +805,6 @@ void vggo()  // avg_vggo
   m_pc = 0;
   m_sp = 0;
 }
-
 
 void vgrst()  // avg_vgrst
 {
@@ -918,7 +886,6 @@ int handler_4()  // avg_strobe0
   return 0;
 }
 
-
 int avg_common_strobe1() {
   if (OP2) {
     if (OP1)
@@ -942,7 +909,6 @@ int handler_5()  // avg_strobe1
 
   return avg_common_strobe1();
 }
-
 
 int avg_common_strobe2() {
   if (OP2) {
@@ -1848,7 +1814,53 @@ static void avg_draw_vector_list(void) {
 int32_t drop_frames = 0;
 static int32_t df = 1;
 
-void vg_go(uint32_t cyc) {
+
+// Add a timestamp to throttle vg_go to 60Hz
+static uint32_t last_vg_millis = 0;
+
+void vg_go( uint32_t cyc ) {
+   vg_busy = 1;
+   vg_done_cyc = cyc + 8;
+
+#ifdef VG_DEBUG
+   vgo_count++;
+   if (trace_vgo)
+      printf( "VGO #%d at cycle %d, delta %d\n", vgo_count, cyc, cyc - last_vgo_cyc );
+   last_vgo_cyc = cyc;
+#endif
+
+   if (--df == 0) {
+      df = (drop_frames > 0) ? drop_frames : 1;
+
+      // Throttle to ~60Hz (16ms/frame)
+#ifdef VSTCM
+      while (millis() - last_vg_millis < 16) {
+        // wait actively (or use delayMicroseconds(100))
+      }
+      last_vg_millis = millis();
+#else
+      while (SDL_GetTicks() - last_vg_millis < 16) {
+         SDL_Delay( 1 ); // yield to system
+      }
+      last_vg_millis = SDL_GetTicks();
+#endif
+
+      if (dvg) {
+         dvg_draw_vector_list();
+      }
+      else {
+         if (game == TEMPEST) {
+            avg_go( cyc );
+         }
+         else {
+            avg_draw_vector_list();
+         }
+      }
+   }
+}
+
+
+void old_vg_go(uint32_t cyc) {
   /*
 #ifdef VSTCM
    Serial.println( "vg_go() STARTED!" );
@@ -4064,8 +4076,13 @@ void sim_6502(void) {
   uint32_t loopcount = 0;
 #endif
 
+#ifndef VSTCM
+  Uint32 last_time = SDL_GetTicks();  // Get the starting time
+#endif
+
   while (1)
   {
+
 
      if (game == TEMPEST)
      {
@@ -4424,8 +4441,39 @@ void sim_6502(void) {
       SDL_SetRenderDrawColor(rend_2D_orig, 0, 0, 0, 255);  // Black background
       SDL_RenderClear(rend_2D_orig);                       // Clear the buffer only after we've displayed it
       loopcount = 0;
+
+      // Cap the frame rate to ~60Hz (roughly 16ms/frame)
+      Uint32 now = SDL_GetTicks();
+      Uint32 elapsed = now - last_time;
+
+      if (elapsed < 16) {
+         SDL_Delay( 16 - elapsed );
+      }
+
+      last_time = SDL_GetTicks();  // reset for next frame
+
     }
 #endif
+	 // Throttle the CPU to avoid running too fast
+#ifndef VSTCM
+
+    
+#else
+// Teensy version (VSTCM)
+	 // Throttle the CPU to avoid running too fast
+    static const uint32_t CYCLES_PER_SLICE = 10000;
+    static const uint32_t NANOS_PER_CYCLE = 667;  // Roughly 1.5 MHz: 1 / 1.5e6 = ~667 ns
+
+    static uint32_t last_totcycles = 0;
+    if (totcycles - last_totcycles >= CYCLES_PER_SLICE) {
+       uint32_t delay_nanos = (totcycles - last_totcycles) * NANOS_PER_CYCLE;
+       delayNanoseconds( delay_nanos );  // Teensy-specific delay
+       last_totcycles = totcycles;
+    }
+#endif
+
+
+
 
     // Detect left and right keys pressed simultaneously to end game and return to menu
 #ifdef VSTCM
