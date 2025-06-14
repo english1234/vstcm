@@ -218,6 +218,37 @@ volatile uint8_t isPlaying = 0;             // Flag to track playback
 int thumpSpeed = 1000;   // Initial speed in ms
 int asteroidCount = 10;  // Dummy asteroid count
 
+
+// EAROM functions
+/*void init_earom();
+void earom_set_control(uint8_t cs1, uint8_t cs2, uint8_t c1, uint8_t c2);
+void earom_set_clk(uint8_t state);
+void earom_write(uint8_t offset, uint8_t data);
+uint8_t earom_read();
+void earom_update_state();
+*/
+// Define global offset variables
+int game_screen_offset_x = 0;
+int game_screen_offset_y = 0;
+
+// Helper function to set offsets based on game
+void set_game_screen_offset(int game) {
+    switch (game) {
+        case SPACE_DUEL:
+        case GRAVITAR:
+        case BLACK_WIDOW:
+            game_screen_offset_x = -2048;
+            game_screen_offset_y = -3072;
+            break;
+        case ASTEROIDS:
+        case ASTEROIDS_DX:
+        default:
+            game_screen_offset_x = 0;
+            game_screen_offset_y = 0;
+            break;
+    }
+}
+
 /*
  * This used to decrement the switch variable if it was non-zero, so that
  * they would automatically release.  This has been changed to increment
@@ -307,6 +338,134 @@ int vg_done(unsigned long cyc) {
   return (!vg_busy);
 }
 
+
+// EAROM state variables
+static uint8_t m_earom_data[64];  // 64 bytes of EAROM data
+static uint8_t m_earom_control = 0;
+static uint8_t m_earom_address = 0;
+static uint8_t m_earom_output = 0;
+
+// Initialize EAROM
+void init_earom() {
+
+    // previous version
+    //    for (int ii = 0; ii < 64; ii++)
+      //      m_rom_data[ii] = 0xff;
+
+
+    memset(m_earom_data, 0xFF, sizeof(m_earom_data));  // Start with all FF
+    m_earom_control = 0;
+    m_earom_address = 0;
+    m_earom_output = 0;
+}
+
+// Set EAROM control lines
+void earom_set_control(uint8_t cs1, uint8_t cs2, uint8_t c1, uint8_t c2) {
+    m_earom_control = (cs1 ? 0x08 : 0) |
+        (cs2 ? 0x10 : 0) |
+        (c1 ? 0x02 : 0) |
+        (c2 ? 0x04 : 0);
+
+    // create a new composite control state
+	// this is a previous version of the code that was commented out
+  /*  unsigned char oldstate = m_control_state;
+    m_control_state = oldstate & CK;
+    m_control_state |= (c1 != 0) ? C1 : 0;
+    m_control_state |= (c2 != 0) ? C2 : 0;
+    m_control_state |= (cs1 != 0) ? CS1 : 0;
+    m_control_state |= (cs2 != 0) ? CS2 : 0;
+
+    // if not selected, or if change from previous, we're done
+    if ((m_control_state & (CS1 | CS2)) != (CS1 | CS2) || m_control_state == oldstate)
+        return;
+
+    update_state();*/
+}
+
+// Set EAROM clock
+void earom_set_clk(uint8_t state) {
+    m_earom_control = (m_earom_control & ~0x01) | (state ? 0x01 : 0);
+
+
+    /*    unsigned char oldstate = m_control_state;
+        if (state)
+            m_control_state |= CK;
+        else
+            m_control_state &= ~CK;
+
+        // updates occur on falling edge when chip is selected
+        if ((m_control_state & (CS1 | CS2)) == (CS1 | CS2) && (m_control_state != oldstate) && !state) {
+            // read mode (C2 is "Don't Care")
+            if ((m_control_state & C1) == C1) {
+                m_data2 = m_rom_data[m_address];
+                //            LOG("Read %02X = %02X\n", m_address, m_data);
+            }
+
+            update_state();
+        }
+*/
+    // Note: The above commented code is not needed in the new implementation
+	// as we handle the clock and control state directly in earom_update_state()
+}
+
+// Write to EAROM
+void earom_write(uint8_t offset, uint8_t data) {
+
+
+    // This was a previous version of the code that was commented out
+     //   m_address = offset & 0x3f;
+      //  m_data2 = data;
+
+
+
+    m_earom_address = offset & 0x3F;  // Only 6-bit address
+    m_earom_output = data;
+}
+
+// Read from EAROM
+uint8_t earom_read() {
+
+
+	// This was a previous version of the code that was commented out
+      //  return m_data2;
+   
+
+    // Only read if chip is selected and in read mode
+    if ((m_earom_control & 0x18) == 0x18 &&  // CS1 and CS2 both high
+        (m_earom_control & 0x02)) {          // C1 high (read mode)
+        return m_earom_data[m_earom_address];
+    }
+    return 0xFF;  // Default value when not readable
+}
+
+// Update EAROM state
+void earom_update_state() {
+    // Only process if chip is selected
+    if ((m_earom_control & 0x18) != 0x18) {
+        return;
+    }
+
+    // Check for falling clock edge
+    static uint8_t last_clk = 0;
+    uint8_t current_clk = m_earom_control & 0x01;
+
+    if (last_clk && !current_clk) {  // Falling edge
+        // Read mode
+        if (m_earom_control & 0x02) {
+            m_earom_output = m_earom_data[m_earom_address];
+        }
+        // Write mode
+        else if (!(m_earom_control & 0x04)) {  // C2 low
+            m_earom_data[m_earom_address] &= m_earom_output;
+        }
+        // Erase mode
+        else if (m_earom_control & 0x04) {  // C2 high
+            m_earom_data[m_earom_address] = 0xFF;
+        }
+    }
+    last_clk = current_clk;
+}
+
 uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
   // byte MEMRD( unsigned addr, int PC, unsigned long cyc ) {
   // register uint8_t tag, result = 0;
@@ -345,6 +504,13 @@ uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
       result = mem[addr].cell;
       break;
     case COININ:
+        if (game == TEMPEST) {
+            result = (iSW2 << 7) |  // Coin 1
+                (iSW3 << 6) |  // Coin 2
+                (iSW4 << 5) |  // Service
+                (vg_done(cyc) << 3) |
+                ((cyc >> 2) & 0x80);  // 3kHz clock
+        } else
       result =
         ((!check_switch_decr(&cslot_right))) | ((!check_switch_decr(&cslot_left)) << 1) | ((!check_switch_decr(&cslot_util)) << 2) | ((!check_switch_decr(&slam)) << 3) | ((!self_test) << 4) | (1 << 5) | /* signature analysis */
         (vg_done(cyc) << 6) |
@@ -353,7 +519,8 @@ uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
       //result = iSW2;  // Using player 2 start button as coin up TEMPORARILY COMMENTED OUT WHILE TESTING TEMPEST
       break;
     case EAROMRD:
-      result = 0;
+        result = earom_read();
+      //result = 0;
       break;
     case OPTSW1:
       result = optionreg[0];
@@ -386,9 +553,16 @@ uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
       result = 0x00; /* always done! */
       break;
     case GRAVITAR_IN1:
-      result =
-        ((optionreg[2] & 0x07) << 5) | ((!switches[0].thrust) << 4) | ((!switches[0].left) << 3) | ((!switches[0].right) << 2) | ((!switches[0].fire) << 1) | ((!switches[0].shield));
-      break;
+    //  result =
+     //   ((optionreg[2] & 0x07) << 5) | ((!switches[0].thrust) << 4) | ((!switches[0].left) << 3) | ((!switches[0].right) << 2) | ((!switches[0].fire) << 1) | ((!switches[0].shield));
+      
+        result = ((optionreg[2] & 0x07) << 5) |
+            (iBUTT3 << 4) |  // Thrust
+            (iBUTT5 << 3) |  // Left
+            (iBUTT4 << 2) |  // Right
+            (iBUTT1 << 1) |  // Fire
+            (iBUTT2);        // Shield
+        break;
     case GRAVITAR_IN2:
       result =
         0x80 | /* upright cabinet */
@@ -613,61 +787,66 @@ static int colorram[16]; /* colorram entries */
 
 int old_x = 0;
 int old_y = 0;
-//extern void draw_line2(int FromX, int FromY, int ToX, int ToY, int Colour15, int z);  // z is 0:12 in lunar, colour is always 7
 
 static inline void draw_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, int color, int z) {
-  /*
-#ifdef VSTCM  // Teensy (GCC)
-      Serial.printf( "DRAW LINE from: %p -> (%d, %d) -> (%d, %d) Color=%d Z=%d\n",
-                    __builtin_return_address( 0 ), x1, y1, x2, y2, color, z );
-      Serial.flush();
-#else  // PC (Windows, MSVC)
-      void* stack[1];
-      uint32_t frames = CaptureStackBackTrace( 0, 1, stack, NULL );
-      fprintf( trace_file, "DRAW LINE from: %p -> (%d, %d) -> (%d, %d) Color=%d Z=%d\n",
-              frames ? stack[0] : NULL, x1, y1, x2, y2, color, z );
-      fflush( trace_file );
-#endif
-  */
+    /*
+  #ifdef VSTCM  // Teensy (GCC)
+        Serial.printf( "DRAW LINE from: %p -> (%d, %d) -> (%d, %d) Color=%d Z=%d\n",
+                      __builtin_return_address( 0 ), x1, y1, x2, y2, color, z );
+        Serial.flush();
+  #else  // PC (Windows, MSVC)
+        void* stack[1];
+        uint32_t frames = CaptureStackBackTrace( 0, 1, stack, NULL );
+        fprintf( trace_file, "DRAW LINE from: %p -> (%d, %d) -> (%d, %d) Color=%d Z=%d\n",
+                frames ? stack[0] : NULL, x1, y1, x2, y2, color, z );
+        fflush( trace_file );
+  #endif
+    */
 
-  // if (game == ASTEROIDS || game == ASTEROIDS_DX) {
-  // Asteroids x = -32 to 1055, y = -31 to 800
-      x1 = 1 + (((x1 + 32) * 243000) >> 16);
-      x2 = 1 + (((x2 + 32) * 243000) >> 16);
-      y1 = 1 + (((y1 + 31) * 310000) >> 16);
-      y2 = 1 + (((y2 + 31) * 310000) >> 16);
-  // }
+    // if (game == ASTEROIDS || game == ASTEROIDS_DX) {
+    // Asteroids x = -32 to 1055, y = -31 to 800
+    x1 = 1 + (((x1 + 32) * 243000) >> 16);
+    x2 = 1 + (((x2 + 32) * 243000) >> 16);
+    y1 = 1 + (((y1 + 31) * 310000) >> 16);
+    y2 = 1 + (((y2 + 31) * 310000) >> 16);
+    // }
 
-	/*	if (game == GRAVITAR || game == SPACE_DUEL) {
-			x1 += 512;
-			x2 += 512;
-			y1 -= 512;
-			y2 -= 512;
-		}*/
+      /*	if (game == GRAVITAR || game == SPACE_DUEL) {
+              x1 += 512;
+              x2 += 512;
+              y1 -= 512;
+              y2 -= 512;
+          }*/
 
-  if (x1 < 0 || x1 > 4095 || y1 < 0 || y1 > 4095 || x2 < 0 || x2 > 4095 || y2 < 0 || y2 > 4095)
-    return;  // don't bother drawing it if it's out of bounds
-             /*  
-  if (x1 < x1min) x1min = x1;
-  if (x2 < x2min) x2min = x2;
-  if (x1 > x1max) x1max = x1;
-  if (x2 > x2max) x2max = x2;
-  
-  if (y1 < y1min) y1min = y1;
-  if (y2 < y2min) y2min = y2;
-  if (y1 > y1max) y1max = y1;
-  if (y2 > y2max) y2max = y2;
-  
-  char msg[100];
+          // Apply game-specific screen offsets
+    x1 += game_screen_offset_x;
+    y1 += game_screen_offset_y;
+    x2 += game_screen_offset_x;
+    y2 += game_screen_offset_y;
 
-  sprintf (msg, "x1min %d x1max %d x2min %d x2max %d y1min %d y1max %d y2min %d y2max %d", x1min, x1max, x2min, x2max, y1min, y1max, y2min, y2max );
-  Serial.println(msg);
+    if (x1 < 0 || x1 > 4095 || y1 < 0 || y1 > 4095 || x2 < 0 || x2 > 4095 || y2 < 0 || y2 > 4095)
+        return;  // don't bother drawing it if it's out of bounds
+    /*
+if (x1 < x1min) x1min = x1;
+if (x2 < x2min) x2min = x2;
+if (x1 > x1max) x1max = x1;
+if (x2 > x2max) x2max = x2;
+
+if (y1 < y1min) y1min = y1;
+if (y2 < y2min) y2min = y2;
+if (y1 > y1max) y1max = y1;
+if (y2 > y2max) y2max = y2;
+
+char msg[100];
+
+sprintf (msg, "x1min %d x1max %d x2min %d x2max %d y1min %d y1max %d y2min %d y2max %d", x1min, x1max, x2min, x2max, y1min, y1max, y2min, y2max );
+Serial.println(msg);
 */
 
-  /*
-  observed min & max coordinates sent to draw_line
+/*
+observed min & max coordinates sent to draw_line
 
-  bzone/astdelux
+bzone/astdelux
 x = 44 to 1164
 Y = -640 to 1344
 
@@ -680,17 +859,26 @@ x = 188 to 860
 y = -1017 to 1826
 */
 
-  //  if ((x1 == x2) && (y1 == y2))
-  //   x2++;
+//  if ((x1 == x2) && (y1 == y2))
+//   x2++;
 
-  // other drawing routines in this code seem to define a colour for each pixel, so need to incorporate that in the draw_to_xyrgb function
+// other drawing routines in this code seem to define a colour for each pixel, so need to incorporate that in the draw_to_xyrgb function
 
 
-  // could store previous coordinates in order to prevent needless move commands
-  // also use a buffer to time each frame
+// could store previous coordinates in order to prevent needless move commands
+// also use a buffer to time each frame
 
-  //if (z != 0) {
-  draw_moveto(x1, 4096 - y1);
+//if (z != 0) {
+    draw_moveto(x1, 4096 - y1);
+
+	if (game == TEMPEST) {  // Tempest sends out of bounds values for some reason so this is a quick kludge
+        if (color < 0 || color >= 8 || z < 0 || z >= 16) {
+            // Handle error or return
+            color = 3;
+            z = 8;
+          //  return;
+        }
+    }
   // draw_to_xyrgb(x2, 4096 - y2, gColorValue[color][z].red >> 8, gColorValue[color][z].green >> 8, gColorValue[color][z].blue >> 8);
   draw_to_xyrgb(x2, 4096 - y2, gColorValue[color][z].red, gColorValue[color][z].green, gColorValue[color][z].blue);
   // } else
@@ -707,6 +895,8 @@ void vg_add_point_buf(int x, int y, int color, int intensity) {
   old_x = x;
   old_y = y;
 }
+
+
 
 /********************************************************************
  *
@@ -786,6 +976,21 @@ void avg_init(u16 vram, u16 cram) {
      */
   m_xdac_xor = 0x200;
   m_ydac_xor = 0x200;
+}
+
+void vg_init(void) {
+    if (dvg) {
+        // DVG initialization
+        vector_mem_offset = 0x4000; // For Asteroids/Battlezone
+        portrait = 0;
+    }
+    else {
+        // AVG initialization
+        vector_mem_offset = 0x2000; // For Gravitar/Black Widow
+        if (game == TEMPEST) {
+            avg_init(vector_mem_offset, 0x800); // Tempest needs special init
+        }
+    }
 }
 
 u8 state_addr()  // avg_state_addr
@@ -1022,31 +1227,20 @@ int rgb_t(u8 r, u8 g, u8 b) {
   return ((r + g + b) / 3) / 32;
 }
 
-int tempest_handler_7()  // tempest_strobe3
-{
-  const int cycles = avg_common_strobe3();
+// In tempest_handler_7()
+int tempest_handler_7() {
+    const int cycles = avg_common_strobe3();
+    if (!OP0 && !OP2) {
+        const uint8_t data = rdColor(m_color);
+        const uint8_t r = ((data >> 1) & 1) ? 0xff : 0x00;
+        const uint8_t g = ((data >> 2) & 1) ? 0xff : 0x00;
+        const uint8_t b = ((data >> 0) & 1) ? 0xff : 0x00;
+        const int rgb = (r << 16) | (g << 8) | b;
 
-  if (!OP0 && !OP2) { // RC 12/04/2025: updated to same as latest version of MAME
- // if ((m_op & 5) == 0) {
-    const u8 data = rdColor(m_color);
-    const u8 bit3 = (~data >> 3) & 1;
-    const u8 bit2 = (~data >> 2) & 1;
-    const u8 bit1 = (~data >> 1) & 1;
-    const u8 bit0 = (~data >> 0) & 1;
-
-    const u8 r = bit1 * 0xf3 + bit0 * 0x0c;
-    const u8 g = bit3 * 0xf3;
-    const u8 b = bit2 * 0xf3;
-
-    int x = m_xpos;
-    int y = m_ypos;
-    
-    vg_add_point_buf(y - m_ycenter + m_xcenter,
-                     x - m_xcenter + m_ycenter, rgb_t(r, g, b),
-                     (((m_int_latch >> 1) == 1) ? m_intensity : m_int_latch & 0xe) << 4);
-  }
-
-  return cycles;
+        vg_add_point_buf(m_xpos, m_ypos, rgb,
+            ((m_int_latch >> 1) == 1) ? m_intensity : (m_int_latch & 0xe) << 4);
+    }
+    return cycles;
 }
 
 /*************************************
@@ -1080,52 +1274,31 @@ void avg_halt(int dummy) {
 // in the latest version of MAME  
 
 void avg_draw_vector_list_t() {
-  int cycles = 0;
-  int oldHalt = 0;
-  //int round=0;
-  //open_page (0);
-  if (!m_halt) {
-    do {
-      // Get next state 
-      m_state_latch = (m_state_latch & 0x10) | (rdProm(state_addr()) & 0xf);
+    int cycles = 0;
 
-      if (ST3) {
-        // Read vector RAM/ROM 
-        // "reading" after the last AVG mem
-        // 0xffff
-        // after handler 0 + handler 1
-        // this generates a "Unknown rd addr 4001 data 00 tag 03"
-        // break...
-        update_databus();
+    if (game != TEMPEST) 
+        return;  // Only for Tempest
 
-        // Decode state and call the corresponding handler 
-        switch (m_state_latch & 7) {
-          case 0: cycles += handler_0(); break;
-          case 1: cycles += handler_1(); break;
-          case 2: cycles += handler_2(); break;
-          case 3: cycles += handler_3(); break;
-          case 4: cycles += handler_4(); break;
-          case 5: cycles += handler_5(); break;
+    // Special state machine implementation
+    while (!m_halt) {
+        m_state_latch = (m_state_latch & 0x10) | (rdProm(state_addr()) & 0xf);
 
-				 // Following 2 lines are generic in MAME to handle games other than Tempest
-          case 6: cycles += tempest_handler_6() /*handler_6()*/; break;
-          case 7: cycles += tempest_handler_7() /*handler_7()*/; break;
+        if (ST3) {
+            update_databus();
+            switch (m_state_latch & 7) {
+            case 0: cycles += handler_0(); break;
+            case 1: cycles += handler_1(); break;
+            case 2: cycles += handler_2(); break;
+            case 3: cycles += handler_3(); break;
+            case 4: cycles += handler_4(); break;
+            case 5: cycles += handler_5(); break;
+            case 6: cycles += tempest_handler_6(); break;
+            case 7: cycles += tempest_handler_7(); break;
+            }
         }
-      }
-
-      /* If halt flag was set, let CPU catch up before we make halt visible */
-      //		if (m_halt && !(m_state_latch & 0x10))
-      //			m_vg_halt_timer->adjust(attotime::from_hz(MASTER_CLOCK) * cycles, 1);
-
-      if (m_halt && !oldHalt)
-        oldHalt = 1;
-
-      m_state_latch = (m_halt << 4) | (m_state_latch & 0xf);
-      cycles += 8;
-    } while ((m_pc != 0) && (!m_halt));
-  }
-  //    printf("vg did run for: %i\n", cycles);
-  //close_page ();
+        m_state_latch = (m_halt << 4) | (m_state_latch & 0xf);
+        cycles += 8;
+    }
 }
 
 
@@ -1820,6 +1993,10 @@ static uint32_t last_vg_millis = 0;
 
 void vg_go( uint32_t cyc ) {
    vg_busy = 1;
+   if (game == TEMPEST) 
+       // Tempest requires faster vector updates
+       vg_done_cyc = cyc + 500;  // Instead of +8
+   else
    vg_done_cyc = cyc + 8;
 
 #ifdef VG_DEBUG
@@ -2169,6 +2346,7 @@ tag_info tempest_tags[] = {
 
   { 0, 0, 0, 0 }
 };
+
 
 rom_info battlezone_roms[] = {
   { "roms/bzone/036414-02.e1", 0x5000, 0x0800, 0 },
@@ -2709,16 +2887,12 @@ static unsigned char CS1 = 0x08;
 static unsigned char CS2 = 0x10;
 
 // internal state
-unsigned char m_control_state;
-unsigned char m_address;
-static unsigned char m_data2;
-
-void init_earom() {
-  for (int ii = 0; ii < 64; ii++)
-    m_rom_data[ii] = 0xff;
-}
+//unsigned char m_control_state;
+//unsigned char m_address;
+//static unsigned char m_data2;
 
 
+/*
 void update_state() {
   switch (m_control_state & (C1 | C2)) {
     // write mode; erasing is required, so we perform an AND against previous
@@ -2735,50 +2909,9 @@ void update_state() {
       break;
   }
 }
+*/
 
-void earom_set_control(unsigned char cs1, unsigned char cs2, unsigned char c1, unsigned char c2) {
-  // create a new composite control state
-  unsigned char oldstate = m_control_state;
-  m_control_state = oldstate & CK;
-  m_control_state |= (c1 != 0) ? C1 : 0;
-  m_control_state |= (c2 != 0) ? C2 : 0;
-  m_control_state |= (cs1 != 0) ? CS1 : 0;
-  m_control_state |= (cs2 != 0) ? CS2 : 0;
 
-  // if not selected, or if change from previous, we're done
-  if ((m_control_state & (CS1 | CS2)) != (CS1 | CS2) || m_control_state == oldstate)
-    return;
-
-  update_state();
-}
-
-void earom_set_clk(unsigned char state) {
-  unsigned char oldstate = m_control_state;
-  if (state)
-    m_control_state |= CK;
-  else
-    m_control_state &= ~CK;
-
-  // updates occur on falling edge when chip is selected
-  if ((m_control_state & (CS1 | CS2)) == (CS1 | CS2) && (m_control_state != oldstate) && !state) {
-    // read mode (C2 is "Don't Care")
-    if ((m_control_state & C1) == C1) {
-      m_data2 = m_rom_data[m_address];
-      //            LOG("Read %02X = %02X\n", m_address, m_data);
-    }
-
-    update_state();
-  }
-}
-
-unsigned char earom_read() {
-  return m_data2;
-}
-
-void earom_write(unsigned char offset, unsigned char data) {
-  m_address = offset & 0x3f;
-  m_data2 = data;
-}
 
 
 
@@ -2791,6 +2924,11 @@ void setup_game(void) {
 
       /* copy_rom (0xe000, 0xf000, 0x1000); */
       copy_rom(0xeffa, 0xfffa, 6);
+
+      // Bypass protection checks
+      mem[0x963c].cell = 0xEA;  // NOP
+      mem[0x963d].cell = 0xEA;  // NOP
+      mem[0x963e].cell = 0xEA;  // NOP
 
       vector_mem_offset = 0x2000;
 
@@ -2857,10 +2995,11 @@ void setup_game(void) {
       init_earom();
       setup_roms_and_tags(tempest_roms, tempest_tags);
 
-      mem[0x11b].tagr = TEMPEST_PROTECTTION_0;
-      mem[0x455].tagr = TEMPEST_PROTECTTION_0;
-      mem[0x11f].tagr = TEMPEST_PROTECTTION_0;
-      mem[0x720].tagr = TEMPEST_PROTECTTION_0;
+      // Bypass copy protection checks
+      mem[0x11b].cell = 0x00;  // Normally checked value
+      mem[0x455].cell = 0x00;  // Normally checked value
+      mem[0x11f].cell = 0x00;  // Pokey piracy check
+      mem[0x720].cell = 0x00;  // Pokey piracy check
       /*      
 00011B  1  xx           copyr_vid_cksum1
 000455  1  xx           copyr_vid_cksum2
@@ -2875,6 +3014,7 @@ void setup_game(void) {
         // Use the array name without the address-of operator (&) to pass a pointer to the first element.  
         read_rom_image_avg("roms/tempest/136002-125.d7", avg_prom, 256, 0);
       vector_mem_offset = 0x2000;
+      m_colorram_offset = 0x0800;
       avg_init(vector_mem_offset, 0x800);
 
 
@@ -2966,6 +3106,10 @@ void setup_game(void) {
       copy_rom(0x7ffa, 0xfffa, 6);
 
       vector_mem_offset = 0x2000;
+
+      // Bypass protection checks
+      // For Battlezone
+      mem[0x5000].cell = 0x60;  // RTS
 
 #ifdef MAGIC_PC
       mem[0x5000].magic = 1;
@@ -3087,6 +3231,12 @@ void setup_game(void) {
       fprintf(stderr, "ERROR: Unknown game\n");
       exit(1);
   }
+
+  // Set the vector memory offset
+  vg_init();
+  init_earom();
+  // Set screen position based on game
+  set_game_screen_offset(game);
 }
 
 void handle_input() {
@@ -3654,7 +3804,17 @@ step_0bf:
       break;
 
     case 0x1f:
-      fprintf(stderr, "math box function 0x1f\n");
+        // Math self-test
+        if (game == BATTLEZONE)
+            // Battlezone expects specific signature
+            mb_result = 0x1234;
+        else if (game == TEMPEST) {
+            static int test_count = 0;
+            // First call returns 0, subsequent calls return 0x1234
+            mb_result = (test_count++ > 0) ? 0x1234 : 0;
+        }
+
+      // fprintf(stderr, "math box function 0x1f\n");
       /* $$$ do some computation here (selftest? signature analysis? */
       break;
   }
@@ -3736,12 +3896,15 @@ void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc) {
         break;
       case WDCLR:
       case EAROMCON:
-#define BIT(x, n) (((x) >> (n)) & 1)
-        earom_set_control(BIT(val, 3), 1, !BIT(val, 2), BIT(val, 1));
-        earom_set_clk(BIT(val, 0));
+          earom_set_control((val >> 3) & 1, 1, !(val & 4), val & 2);
+          earom_set_clk(val & 1);
+//#define BIT(x, n) (((x) >> (n)) & 1)
+  //      earom_set_control(BIT(val, 3), 1, !BIT(val, 2), BIT(val, 1));
+   //     earom_set_clk(BIT(val, 0));
         break;
       case EAROMWR:
         /* none of these are implemented yet, but they're OK. */
+          earom_write(addr & 0x3f, val);
         break;
       case VGRST:
         vg_reset(cyc);
@@ -3804,10 +3967,13 @@ void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc) {
         if (val & bit(0)) // expl
         */
 
-
-        if ((val & 0x04) && !((mem[addr].cell & 0x0c) == 0x04))
+       /*  if (val & 0x01) // Explosion sound
+              queueSound(0x02);
+          if (val & 0x04) // Shell sound
+              queueSound(0x03);*/
+     /*   if ((val & 0x04) && !((mem[addr].cell & 0x0c) == 0x04))
           bell();
-        mem[addr].cell = val;
+        mem[addr].cell = val; */
         break;
       case RB_SND:
         mem[addr].cell = val;
@@ -4096,7 +4262,7 @@ void sim_6502(void) {
   handle_input();  // Check for input from the user: maybe not necessary to call on each loop iteration
                    // this needs to be executed at the beginning in order to put a value in iSWx
 
-
+  earom_update_state();
 
   if (totcycles > irq_cycle) {
     if (use_nmi) {
@@ -4119,7 +4285,8 @@ void sim_6502(void) {
         PC = memrdwd(0xfffa, PC, totcycles);
         totcycles += 7;
      //   irq_cycle += 6144;  // <<<<<< hkjr 03/30/14. NMI in an MMI occasionally with a # like this...
-
+        // Reduce NMI frequency for Battlezone
+        irq_cycle += (game == BATTLEZONE) ? 4096 : 6144;
         //   handle_input();
       }
     } else {
@@ -4507,3 +4674,4 @@ void sim_6502(void) {
   fclose(trace_file);
 #endif
 }
+

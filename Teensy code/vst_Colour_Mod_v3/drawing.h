@@ -10,7 +10,7 @@
 #ifndef _drawing_h_
 #define _drawing_h_
 
-#include <stdint.h>
+//#include <stdint.h>
 
 // Define a max macro for integers
 #define max(a, b) ((a) > (b) ? (a) : (b))
@@ -30,12 +30,12 @@ void draw_to_xyrgb(int, int, uint8_t, uint8_t, uint8_t);
 void draw_string(const char *, int, int, int, int);
 int  draw_character(char, int, int, int, int);
 void draw_moveto(int, int);
-void _draw_lineto(const int, const int, float);
-void old_draw_lineto(int, int, const int);
+void _draw_lineto(const int, const int, int);
 void make_gammatable(float, uint16_t, uint16_t, uint16_t *);
 void init_gamma();
 void brightness(uint8_t, uint8_t, uint8_t);
 void goto_xy(uint16_t, uint16_t);
+void update_goto_xy_settings();
 void dwell(int);
 void MCP4922_write1(int, uint16_t);
 void MCP4922_write2(int, uint16_t, uint16_t, int);

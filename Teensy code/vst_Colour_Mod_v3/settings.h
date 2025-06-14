@@ -3,7 +3,7 @@
 
    Vector Signal Transceiver Colour Mod using MCP4922 DACs on the Teensy 4.1
 
-   Code to read and write settings to SD card
+   Code to read and write settings to SD card and draw menus on screen
 
 */
 
@@ -57,22 +57,6 @@ const int AUDIO_PIN = 10;  // Connect audio output to GND and pin 10
 #define IR_RECEIVE_PIN 32  //Put this outside the ifdef so that it doesn't break the menu
 
 enum {settings, emu_vecsim, emu_cinemu, emu_6809, emu_68000};    // Possible values for emulator
-
-// Structure holding choices of various menus, such as
-// settings stored on Teensy SD card, game choices, etc.
-typedef struct {
-  char ini_label[20];  // Text string of parameter label in vstcm.ini
-  char param[40];      // Parameter label displayed on screen
-  uint32_t pval;       // Parameter value
-  uint32_t min;        // Min value of parameter
-  uint32_t max;        // Max value of parameter
-  uint8_t emulator;    // Emulator to use to run game
-} params_t;
-
-typedef struct {
-  int nb_menu_items;
-  params_t *choices;
-} list_t;
 
 #define NB_SETTINGS 30        // Number of items in settings menu
 #define NB_SPLASH_CHOICES 30  // Number of items in splash screen menu
@@ -129,14 +113,65 @@ static const uint16_t positions2[] = {
   4095 - 0, 512, intensity2, intensity2, intensity2,
   4095, 0, intensity2, intensity2, intensity2
 };
+
+
+// Forward declaration for Menu struct
+struct Menu;
+
+typedef enum {
+    MENU_ITEM_TYPE_NUMERIC,
+    MENU_ITEM_TYPE_BOOLEAN,
+    MENU_ITEM_TYPE_ACTION,    // For items that trigger a custom function
+    MENU_ITEM_TYPE_SUB_MENU   // For items that open another menu
+} MenuItemType;
+
+typedef struct MenuItem {
+    char label[40];
+    MenuItemType type;
+    int32_t value;          // Current value for NUMERIC, 0 or 1 for BOOLEAN
+    int32_t min_val;        // For NUMERIC type
+    int32_t max_val;        // For NUMERIC type
+    void (*action_func)(struct MenuItem* item, void* context); // Function pointer for ACTION type or on-select
+    // The context can be used to pass global state or the current menu
+    struct Menu* sub_menu;  // Pointer to a sub-menu for SUB_MENU type
+    char ini_label[20];     // For config saving
+    uint8_t emulator;       // Specific to game selection
+} MenuItem;
+
+#define MAX_MENU_ITEMS 30 // Define a maximum, similar to NB_SETTINGS
+
+typedef struct Menu {
+    char title[40];
+    MenuItem items[MAX_MENU_ITEMS];
+    int item_count;
+    int selected_item_index;
+    int display_offset;      // For scrolling
+    struct Menu* parent_menu; // To navigate back
+} Menu;
+
+
 //
 // Function prototypes
 //
 void read_vstcm_config();
 void write_vstcm_config();
-void show_vstcm_menu_screen(int);
 void make_test_pattern();
 void moveto(int, int, int, int, int, int);
 void draw_test_pattern(int);
+
+// --- Menu Function Prototypes ---
+void menu_item_increment(MenuItem* item);
+void menu_item_decrement(MenuItem* item);
+void menu_item_execute_action(MenuItem* item, void* context);
+void menu_init(Menu* menu, const char* title, Menu* parent);
+void menu_add_item(Menu* menu, MenuItem item);
+void menu_navigate_down(Menu* menu);
+void menu_navigate_up(Menu* menu);
+void setup_all_menus();
+void handle_menu_input(int input_key);
+void draw_menu_on_screen(Menu* menu);
+
+MenuItem* find_menu_item_by_ini_label(Menu* menu, const char* ini_label);
+MenuItem* menu_get_selected_item(Menu* menu);
 
 #endif

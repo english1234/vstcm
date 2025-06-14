@@ -25,7 +25,6 @@ char const *json_opts[] = { "\"productName\"", "\"version\"", "\"flipx\"", "\"fl
 char const *json_vals[] = { "\"VSTCM\"", "\"V3.0\"", "false", "false", "false", "false", "false", "15", "9", "true", "\"CUSTOM\"", "\"none\"" };
 static char json_str[MAX_JSON_STR_LEN];
 
-extern params_t v_setting[2][NB_SETTINGS];
 extern unsigned long dwell_time;
 extern float line_draw_speed;
 extern bool spot_triggered;
@@ -55,6 +54,8 @@ uint32_t build_json_info_str(char *str) {
   str[len + 1] = 0;  //Double null terminate
   return (len + 2);  //Length includes both nulls
 }
+
+extern int32_t get_setting_value(const char* ini_label, int32_t default_value);
 
 int read_data(int init) {
 #ifdef VSTCM
@@ -122,12 +123,12 @@ int read_data(int init) {
     // Check FLAG_COMPLETE_MONOCHROME like "if(cmd&FLAG_COMPLETE_MONOCHROME) ... "
     // Not sure what to do differently if monochrome frame complete??
     // Add FPS on games as a guide for optimisation
-    if (v_setting[SETTINGS_MENU][9].pval == true) {
-      if (spot_triggered) draw_string("*DT:", 3000, 150, 6, v_setting[SETTINGS_MENU][13].pval);
-      else draw_string("DT:", 3000, 150, 6, v_setting[SETTINGS_MENU][13].pval);
-      // draw_string("DS:", 3000, 150, 6, v_setting[SETTINGS_MENU][13].pval);
-      // draw_string(itoa(line_draw_speed*NORMAL_SHIFT_SCALING, buf1, 10), 3400, 150, 6, v_setting[SETTINGS_MENU][13].pval);
-      draw_string(itoa(dwell_time, buf1, 10), 3400, 150, 6, v_setting[SETTINGS_MENU][13].pval);
+    if (get_setting_value("SHOW_DT", SHOW_DT) == true) {
+      if (spot_triggered) 
+        draw_string("*DT:", 3000, 150, 6, get_setting_value("BRIGHTER", BRIGHTER));
+      else 
+        draw_string("DT:", 3000, 150, 6, get_setting_value("BRIGHTER", BRIGHTER));
+      draw_string(itoa(dwell_time, buf1, 10), 3400, 150, 6, get_setting_value("BRIGHTER", BRIGHTER));
     }
 
     return 1;

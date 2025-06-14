@@ -30,6 +30,15 @@ int frame_min_y;
 static uint16_t x_pos;  // Current position of beam
 static uint16_t y_pos;
 
+// Cached settings for fast access
+uint16_t x_axis_invert_mask = 0;
+uint16_t y_axis_invert_mask = 0;
+bool dac_swap = false;
+bool correction_enabled = false;
+int dwell_before;
+int dwell_after;
+int move_speed;
+
 volatile bool Beam_on;                // causes a compiler warning if placed in drawing.h ... why?
 static ColourIntensity_t LastColInt;  // Stores last colour intensity levels
 
@@ -37,13 +46,14 @@ uint16_t gamma_red[256];
 uint16_t gamma_green[256];
 uint16_t gamma_blue[256];
 
-extern params_t v_setting[2][NB_SETTINGS];
+extern int32_t get_setting_value(const char* ini_label, int32_t default_value);
 
 #ifdef VSTCM
 extern int Spiflag, Spi1flag;  //Keeps track of an active SPI transaction in progress
 #else
 extern SDL_Renderer* rend_2D_orig;  // Renderer for original 2D game
 extern int gX, gY;                  // Last position of beam
+static int untransformed_gX = 0, untransformed_gY = 0;  // Store untransformed coordinates
 #endif
 
 enum { TOP = 0x1,
@@ -113,57 +123,111 @@ void cohen_sutherlandCustom(int32_t* x1, int32_t* y1, int32_t* x2, int32_t* y2, 
   }
 }
 
-// returns x1 = 1000000 on complete outside!
-/*
-void old_cohen_sutherlandCustom(int32_t *x1, int32_t *y1, int32_t *x2, int32_t *y2, int xmin, int ymin, int xmax, int ymax) {
-  int accept;
-  int done;
-  outcode outcode1, outcode2;
-  accept = FALSE;
-  done = FALSE;
-  outcode1 = compute_outcode(*x1, *y1, xmin, ymin, xmax, ymax);
-  outcode2 = compute_outcode(*x2, *y2, xmin, ymin, xmax, ymax);
-  do {
-    if (outcode1 == 0 && outcode2 == 0) {
-      accept = TRUE;
-      done = TRUE;
-    } else if (outcode1 & outcode2) {
-      done = TRUE;
-    } else {
-      int x, y;
-      int outcode_ex = outcode1 ? outcode1 : outcode2;
-      if (outcode_ex & TOP) {
-        x = *x1 + (*x2 - *x1) * (ymax - *y1) / (*y2 - *y1);
-        y = ymax;
-      } else if (outcode_ex & BOTTOM) {
-        x = *x1 + (*x2 - *x1) * (ymin - *y1) / (*y2 - *y1);
-        y = ymin;
-      } else if (outcode_ex & RIGHT) {
-        y = *y1 + (*y2 - *y1) * (xmax - *x1) / (*x2 - *x1);
-        x = xmax;
-      } else {
-        y = *y1 + (*y2 - *y1) * (xmin - *x1) / (*x2 - *x1);
-        x = xmin;
-      }
-      if (outcode_ex == outcode1) {
-        *x1 = x;
-        *y1 = y;
-        outcode1 = compute_outcode(*x1, *y1, xmin, ymin, xmax, ymax);
-      } else {
-        *x2 = x;
-        *y2 = y;
-        outcode2 = compute_outcode(*x2, *y2, xmin, ymin, xmax, ymax);
-      }
-    }
-  } while (done == FALSE);
-
-  if (accept == TRUE)
-    return;
-
-  *x1 = 1000000;
-  return;
+inline void update_frame_extents(int x, int y) {
+    if (x > frame_max_x) frame_max_x = x;
+    if (x < frame_min_x) frame_min_x = x;
+    if (y > frame_max_y) frame_max_y = y;
+    if (y < frame_min_y) frame_min_y = y;
 }
-*/
+
+
+extern bool flip_x, flip_y, swap_xy;
+
+#define FIXED_SHIFT 16
+#define FIXED_ONE (1 << FIXED_SHIFT)
+
+// Optimized fixed-point line drawing for Teensy 4.x
+void _draw_lineto(const int x1, const int y1, int bright_shift) {
+#ifdef VSTCM
+  int dx = x1 - x_pos;
+  int dy = y1 - y_pos;
+
+  // Update frame extents for spot killer logic
+  update_frame_extents(x1, y1);
+
+  int dxmag = abs(dx);
+  int dymag = abs(dy);
+  int max_dist = (dxmag > dymag) ? dxmag : dymag;
+
+  // Enforce minimum number of steps for visible beam segments
+  if (Beam_on && (max_dist * 2 < bright_shift)) {
+    bright_shift = max_dist >> 1;
+    if (bright_shift < 1) bright_shift = 1;
+  }
+
+  // Calculate number of steps (manual integer ceiling)
+  int numsteps = (max_dist + bright_shift - 1) / bright_shift;
+  if (numsteps < 1) numsteps = 1;
+
+  // Calculate fixed-point increments
+  int dxf = (dx << FIXED_SHIFT) / numsteps;
+  int dyf = (dy << FIXED_SHIFT) / numsteps;
+
+  // Start position in fixed-point
+  int xcur = x_pos << FIXED_SHIFT;
+  int ycur = y_pos << FIXED_SHIFT;
+
+  int last_xout = -1, last_yout = -1;
+
+  for (int i = 0; i < numsteps; i++) {
+      xcur += dxf;
+      ycur += dyf;
+
+      int xout = (xcur + (FIXED_ONE >> 1)) >> FIXED_SHIFT;
+      int yout = (ycur + (FIXED_ONE >> 1)) >> FIXED_SHIFT;
+
+      if (xout != last_xout || yout != last_yout) {
+          goto_xy(xout, yout);
+          last_xout = xout;
+          last_yout = yout;
+      }
+  }
+
+  // Ensure final point is exact
+  goto_xy(x1, y1);
+  SPI_flush();
+#else
+    // Apply transformations for SDL version
+    int transformed_gX = untransformed_gX;
+    int transformed_gY = untransformed_gY;
+    int transformed_x1 = x1;
+    int transformed_y1 = y1;
+
+    // Apply flip transformations
+    if (flip_x) {
+        transformed_gX = 4095 - transformed_gX;
+        transformed_x1 = 4095 - transformed_x1;
+    }
+    if (flip_y) {
+        transformed_gY = 4095 - transformed_gY;
+        transformed_y1 = 4095 - transformed_y1;
+    }
+
+    // Apply swap transformation
+    if (swap_xy) {
+        int temp_gX = transformed_gX;
+        int temp_x1 = transformed_x1;
+        transformed_gX = transformed_gY;
+        transformed_x1 = transformed_y1;
+        transformed_gY = temp_gX;
+        transformed_y1 = temp_x1;
+    }
+
+    SDL_RenderDrawLine(rend_2D_orig, transformed_gX / 4, (4096 - transformed_gY) / 4,
+        transformed_x1 / 4, (4096 - transformed_y1) / 4);
+
+    // Store untransformed coordinates for next time
+    untransformed_gX = x1;
+    untransformed_gY = y1;
+
+    // Update transformed coordinates for compatibility
+    gX = transformed_x1;
+    gY = transformed_y1;
+#endif
+
+
+}
+
 void draw_to_xyrgb(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
   brightness(red, green, blue);  // Set RGB intensity levels from 0 to 255
   _draw_lineto(x, y, line_draw_speed);
@@ -202,14 +266,15 @@ int draw_character(char c, int x, int y, int size, int brightness) {
   return (f->width * size) * 3 / 4;
 }
 
+
 void draw_moveto(int x1, int y1) {
   brightness(0, 0, 0);
 
   // hold the current position for a few clocks
   // with the beam off
-  dwell(v_setting[SETTINGS_MENU][3].pval);
-  _draw_lineto(x1, y1, v_setting[SETTINGS_MENU][1].pval);
-  dwell(v_setting[SETTINGS_MENU][4].pval);
+  dwell(dwell_before);
+  _draw_lineto(x1, y1, move_speed);
+  dwell(dwell_after);
 
   // This is only needed to handle dwell times on some real vector monitors
   frame_max_x = max(frame_max_x, x1);
@@ -220,196 +285,30 @@ void draw_moveto(int x1, int y1) {
 // Save the start position for drawing
 #ifdef VSTCM
 #else  // only needed for SDL
-  gX = x1;
-  gY = y1;
+  // Store untransformed coordinates but don't draw anything
+  untransformed_gX = x1;
+  untransformed_gY = y1;
+
+  // Update transformed coordinates for compatibility
+  int transformed_x1 = x1;
+  int transformed_y1 = y1;
+
+  if (flip_x) {
+      transformed_x1 = 4095 - transformed_x1;
+  }
+  if (flip_y) {
+      transformed_y1 = 4095 - transformed_y1;
+  }
+  if (swap_xy) {
+      int temp = transformed_x1;
+      transformed_x1 = transformed_y1;
+      transformed_y1 = temp;
+  }
+
+  gX = transformed_x1;
+  gY = transformed_y1;
 #endif
 }
-
-// Optimised float-based _draw_lineto() for Teensy 4.x
-// needs testing and comparing to other draw_lineto function
-void _proto_draw_lineto(const int x1, const int y1, float bright_shift) {
-#ifdef VSTCM
-  int dx, dy;
-  int dxmag, dymag;
-  int max_dist;
-  int x0, y0;
-  int numsteps;
-  float numstepsf;
-  float xcur, ycur;
-  float dxf, dyf;
-
-  // Update frame extents for spot killer logic
-  frame_max_x = max(frame_max_x, x1);
-  frame_min_x = min(frame_min_x, x1);
-  frame_max_y = max(frame_max_y, y1);
-  frame_min_y = min(frame_min_y, y1);
-
-  x0 = x_pos;
-  y0 = y_pos;
-  dx = x1 - x0;
-  dy = y1 - y0;
-  dxmag = abs(dx);
-  dymag = abs(dy);
-
-  max_dist = (dxmag > dymag) ? dxmag : dymag;
-
-  if (Beam_on && (max_dist * 2 < bright_shift)) {  // Force at least 2 points
-    bright_shift = max_dist >> 1;
-    if (bright_shift < 1) bright_shift = 1;
-  }
-
-  // Integer ceil replacement
-  numsteps = (max_dist + bright_shift - 1) / bright_shift;
-  if (numsteps < 1) numsteps = 1;
-
-  numstepsf = (float)numsteps;
-  dxf = (float)dx / numstepsf;
-  dyf = (float)dy / numstepsf;
-
-  xcur = (float)x0;
-  ycur = (float)y0;
-
-  for (int i = 0; i < numsteps; i++) {
-    xcur += dxf;
-    ycur += dyf;
-    goto_xy((int)(xcur + 0.5f), (int)(ycur + 0.5f));
-  }
-
-  goto_xy(x1, y1);
-  SPI_flush();
-#else
-  SDL_RenderDrawLine(rend_2D_orig, gX / 4, (4096 - gY) / 4, x1 / 4, (4096 - y1) / 4);
-  gX = x1;
-  gY = y1;
-#endif
-}
-
-//Trying out using floating point to compute the line
-//Also try to make sure the move has at least a couple of points in it
-//if we are drawing
-void _draw_lineto(const int x1, const int y1, float bright_shift) {
-#ifdef VSTCM
-  int dx, dy;
-  float dxf, dyf;
-  int dxmag, dymag;
-  int max_dist;
-  int x0, y0;
-  int numsteps;
-  float numstepsf;
-  float xcur, ycur;
-  int i;
-
-  // This is only needed to handle dwell times on some real vector monitors
-  frame_max_x = max(frame_max_x, x1);
-  frame_min_x = min(frame_min_x, x1);
-  frame_max_y = max(frame_max_y, y1);
-  frame_min_y = min(frame_min_y, y1);
-
-  x0 = x_pos;
-  y0 = y_pos;
-  dx = x1 - x0;
-  dy = y1 - y0;
-  dxmag = abs(dx);
-  dymag = abs(dy);
-
-  xcur = x0;
-  ycur = y0;
-
-  if (dxmag > dymag)
-    max_dist = dxmag;
-  else
-    max_dist = dymag;
-
-  if (Beam_on && (max_dist * 2 < bright_shift)) {  //Force at least 2 points in each line segment (cleans up text at high rates)
-    bright_shift = max_dist >> 1;
-    if (bright_shift < 1) bright_shift = 1;
-  }
-
-  numstepsf = ceilf((float)max_dist / (float)bright_shift);
-  dxf = (float)dx / numstepsf;
-  dyf = (float)dy / numstepsf;
-  numsteps = numstepsf;
-  for (i = 0; i < numsteps; i++) {
-    xcur += dxf;
-    ycur += dyf;
-    goto_xy(round(xcur), round(ycur));
-  }
-  goto_xy(x1, y1);
-  SPI_flush();
-#else
-  SDL_RenderDrawLine(rend_2D_orig, gX / 4, (4096 - gY) / 4, x1 / 4, (4096 - y1) / 4);
-  gX = x1;
-  gY = y1;
-#endif
-}
-
-//This is a modification of the original drawing routine to use the "bright shift" differently
-//Before everything was done at a lower and lower resolution so there were more steps in the lines
-//Now we run at full resolution (one step of the 12-bit DAC at a time) but we only update to the DAC every "bright shift" counts
-//Since we are now updating the DACs for x and y at the same time, the draws are much more smooth because
-//they are points along a line instead of separate x and y steps.  Also there is much more resolution
-//for tuning the speeds this way since you aren't changing by powers of two like before.  The Teensy goes so fast that this seems
-//to work well but it could probably still be fixed up to use a different line drawing algorithm
-/*
-void old_draw_lineto(int x1, int y1, const int bright_shift) {
-  int dx, dy, sx, sy;
-  int flag;
-  int x1_orig;
-  int y1_orig;
-  int count;
-
-  int x0 = x_pos;
-  int y0 = y_pos;
-
-  x1_orig = x1;
-  y1_orig = y1;
-  // delayNanoseconds(4000);
-  if (x0 <= x1) {
-    dx = x1 - x0;
-    sx = 1;
-  } else {
-    dx = x0 - x1;
-    sx = -1;
-  }
-
-  if (y0 <= y1) {
-    dy = y1 - y0;
-    sy = 1;
-  } else {
-    dy = y0 - y1;
-    sy = -1;
-  }
-
-  int err = dx - dy;
-  count = 0;
-  while (1) {
-    if (x0 == x1 && y0 == y1)
-      break;
-    flag = 0;
-    int e2 = 2 * err;
-    if (e2 > -dy) {
-      err = err - dy;
-      x0 += sx;
-      flag = 1;
-    }
-    if (e2 < dx) {
-      err = err + dx;
-      y0 += sy;
-      flag = 1;
-    }
-    if (flag) {
-      count++;
-      if (count >= bright_shift) {
-        goto_xy(x0, y0);
-        count = 0;
-      }
-    }
-  }
-  // ensure that we end up exactly where we want
-  goto_xy(x1_orig, y1_orig);
-  // SPI_flush();
-}
-*/
 
 void make_gammatable(float gamma, uint16_t maxinput, uint16_t maxoutput, uint16_t* table) {
   for (int i = 0; i < (maxinput + 1); i++)
@@ -429,7 +328,8 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
   // Do nothing if we haven't changed colour since last time
   if ((LastColInt.red == red) && (LastColInt.green == green) && (LastColInt.blue == blue)) return;
 
-  if (v_setting[SETTINGS_MENU][16].pval == 0) {
+  if (get_setting_value("COLOUR_SWITCH", COLOUR_SWITCH) == 0)
+  {
     // Mix colours if using monochrome monitor using average value
     // uint8_t avg = (red + green + blue) / 3;
     // Mix colours if using monochrome monitor using maximum value
@@ -460,16 +360,10 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
 
   //Dwell moved here since it takes about 4us to fully turn on or off the beam
   //Possibly change where this is depending on if the beam is being turned on or off??
-  /*
-  if (LastColInt.red || LastColInt.green || LastColInt.blue) 
-     Beam_on = true;
-  else 
-     Beam_on = false;
-  */
 
   Beam_on = (red || green || blue);  // Should be faster than if ...
 
-  dwell(v_setting[SETTINGS_MENU][2].pval);  //Wait this amount before changing the beam (turning it on or off)
+  dwell(get_setting_value("OFF_DWELL0", OFF_DWELL0));  //Wait this amount before changing the beam (turning it on or off)
 #else
   LastColInt.red = red;
   LastColInt.green = green;
@@ -478,53 +372,38 @@ void brightness(uint8_t red, uint8_t green, uint8_t blue) {
 #endif
 }
 
+// Precomputed constants for fixed-point correction
+int32_t correction_x_factor = 0;  // scaled by 2^24
+int32_t correction_y_factor = 0;
+
 static inline void goto_xy(uint16_t x, uint16_t y) {
+    if ((x_pos == x) && (y_pos == y)) return;
 
-  // THIS FUNCTION NEEDS OPTIMISATION FOR SPEED
+    x_pos = x;
+    y_pos = y;
 
+    if (correction_enabled) {
+        int32_t xf = (int32_t)x - 2048;
+        int32_t yf = (int32_t)y - 2048;
 
+        // Fixed-point square calculation (Q8.24)
+        int64_t yf_sq = (int64_t)yf * (int64_t)yf; // Q0.32
+        int64_t xf_sq = (int64_t)xf * (int64_t)xf; // Q0.32
 
+        // Apply correction: xf * (1 - yf^2 * factor)
+        int32_t xcorr = xf - (int32_t)(((yf_sq * correction_x_factor) >> 24) * xf >> 24);
+        int32_t ycorr = yf - (int32_t)(((xf_sq * correction_y_factor) >> 24) * yf >> 24);
 
-  float xf, yf;
-  float xcorr, ycorr;
+        x = (uint16_t)(xcorr + 2048);
+        y = (uint16_t)(ycorr + 2048);
+    }
 
-  if ((x_pos == x) && (y_pos == y)) return;
+    // Axis inversion via XOR masks
+    x ^= x_axis_invert_mask;
+    y ^= y_axis_invert_mask;
 
-  // Prevent drawing off the screen with hard clipping
-  /* if (x<1) return;
-  if (x>4095) return;
-  if (y<1) return;
-  if (y>4095) return;*/
-
-  x_pos = x;
-  y_pos = y;
-
-  if (v_setting[SETTINGS_MENU][10].pval == 1) {
-    xf = x - 2048;
-    yf = y - 2048;
-    xcorr = xf * (1.0 - yf * yf * .000000013) + 2048.0;  //These are experimental at this point but seem to do OK on the 6100 monitor
-    ycorr = yf * (1.0 - xf * xf * .000000005) + 2048.0;
-    x = xcorr;
-    y = ycorr;
-  }
-
-  // THIS NEEDS TO BE OPTIMISED TO AVOID THE TWO IF STATEMENTS
-  //
-  //
-  // Swap X & Y axes if defined in settings
-  if (v_setting[SETTINGS_MENU][6].pval == 0) x = 4095 - x;
-  if (v_setting[SETTINGS_MENU][7].pval == 0) y = 4095 - y;
-
-  // Prevent drawing off the screen with hard clipping
-  /*  if (x<1) return;
-  if (x>4095) return;
-  if (y<1) return;
-  if (y>4095) return;*/
-
-  if (v_setting[SETTINGS_MENU][8].pval == true)
-    MCP4922_write2(DAC_CHAN_XY, x, y, 0);
-  else
-    MCP4922_write2(DAC_CHAN_XY, y, x, 0);
+    // Fast DAC write with inline swap
+    MCP4922_write2(DAC_CHAN_XY, dac_swap ? x : y, dac_swap ? y : x, 0);
 }
 
 // Doing it this way is meant to force the compiler to not create an empty function which is called many times needlessly on PC
