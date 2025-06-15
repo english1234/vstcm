@@ -119,14 +119,15 @@ int32_t get_setting_value(const char* ini_label, int32_t default_value) {
 }
 
 bool flip_x, flip_y, swap_xy, pincushion;
-int normal_brightness, bright_brightness;
+int normal_brightness, bright_brightness, offdwell0;
 bool colour_switch;
 extern bool dac_swap;
+extern bool correction_enabled;
 
 // Function to update global variables from menu settings
 void update_goto_xy_settings() {
     // Update global variables based on current menu settings
-    extern bool flip_x, flip_y, swap_xy, pincushion;
+    extern bool flip_x, flip_y, swap_xy;
     extern int normal_brightness, bright_brightness;
     extern bool colour_switch;
     extern bool dac_swap;
@@ -141,7 +142,7 @@ void update_goto_xy_settings() {
     x_axis_invert_mask = flip_x ? 0xFFFF : 0;  // Invert all bits if flip_x is true
     y_axis_invert_mask = flip_y ? 0xFFFF : 0;  // Invert all bits if flip_y is true
     
-    pincushion = get_setting_value("PINCUSHION", PINCUSHION);
+    correction_enabled = get_setting_value("PINCUSHION", PINCUSHION);
     normal_brightness = get_setting_value("NORMAL1", NORMAL1);
     bright_brightness = get_setting_value("BRIGHTER", BRIGHTER);
     colour_switch = get_setting_value("COLOUR_SWITCH", COLOUR_SWITCH);
@@ -153,6 +154,7 @@ void update_goto_xy_settings() {
     dwell_before = get_setting_value("OFF_DWELL1", OFF_DWELL1);
     dwell_after = get_setting_value("OFF_DWELL2", OFF_DWELL2);
     move_speed = get_setting_value("OFF_SHIFT", OFF_SHIFT);
+	offdwell0 = get_setting_value("OFF_DWELL0", OFF_DWELL0);
 }
 
 void mainloop() {

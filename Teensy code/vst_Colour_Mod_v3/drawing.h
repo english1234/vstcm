@@ -10,8 +10,6 @@
 #ifndef _drawing_h_
 #define _drawing_h_
 
-//#include <stdint.h>
-
 // Define a max macro for integers
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
