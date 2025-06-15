@@ -218,15 +218,6 @@ volatile uint8_t isPlaying = 0;             // Flag to track playback
 int thumpSpeed = 1000;   // Initial speed in ms
 int asteroidCount = 10;  // Dummy asteroid count
 
-
-// EAROM functions
-/*void init_earom();
-void earom_set_control(uint8_t cs1, uint8_t cs2, uint8_t c1, uint8_t c2);
-void earom_set_clk(uint8_t state);
-void earom_write(uint8_t offset, uint8_t data);
-uint8_t earom_read();
-void earom_update_state();
-*/
 // Define global offset variables
 int game_screen_offset_x = 0;
 int game_screen_offset_y = 0;
@@ -519,8 +510,18 @@ uint8_t MEMRD(uint16_t addr, uint16_t PC, uint32_t cyc) {
       //result = iSW2;  // Using player 2 start button as coin up TEMPORARILY COMMENTED OUT WHILE TESTING TEMPEST
       break;
     case EAROMRD:
-        result = earom_read();
-      //result = 0;
+        if (game == TEMPEST) {
+            // Special handling for Tempest protection
+            if (PC >= 0x1100 && PC <= 0x1200) {
+                result = 0x00;  // Bypass protection checks
+            }
+            else {
+                result = earom_read();
+            }
+        }
+        else {
+            result = earom_read();
+        }
       break;
     case OPTSW1:
       result = optionreg[0];
@@ -802,6 +803,11 @@ static inline void draw_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, int
         fflush( trace_file );
   #endif
     */
+    if (portrait) {
+        int32_t temp;
+        temp = x1; x1 = y1; y1 = 4096 - temp;
+        temp = x2; x2 = y2; y2 = 4096 - temp;
+    }
 
     // if (game == ASTEROIDS || game == ASTEROIDS_DX) {
     // Asteroids x = -32 to 1055, y = -31 to 800
@@ -869,20 +875,37 @@ y = -1017 to 1826
 // also use a buffer to time each frame
 
 //if (z != 0) {
-    draw_moveto(x1, 4096 - y1);
-
-	if (game == TEMPEST) {  // Tempest sends out of bounds values for some reason so this is a quick kludge
-        if (color < 0 || color >= 8 || z < 0 || z >= 16) {
-            // Handle error or return
-            color = 3;
-            z = 8;
-          //  return;
-        }
-    }
+draw_moveto(x1, 4096 - y1);
+/*
+if (game == TEMPEST) {  // Tempest sends out of bounds values for some reason so this is a quick kludge
+    // For Tempest: scale 16-bit color values to 8-bit
+    draw_to_xyrgb(x2, 4096 - y2,
+        gColorValue[color >> 8][z].red,
+        gColorValue[color >> 8][z].green,
+        gColorValue[color >> 8][z].blue);
+} else
   // draw_to_xyrgb(x2, 4096 - y2, gColorValue[color][z].red >> 8, gColorValue[color][z].green >> 8, gColorValue[color][z].blue >> 8);
   draw_to_xyrgb(x2, 4096 - y2, gColorValue[color][z].red, gColorValue[color][z].green, gColorValue[color][z].blue);
   // } else
   //  draw_moveto(x2, 4096 - y2);
+  */
+if (game == TEMPEST) {
+    // Tempest: color is packed 24-bit RGB value
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+    draw_to_xyrgb(x2, 4096 - y2, r, g, b);
+}
+else {
+    // Other games: use color index and intensity
+    // Clamp values to prevent out-of-bounds access
+    int color_idx = color & 0x07;
+    int z_idx = z & 0x0F;
+    draw_to_xyrgb(x2, 4096 - y2,
+        gColorValue[color_idx][z_idx].red >> 8,
+        gColorValue[color_idx][z_idx].green >> 8,
+        gColorValue[color_idx][z_idx].blue >> 8);
+}
 }
 
 void vg_add_point_buf(int x, int y, int color, int intensity) {
@@ -891,6 +914,11 @@ void vg_add_point_buf(int x, int y, int color, int intensity) {
   //  draw_line2 ((old_x>>SHIFT_T), -(old_y>>SHIFT_T), (x>>SHIFT_T), -(y>>SHIFT_T), color, intensity>>4);
   //draw_line2((old_y >> SHIFT_T), -(old_x >> SHIFT_T), (y >> SHIFT_T), -(x >> SHIFT_T), color, intensity >> 4);
  // draw_line((old_y >> SHIFT_T), -(old_x >> SHIFT_T), (y >> SHIFT_T), -(x >> SHIFT_T), color, intensity >> 4);
+    if (game != TEMPEST) {
+        color &= 0x07;
+        intensity &= 0x0F;
+    }
+
   draw_line( old_y, old_x, x, y, color, intensity );
   old_x = x;
   old_y = y;
@@ -1002,6 +1030,11 @@ u8 state_addr()  // avg_state_addr
 
 void update_databus()  // avg_data
 {
+    if (game == TEMPEST) {
+        // Tempest uses different byte order
+        m_data = rdVram(m_pc & 0x1fff);
+    }
+    else
   m_data = rdVram((m_pc & 0x1fff) ^ 1);  // 0x2000 being the vectorram+rom length - this should not go out of bounds!
 }
 
@@ -1236,7 +1269,6 @@ int tempest_handler_7() {
         const uint8_t g = ((data >> 2) & 1) ? 0xff : 0x00;
         const uint8_t b = ((data >> 0) & 1) ? 0xff : 0x00;
         const int rgb = (r << 16) | (g << 8) | b;
-
         vg_add_point_buf(m_xpos, m_ypos, rgb,
             ((m_int_latch >> 1) == 1) ? m_intensity : (m_int_latch & 0xe) << 4);
     }
@@ -1272,14 +1304,10 @@ void avg_halt(int dummy) {
 
 // This code can be found in TIMER_CALLBACK_MEMBER(avgdvg_device_base::run_state_machine)
 // in the latest version of MAME  
-
 void avg_draw_vector_list_t() {
     int cycles = 0;
+    m_halt = 0;  // Ensure state machine runs
 
-    if (game != TEMPEST) 
-        return;  // Only for Tempest
-
-    // Special state machine implementation
     while (!m_halt) {
         m_state_latch = (m_state_latch & 0x10) | (rdProm(state_addr()) & 0xf);
 
@@ -1300,7 +1328,6 @@ void avg_draw_vector_list_t() {
         cycles += 8;
     }
 }
-
 
 /*************************************
  *
@@ -1560,9 +1587,18 @@ static void dvg_draw_vector_list(void) {
 	    y = y - 0x1000;
 */
 		  // This scaling is handled better in video_avgdvg.c, improve this
-        scale = secondwd >> 12;
-        currentx = x;
-        currenty = (896 - y);  // This prevents wraparound of the Y axis with the scores at the bottom of the screen
+        if (game == LUNAR_LANDER) {
+            // Lunar Lander uses different scaling
+            scale = secondwd >> 12;
+            currentx = x * 2;
+            currenty = (896 - y) * 2;
+        }
+        else {
+            // Standard scaling
+            scale = secondwd >> 12;
+            currentx = x;
+            currenty = (896 - y);   // This prevents wraparound of the Y axis with the scores at the bottom of the screen
+        }  
 
 #ifdef VG_DEBUG
         if (vg_print) {
@@ -1986,18 +2022,28 @@ static void avg_draw_vector_list(void) {
 
 int32_t drop_frames = 0;
 static int32_t df = 1;
-
-
-// Add a timestamp to throttle vg_go to 60Hz
-static uint32_t last_vg_millis = 0;
+static uint32_t last_vg_millis = 0;     // Add a timestamp to throttle vg_go to 60Hz
 
 void vg_go( uint32_t cyc ) {
    vg_busy = 1;
-   if (game == TEMPEST) 
+   if (game == LUNAR_LANDER) {
+       vg_done_cyc = cyc + 50;  // Lunar Lander needs specific timing
+   }
+   else
+   if (dvg) 
+       vg_done_cyc = cyc + 100;  // Shorter delay for DVG games
+   else
+   if (game == TEMPEST) {
+       // Tempest-specific initialization
+       m_xpos = 2048;  // Center X
+       m_ypos = 2048;  // Center Y
+       m_scale = 0xff;
+       m_halt = 0;
        // Tempest requires faster vector updates
        vg_done_cyc = cyc + 500;  // Instead of +8
+   }
    else
-   vg_done_cyc = cyc + 8;
+        vg_done_cyc = cyc + 8;
 
 #ifdef VG_DEBUG
    vgo_count++;
@@ -2911,10 +2957,6 @@ void update_state() {
 }
 */
 
-
-
-
-
 void setup_game(void) {
   tag_area(0x0000, 0x10000, RD | WR, UNKNOWN);
 
@@ -2998,8 +3040,16 @@ void setup_game(void) {
       // Bypass copy protection checks
       mem[0x11b].cell = 0x00;  // Normally checked value
       mem[0x455].cell = 0x00;  // Normally checked value
-      mem[0x11f].cell = 0x00;  // Pokey piracy check
-      mem[0x720].cell = 0x00;  // Pokey piracy check
+
+      // Enhanced Pokey piracy checks
+      mem[0x11f].cell = 0x00;  // Pokey piracy check 1
+      mem[0x720].cell = 0x00;  // Pokey piracy check 2
+
+      // Additional protection bypass
+      mem[0x798].cell = 0x60;  // RTS at critical check (was JSR)
+      mem[0x799].cell = 0x00;
+      mem[0x79a].cell = 0x00;
+
       /*      
 00011B  1  xx           copyr_vid_cksum1
 000455  1  xx           copyr_vid_cksum2
@@ -3007,16 +3057,27 @@ void setup_game(void) {
 00011F  1  xx           pokey_piracy_detected
 000720  1  xx           pokey_piracy_detected2
 */
+
+
 // read_rom_image(const char *fn, unsigned faddr, unsigned len, unsigned off_set)
 //  read_rom_image(rom_list->name, rom_list->addr, rom_list->len, rom_list->offset);
     //  read_rom_image_avg("roms/tempest/136002-125.d7", &avg_prom, 256, 0 );  // NOT SURE THIS IS RIGHT, CHECK IN PITREX
         // Modify the function call to pass the correct type for the second argument.  
         // Use the array name without the address-of operator (&) to pass a pointer to the first element.  
-        read_rom_image_avg("roms/tempest/136002-125.d7", avg_prom, 256, 0);
+
+    // Load AVG PROM
+    read_rom_image_avg("roms/tempest/136002-125.d7", avg_prom, 256, 0);
+    m_prom = avg_prom;  // Ensure PROM pointer is set
       vector_mem_offset = 0x2000;
       m_colorram_offset = 0x0800;
-      avg_init(vector_mem_offset, 0x800);
 
+      // Initialize color RAM
+      for (int i = 0; i < 16; i++) {
+          memwr(0x0800 + i, 0x07, 0, 0);  // Default white
+      }
+
+      avg_init(vector_mem_offset, 0x800);
+     
 
       /* copy_rom (0xc000, 0xe000, 0x2000); */
       copy_rom(0xdffa, 0xfffa, 6);
@@ -3110,6 +3171,11 @@ void setup_game(void) {
       // Bypass protection checks
       // For Battlezone
       mem[0x5000].cell = 0x60;  // RTS
+      mem[0x5001].cell = 0x00;
+      mem[0x5002].cell = 0x00;
+      mem[0x5003].cell = 0x60;  // Additional RTS
+      mem[0x5004].cell = 0x00;
+      mem[0x5005].cell = 0x00;
 
 #ifdef MAGIC_PC
       mem[0x5000].magic = 1;
@@ -3148,6 +3214,14 @@ void setup_game(void) {
       /*
       mem [0x5800].cell = 0xff;
       */
+
+      // Bypass language ROM check
+      mem[0x5800].cell = 0x01;  // Indicate English ROM present
+
+      // Additional protection bypass
+      mem[0x652d].cell = 0xea;  // NOP out protection check
+      mem[0x652e].cell = 0xea;
+      mem[0x652f].cell = 0xea;
 
 #ifdef MAGIC_PC
       mem[0x652d].magic = 1;
@@ -3427,23 +3501,65 @@ uint32_t save_totcycles;
 uint32_t cyc_wraps = 0;
 #endif
 
+#define MAX_REG 16
+
+uint8_t pokey_rreg[MAX_POKEY][MAX_REG];
+uint8_t pokey_wreg[MAX_POKEY][MAX_REG];
+
 void reset_simulation() {
-  vg_busy = 0;
-  vg_done_cyc = 0;
+    // Reset CPU state
+   
+    SP = 0xFE;  // Correct stack pointer initialization
+    
+    // Reset vector generator state
+    vg_busy = 0;
+    vg_done_cyc = 0;
+   // vector_mem_o
+   //   portrait = 0;
 
-  //  pc = 0;
-  //sp = 0;
-  //   memset(stack, 0, sizeof(stack));
+    // Reset math box
+    memset(mb_reg, 0, sizeof(mb_reg));
+    mb_result = 0;
 
-  //currentx = 0;
-  // currenty = 0;
-#ifdef VSTCM
-  //soundQueueStart = 0;
-  //soundQueueEnd = 0;
-  //memset(soundQueue, 0, sizeof(soundQueue));
-#endif
-  // game = 0;
-  // use_nmi = 0;
+    // Reset POKEY chips
+    for (int i = 0; i < MAX_POKEY; i++) {
+        memset(pokey_rreg[i], 0, MAX_REG);
+        memset(pokey_wreg[i], 0, MAX_REG);
+    }
+
+    // Reset input state
+  /*  cslot_left = 0;
+    cslot_right = 0;
+    cslot_util = 0;
+    slam = 0;
+    start1 = 0;
+    start2 = 0;
+    memset(switches, 0, sizeof(switches));
+    joystick.x = 0x80;
+    joystick.y = 0x80;*/
+
+    // Reset timing state
+ /*   irq_cycle = 8192;
+    breakflag = 0;
+    bank = 0;
+    self_test = 0;
+    */
+    // Reset EAROM
+    init_earom();
+
+    // Reset vector generator specific state
+    if (dvg) {
+        // DVG doesn't have explicit reset
+    }
+    else {
+        avg_reset(0);
+    }
+
+
+    // Reset game-specific globals
+
+  //  drop_frames = 0;
+  //  df = 1;
 }
 
 #ifdef PT8211_SOUND
@@ -3515,15 +3631,8 @@ uint32_t g_millis_count;
 extern uint32_t TickCount();
 
 int vecsim(char *which_game) {
-  // int32_t ac;
-  //  char **av;
 
   int32_t show_usage = 1;
-  // char *reload_file = NULL;
-
-  // int32_t smallwindow = 1;
-  // int32_t use_pixmap = 1;
-  //  int32_t line_width = 0;
 
   // Open trace log file on PC
 #ifndef VSTCM
@@ -3706,7 +3815,7 @@ step_048:
       REGc = REG9;
       mb_q = REG8;
       goto step_0bf;
-
+      
     case 0x14:
       REGc = REGa;
       mb_q = REGb;
@@ -4067,7 +4176,6 @@ void MEMWR(uint16_t addr, uint8_t val, uint16_t PC, uint32_t cyc) {
  * pokey.c: POKEY chip simulation functions
  */
 
-#define MAX_REG 16
 
 /* read registers */
 #define POT0 0x0
@@ -4115,8 +4223,6 @@ const char *pokey_wreg_name[] = {
   "unused0xC", "SEROUT", "IRQEN", "SKCTL"
 };
 
-uint8_t pokey_rreg[MAX_POKEY][MAX_REG];
-uint8_t pokey_wreg[MAX_POKEY][MAX_REG];
 
 #ifdef POKEY_DEBUG
 uint8_t pokey_wreg_inited[MAX_POKEY][MAX_REG] = { { 0 } };
@@ -4257,6 +4363,10 @@ void sim_6502(void) {
            avg_draw_vector_list_t();
            nextDraw = totcycles + 30000;
         }
+
+        // Render vectors periodically for Tempest
+        if (totcycles % 1000 == 0) 
+            avg_draw_vector_list_t();
      }
 
   handle_input();  // Check for input from the user: maybe not necessary to call on each loop iteration
