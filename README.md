@@ -67,7 +67,7 @@ Make sure you order short resistors, space for them on the board is tight.
 
 ## Power options for the PCB
 
-The PCB can be powered in several ways:
+The PCB can be powered in several ways (connect to J6):
 
 |N° | Power supply option              | Supplies                                    | C3/C4    | IC2      | U5/C19/C20  | Split pad Teensy | Tested |
 |---|----------------------------------|---------------------------------------------|----------|----------|-------------|------------------|--------|
@@ -86,6 +86,7 @@ The PCB can be powered in several ways:
 The choice is really just a matter of what you have on hand. It makes no difference what vector CRT you have, as the output voltages of the PCB are the same whatever you use to power it. If you're connecting to an existing arcade machine, then chances are you have a +/-12V supply coming out of the power brick. Otherwise, many people have a box of old "wall wart" 5V (or 9V or 12V) adapters which will work fine: either fit a barrel connector to the PCB input or chop the connector off the end of the power supply and solder the 2 wires directly to the board (check with a multimeter first which is positive and which is ground). 
 
 The easiest option is to use a 5V (option 2) as the LM2940 is not required, and you don't need to cut the link on the Teensy to separate USB and external power.
+Do not use J7 unless you have thoroughly understood how the schematic works for the power supply.
 
 ## Schematic
 
